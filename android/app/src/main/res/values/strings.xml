@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">tienda</string>
+    <string name="title_activity_main">tienda</string>
+    <string name="package_name">com.donapaty.tienda</string>
+    <string name="custom_url_scheme">com.donapaty.tienda</string>
+</resources>

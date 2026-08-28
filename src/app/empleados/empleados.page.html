@@ -1,0 +1,1101 @@
+
+
+<app-admin-shell menuId="admin-employees-menu" contentId="employees-main" activeSection="empleados">
+  <ion-menu
+    *ngIf="false"
+    contentId="employees-main"
+    menuId="admin-employees-menu"
+    type="overlay"
+  >
+
+
+    <ion-header class="admin-menu-header">
+
+      <ion-toolbar>
+
+        <div class="menu-brand">
+
+          <div class="menu-brand-icon">
+            <ion-icon name="storefront-outline"></ion-icon>
+          </div>
+
+          <div class="menu-brand-copy">
+
+            <strong>
+              Doña Paty
+            </strong>
+
+            <small>
+              Administración
+            </small>
+
+          </div>
+
+        </div>
+
+      </ion-toolbar>
+
+    </ion-header>
+
+
+    <!-- CONTENIDO DEL MENÚ -->
+
+    <ion-content class="admin-menu-content">
+
+      <div class="menu-section-label">
+        Menú principal
+      </div>
+
+
+      <ion-list lines="none">
+
+        <ion-menu-toggle [autoHide]="false">
+
+          <!-- INICIO -->
+
+          <ion-item
+            button
+            detail="false"
+            routerLink="/home"
+           
+          >
+
+            <ion-icon
+              slot="start"
+              name="home-outline"
+            ></ion-icon>
+
+            <ion-label>
+              Inicio
+            </ion-label>
+
+          </ion-item>
+
+
+          <!-- PRODUCTOS -->
+
+          <ion-item
+            button
+            detail="false"
+            routerLink="/home"
+           
+          >
+
+            <ion-icon
+              slot="start"
+              name="cube-outline"
+            ></ion-icon>
+
+            <ion-label>
+              Productos
+            </ion-label>
+
+          </ion-item>
+
+
+          <!-- CATEGORÍAS -->
+
+          <ion-item
+            button
+            detail="false"
+            routerLink="/home"
+           
+          >
+
+            <ion-icon
+              slot="start"
+              name="folder-outline"
+            ></ion-icon>
+
+            <ion-label>
+              Categorías
+            </ion-label>
+
+          </ion-item>
+
+
+          <!-- MARCAS -->
+
+          <ion-item
+            button
+            detail="false"
+            routerLink="/home"
+          
+          >
+
+            <ion-icon
+              slot="start"
+              name="pricetag-outline"
+            ></ion-icon>
+
+            <ion-label>
+              Marcas
+            </ion-label>
+
+          </ion-item>
+
+
+          <!-- CONFIGURACIÓN -->
+
+          <ion-item
+            button
+            detail="false"
+            routerLink="/home"
+            routerDirection="root"
+          >
+
+            <ion-icon
+              slot="start"
+              name="settings-outline"
+            ></ion-icon>
+
+            <ion-label>
+              Configuración
+            </ion-label>
+
+          </ion-item>
+
+
+          <!-- EMPLEADOS -->
+
+         <ion-item
+  detail="false"
+  class="menu-active"
+>
+  <ion-icon
+    slot="start"
+    name="people-outline"
+  ></ion-icon>
+
+  <ion-label>
+    Empleados
+  </ion-label>
+</ion-item>
+
+
+          <!-- PUNTO DE VENTA -->
+
+          <ion-item
+            button
+            detail="false"
+            routerLink="/cajero"
+          >
+
+            <ion-icon
+              slot="start"
+              name="calculator-outline"
+            ></ion-icon>
+
+            <ion-label>
+              Punto de venta
+            </ion-label>
+
+          </ion-item>
+
+
+          <!-- VENTAS -->
+
+          <ion-item
+            button
+            detail="false"
+            routerLink="/ventas"
+          >
+
+            <ion-icon
+              slot="start"
+              name="receipt-outline"
+            ></ion-icon>
+
+            <ion-label>
+              Ventas
+            </ion-label>
+
+          </ion-item>
+
+        </ion-menu-toggle>
+
+      </ion-list>
+
+
+      <!-- =================================================
+           USUARIO ADMINISTRADOR
+      ================================================== -->
+
+      <div class="admin-user">
+
+        <div class="admin-user-icon">
+
+          <ion-icon
+            name="person-circle-outline"
+          ></ion-icon>
+
+        </div>
+
+
+        <div class="admin-user-copy">
+
+          <strong>
+            {{
+              auth.sesion?.empleado?.nombre ||
+              'Administrador'
+            }}
+          </strong>
+
+          <small>
+            {{
+              auth.sesion?.empleado?.cargo ||
+              'ADMINISTRADOR'
+            }}
+          </small>
+
+        </div>
+
+
+        <ion-button
+          fill="clear"
+          aria-label="Cerrar sesión"
+          (click)="auth.logout()"
+        >
+
+          <ion-icon
+            slot="icon-only"
+            name="log-out-outline"
+          ></ion-icon>
+
+        </ion-button>
+
+      </div>
+
+    </ion-content>
+
+  </ion-menu>
+
+
+  <!-- =====================================================
+       CONTENIDO PRINCIPAL
+  ====================================================== -->
+
+  <ng-container>
+
+    <!-- =================================================
+         HEADER
+    ================================================== -->
+
+    <ion-header>
+
+      <ion-toolbar>
+
+        <!-- ☰ SOLO TABLET / CELULAR -->
+
+        <ion-buttons slot="start">
+
+          <ion-menu-button
+            class="mobile-menu-button"
+            menu="admin-employees-menu"
+          ></ion-menu-button>
+
+        </ion-buttons>
+
+
+        <ion-title>
+          Empleados
+        </ion-title>
+
+
+        <ion-buttons slot="end">
+
+          <ion-button
+            class="toolbar-new"
+            (click)="nuevo()"
+          >
+
+            <ion-icon
+              slot="start"
+              name="person-add-outline"
+            ></ion-icon>
+
+            <span class="desktop-label">
+              Nuevo empleado
+            </span>
+
+          </ion-button>
+
+        </ion-buttons>
+
+      </ion-toolbar>
+
+    </ion-header>
+
+
+    <!-- =================================================
+         CONTENIDO
+    ================================================== -->
+
+    <ion-content class="employees-content">
+
+      <main class="employees">
+
+        <!-- =============================================
+             CABECERA
+        ============================================== -->
+
+        <header class="employees-heading">
+
+          <div>
+
+            <span class="employees-eyebrow">
+              Personal
+            </span>
+
+            <h1>
+              Empleados
+            </h1>
+
+            <p>
+              Administra las cuentas del personal,
+              sus roles y el acceso al sistema.
+            </p>
+
+          </div>
+
+
+          <ion-button
+            class="new-employee-button"
+            (click)="nuevo()"
+          >
+
+            <ion-icon
+              slot="start"
+              name="person-add-outline"
+            ></ion-icon>
+
+            Agregar empleado
+
+          </ion-button>
+
+        </header>
+
+
+        <!-- =============================================
+             ESTADÍSTICAS
+        ============================================== -->
+
+        <section
+          class="employee-stats"
+          *ngIf="!cargando"
+        >
+
+          <!-- TOTAL -->
+
+          <article>
+
+            <div class="stat-icon">
+
+              <ion-icon
+                name="people-outline"
+              ></ion-icon>
+
+            </div>
+
+
+            <div>
+
+              <small>
+                Total empleados
+              </small>
+
+              <strong>
+                {{ totalEmpleados }}
+              </strong>
+
+            </div>
+
+          </article>
+
+
+          <!-- ACTIVOS -->
+
+          <article>
+
+            <div class="stat-icon active">
+
+              <ion-icon
+                name="checkmark-circle-outline"
+              ></ion-icon>
+
+            </div>
+
+
+            <div>
+
+              <small>
+                Activos
+              </small>
+
+              <strong>
+                {{ empleadosActivos }}
+              </strong>
+
+            </div>
+
+          </article>
+
+
+          <!-- INACTIVOS -->
+
+          <article>
+
+            <div class="stat-icon inactive">
+
+              <ion-icon
+                name="pause-circle-outline"
+              ></ion-icon>
+
+            </div>
+
+
+            <div>
+
+              <small>
+                Inactivos
+              </small>
+
+              <strong>
+                {{ empleadosInactivos }}
+              </strong>
+
+            </div>
+
+          </article>
+
+
+          <!-- CAJEROS -->
+
+          <article>
+
+            <div class="stat-icon cashier">
+
+              <ion-icon
+                name="calculator-outline"
+              ></ion-icon>
+
+            </div>
+
+
+            <div>
+
+              <small>
+                Cajeros
+              </small>
+
+              <strong>
+                {{ totalCajeros }}
+              </strong>
+
+            </div>
+
+          </article>
+
+        </section>
+
+
+        <!-- =============================================
+             CARGANDO
+        ============================================== -->
+
+        <div
+          class="employees-loading"
+          *ngIf="cargando"
+        >
+
+          <ion-spinner></ion-spinner>
+
+          <p>
+            Cargando empleados...
+          </p>
+
+        </div>
+
+
+        <!-- =============================================
+             PANEL DE EMPLEADOS
+        ============================================== -->
+
+        <section
+          class="employees-panel"
+          *ngIf="!cargando"
+        >
+
+          <div class="panel-heading">
+
+            <div>
+
+              <span class="employees-eyebrow">
+                Equipo
+              </span>
+
+              <h2>
+                Personal registrado
+              </h2>
+
+            </div>
+
+
+            <span
+              class="employee-count"
+              *ngIf="empleados.length"
+            >
+
+              {{ empleados.length }}
+
+              {{
+                empleados.length === 1
+                  ? 'empleado'
+                  : 'empleados'
+              }}
+
+            </span>
+
+          </div>
+
+
+          <!-- ===========================================
+               LISTA DE EMPLEADOS
+          ============================================ -->
+
+          <div class="employee-grid">
+
+            <article
+              class="employee-card"
+              *ngFor="let e of empleados"
+              [class.inactive-employee]="!e.estadoEmp"
+            >
+
+              <!-- AVATAR -->
+
+              <div class="employee-avatar">
+
+                <img
+                  *ngIf="e.fotoPerfil"
+                  [src]="e.fotoPerfil"
+                  [alt]="e.nombre"
+                >
+
+                <ion-icon
+                  *ngIf="!e.fotoPerfil"
+                  name="person-outline"
+                ></ion-icon>
+
+              </div>
+
+
+              <!-- INFORMACIÓN -->
+
+              <div class="employee-information">
+
+                <div class="employee-name-row">
+
+                  <h2>
+                    {{ e.nombre }}
+                  </h2>
+
+
+                  <span
+                    class="employee-status"
+                    [class.inactive]="!e.estadoEmp"
+                  >
+
+                    <span></span>
+
+                    {{
+                      e.estadoEmp
+                        ? 'Activo'
+                        : 'Inactivo'
+                    }}
+
+                  </span>
+
+                </div>
+
+
+                <!-- ROL -->
+
+                <span class="employee-role">
+
+                  <ion-icon
+                    [name]="
+                      e.cargo === 'ADMINISTRADOR'
+                        ? 'shield-checkmark-outline'
+                        : 'calculator-outline'
+                    "
+                  ></ion-icon>
+
+                  {{ e.cargo }}
+
+                </span>
+
+
+                <!-- CONTACTO -->
+
+                <div class="employee-contact">
+
+                  <span>
+
+                    <ion-icon
+                      name="mail-outline"
+                    ></ion-icon>
+
+                    {{ e.correo }}
+
+                  </span>
+
+
+                  <span *ngIf="e.telefono">
+
+                    <ion-icon
+                      name="call-outline"
+                    ></ion-icon>
+
+                    {{ e.telefono }}
+
+                  </span>
+
+                </div>
+
+
+                <!-- FECHA -->
+
+                <small
+                  class="employee-date"
+                  *ngIf="e.fechaIngreso"
+                >
+
+                  Ingreso:
+
+                  {{
+                    e.fechaIngreso |
+                    date:'mediumDate'
+                  }}
+
+                </small>
+
+              </div>
+
+
+              <!-- =======================================
+                   ACCIONES
+              ======================================== -->
+
+              <div class="employee-actions">
+
+                <ion-button
+                  fill="clear"
+                  (click)="editar(e)"
+                >
+
+                  <ion-icon
+                    slot="start"
+                    name="create-outline"
+                  ></ion-icon>
+
+                  Editar
+
+                </ion-button>
+
+
+                <ion-button
+                  fill="clear"
+                  [color]="
+                    e.estadoEmp
+                      ? 'danger'
+                      : 'success'
+                  "
+                  (click)="cambiarEstado(e)"
+                >
+
+                  <ion-icon
+                    slot="start"
+                    [name]="
+                      e.estadoEmp
+                        ? 'pause-circle-outline'
+                        : 'checkmark-circle-outline'
+                    "
+                  ></ion-icon>
+
+
+                  {{
+                    e.estadoEmp
+                      ? 'Desactivar'
+                      : 'Activar'
+                  }}
+
+                </ion-button>
+
+              </div>
+
+            </article>
+
+          </div>
+
+
+          <!-- ===========================================
+               SIN EMPLEADOS
+          ============================================ -->
+
+          <div
+            class="employees-empty"
+            *ngIf="!empleados.length"
+          >
+
+            <div class="empty-icon">
+
+              <ion-icon
+                name="people-outline"
+              ></ion-icon>
+
+            </div>
+
+
+            <h2>
+              No hay empleados registrados
+            </h2>
+
+
+            <p>
+              Agrega el primer empleado para comenzar
+              a administrar el personal.
+            </p>
+
+
+            <ion-button
+              (click)="nuevo()"
+            >
+
+              <ion-icon
+                slot="start"
+                name="person-add-outline"
+              ></ion-icon>
+
+              Agregar empleado
+
+            </ion-button>
+
+          </div>
+
+        </section>
+
+      </main>
+
+    </ion-content>
+
+  </ng-container>
+
+</app-admin-shell>
+
+
+
+<!-- =========================================================
+     MODAL NUEVO / EDITAR EMPLEADO
+========================================================== -->
+
+<ion-modal
+  cssClass="employee-modal"
+  [isOpen]="modal"
+  (didDismiss)="modal = false"
+>
+
+  <ng-template>
+
+    <ion-header>
+
+      <ion-toolbar>
+
+        <ion-title>
+
+          {{
+            editando
+              ? 'Editar empleado'
+              : 'Nuevo empleado'
+          }}
+
+        </ion-title>
+
+
+        <ion-buttons slot="end">
+
+          <ion-button
+            [disabled]="guardando"
+            (click)="modal = false"
+          >
+
+            Cerrar
+
+          </ion-button>
+
+        </ion-buttons>
+
+      </ion-toolbar>
+
+    </ion-header>
+
+
+    <ion-content class="ion-padding">
+
+      <div class="employee-form">
+
+        <!-- =============================================
+             INTRO FORMULARIO
+        ============================================== -->
+
+        <div class="form-heading">
+
+          <div class="form-icon">
+
+            <ion-icon
+              [name]="
+                editando
+                  ? 'create-outline'
+                  : 'person-add-outline'
+              "
+            ></ion-icon>
+
+          </div>
+
+
+          <div>
+
+            <span class="employees-eyebrow">
+
+              {{
+                editando
+                  ? 'Edición'
+                  : 'Nuevo registro'
+              }}
+
+            </span>
+
+
+            <h2>
+
+              {{
+                editando
+                  ? 'Actualizar empleado'
+                  : 'Agregar empleado'
+              }}
+
+            </h2>
+
+
+            <p>
+
+              {{
+                editando
+                  ? 'Modifica únicamente los datos que necesites actualizar.'
+                  : 'Captura la información necesaria para crear el acceso del empleado.'
+              }}
+
+            </p>
+
+          </div>
+
+        </div>
+
+
+        <!-- =============================================
+             CAMPOS
+        ============================================== -->
+
+        <div class="form-grid">
+
+          <!-- NOMBRE -->
+
+          <ion-input
+            fill="outline"
+            label="Nombre *"
+            labelPlacement="stacked"
+            [(ngModel)]="form.nombre"
+          ></ion-input>
+
+
+          <!-- APELLIDO PATERNO -->
+
+          <ion-input
+            fill="outline"
+            label="Apellido paterno"
+            labelPlacement="stacked"
+            [(ngModel)]="form.apellidoPat"
+          ></ion-input>
+
+
+          <!-- APELLIDO MATERNO -->
+
+          <ion-input
+            fill="outline"
+            label="Apellido materno"
+            labelPlacement="stacked"
+            [(ngModel)]="form.apellidoMat"
+          ></ion-input>
+
+
+          <!-- CORREO -->
+
+          <ion-input
+            fill="outline"
+            type="email"
+            inputmode="email"
+            label="Correo electrónico *"
+            labelPlacement="stacked"
+            [(ngModel)]="form.correo"
+          ></ion-input>
+
+
+          <!-- TELÉFONO -->
+
+          <ion-input
+            fill="outline"
+            type="tel"
+            inputmode="tel"
+            label="Teléfono"
+            labelPlacement="stacked"
+            [(ngModel)]="form.telefono"
+          ></ion-input>
+
+
+          <!-- FECHA INGRESO -->
+
+          <ion-input
+            fill="outline"
+            type="date"
+            label="Fecha de ingreso"
+            labelPlacement="stacked"
+            [(ngModel)]="form.fechaIngreso"
+          ></ion-input>
+
+
+          <!-- CARGO -->
+
+          <ion-select
+            fill="outline"
+            label="Cargo *"
+            labelPlacement="stacked"
+            [(ngModel)]="form.idCargo"
+          >
+
+            <ion-select-option
+              *ngFor="let c of cargos"
+              [value]="c.idCargo"
+            >
+
+              {{ c.nombreCargo }}
+
+            </ion-select-option>
+
+          </ion-select>
+
+
+          <!-- FOTO -->
+
+          <ion-input
+            fill="outline"
+            type="url"
+            label="URL de foto"
+            labelPlacement="stacked"
+            placeholder="Opcional"
+            [(ngModel)]="form.fotoPerfil"
+          ></ion-input>
+
+        </div>
+
+
+        <!-- =============================================
+             CONTRASEÑA
+        ============================================== -->
+
+        <section class="password-section">
+
+          <div>
+
+            <ion-icon
+              name="key-outline"
+            ></ion-icon>
+
+
+            <div>
+
+              <strong>
+                Contraseña
+              </strong>
+
+
+              <small>
+
+                {{
+                  editando
+                    ? 'Déjala vacía para conservar la contraseña actual.'
+                    : 'Puede quedar vacía si utilizará exclusivamente Google.'
+                }}
+
+              </small>
+
+            </div>
+
+          </div>
+
+
+          <ion-input
+            fill="outline"
+            [label]="
+              editando
+                ? 'Nueva contraseña'
+                : 'Contraseña inicial'
+            "
+            labelPlacement="stacked"
+            type="password"
+            [(ngModel)]="form.password"
+          ></ion-input>
+
+        </section>
+
+
+        <!-- =============================================
+             GUARDAR
+        ============================================== -->
+
+        <ion-button
+          class="save-employee"
+          expand="block"
+          [disabled]="guardando"
+          (click)="guardar()"
+        >
+
+          <ion-spinner
+            *ngIf="guardando"
+            name="crescent"
+          ></ion-spinner>
+
+
+          <ion-icon
+            *ngIf="!guardando"
+            slot="start"
+            name="save-outline"
+          ></ion-icon>
+
+
+          {{
+            guardando
+              ? 'Guardando...'
+              : editando
+              ? 'Guardar cambios'
+              : 'Registrar empleado'
+          }}
+
+        </ion-button>
+
+      </div>
+
+    </ion-content>
+
+  </ng-template>
+
+</ion-modal>
+

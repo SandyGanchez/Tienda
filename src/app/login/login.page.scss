@@ -1,0 +1,1075 @@
+/* =========================================================
+   LOGIN
+========================================================= */
+
+.login-content {
+  --background: #f7f6f3;
+}
+
+
+/* =========================================================
+   CONTENEDOR PRINCIPAL
+========================================================= */
+
+.login-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(390px, 0.88fr);
+
+  width: min(1220px, calc(100% - 48px));
+  min-height: min(760px, calc(100vh - 48px));
+
+  margin: 24px auto;
+
+  overflow: hidden;
+
+  background: #ffffff;
+
+  border: 1px solid rgba(204, 203, 217, 0.58);
+  border-radius: 34px;
+
+  box-shadow:
+    0 24px 70px rgba(79, 74, 82, 0.12);
+}
+
+
+/* =========================================================
+   PANEL IZQUIERDO
+========================================================= */
+
+.login-brand {
+  position: relative;
+
+  display: flex;
+  flex-direction: column;
+
+  min-width: 0;
+
+  padding:
+    clamp(30px, 4vw, 52px)
+    clamp(36px, 5vw, 70px);
+
+  overflow: hidden;
+
+  background:
+    linear-gradient(
+      145deg,
+      #f3e6d5 0%,
+      #f8efe6 44%,
+      #d8e9f0 100%
+    );
+}
+
+
+/* =========================================================
+   CURVA GRANDE
+========================================================= */
+
+.login-brand::after {
+  content: "";
+
+  position: absolute;
+
+  top: -13%;
+  right: -245px;
+
+  width: 360px;
+  height: 126%;
+
+  z-index: 0;
+
+  background: #ffffff;
+
+  border-radius: 52% 0 0 52%;
+}
+
+
+/* =========================================================
+   BRANDING SUPERIOR
+========================================================= */
+
+.brand-top {
+  position: relative;
+  z-index: 5;
+
+  display: flex;
+  align-items: center;
+
+  gap: 14px;
+}
+
+
+.login-logo {
+  display: grid;
+  place-items: center;
+
+  flex: 0 0 auto;
+
+  width: 66px;
+  height: 66px;
+
+  overflow: hidden;
+
+  border-radius: 20px;
+
+  background:
+    rgba(255, 255, 255, 0.82);
+
+  border:
+    1px solid rgba(255, 255, 255, 0.9);
+
+  box-shadow:
+    0 9px 26px rgba(79, 74, 82, 0.08);
+
+  color: #80778a;
+
+  font-size: 32px;
+}
+
+
+.login-logo img {
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+}
+
+
+.brand-name {
+  display: flex;
+  flex-direction: column;
+
+  gap: 2px;
+}
+
+
+.brand-name span {
+  color: #80778a;
+
+  font-size: 12px;
+  font-weight: 700;
+
+  letter-spacing: 0.08em;
+
+  text-transform: uppercase;
+}
+
+
+.brand-name strong {
+  max-width: 280px;
+
+  color: #4f4a52;
+
+  font-size: 18px;
+  font-weight: 700;
+
+  line-height: 1.25;
+}
+
+
+/* =========================================================
+   ILUSTRACIÓN CASA
+========================================================= */
+
+.house-wrapper {
+  position: relative;
+  z-index: 3;
+
+  display: grid;
+  place-items: center;
+
+  flex: 1;
+
+  min-height: 360px;
+
+  padding: 20px 0;
+}
+
+
+.house-background {
+  position: absolute;
+
+  width: min(520px, 88%);
+  aspect-ratio: 1.18 / 1;
+
+  border-radius:
+    42% 58% 52% 48% /
+    45% 42% 58% 55%;
+
+  background:
+    rgba(216, 233, 240, 0.75);
+
+  transform:
+    rotate(-4deg);
+
+  z-index: 0;
+}
+
+
+.house-background::before {
+  content: "";
+
+  position: absolute;
+
+  width: 68%;
+  height: 70%;
+
+  left: 5%;
+  top: 17%;
+
+  border-radius:
+    58% 42% 48% 52% /
+    44% 56% 44% 56%;
+
+  background:
+    rgba(204, 203, 217, 0.42);
+
+  transform:
+    rotate(9deg);
+}
+
+
+.house-image {
+  position: relative;
+
+  z-index: 2;
+
+  display: block;
+
+  width: min(590px, 92%);
+  max-height: 445px;
+
+  object-fit: contain;
+
+  filter:
+    drop-shadow(
+      0 18px 16px rgba(79, 74, 82, 0.10)
+    );
+
+  animation:
+    houseFloat 5.5s ease-in-out infinite;
+}
+
+
+@keyframes houseFloat {
+
+  0%,
+  100% {
+    transform:
+      translateY(0);
+  }
+
+  50% {
+    transform:
+      translateY(-5px);
+  }
+}
+
+
+/* =========================================================
+   TEXTO PANEL IZQUIERDO
+========================================================= */
+
+.brand-copy {
+  position: relative;
+  z-index: 4;
+
+  max-width: 440px;
+}
+
+
+.brand-copy h1 {
+  margin:
+    0 0 10px;
+
+  color: #4f4a52;
+
+  font-size:
+    clamp(25px, 2.4vw, 37px);
+
+  font-weight: 700;
+
+  line-height: 1.12;
+}
+
+
+.brand-copy h1 span {
+  color: #80778a;
+}
+
+
+.brand-copy p {
+  margin: 0;
+
+  color: #706a73;
+
+  font-size: 15px;
+
+  line-height: 1.55;
+}
+
+
+/* =========================================================
+   DECORACIONES
+========================================================= */
+
+.decor-circle {
+  position: absolute;
+
+  display: block;
+
+  border-radius: 50%;
+
+  pointer-events: none;
+
+  z-index: 1;
+}
+
+
+.decor-circle-one {
+  width: 92px;
+  height: 92px;
+
+  top: 16%;
+  left: 8%;
+
+  background:
+    rgba(231, 165, 164, 0.24);
+}
+
+
+.decor-circle-two {
+  width: 48px;
+  height: 48px;
+
+  top: 29%;
+  right: 18%;
+
+  background:
+    rgba(149, 167, 181, 0.28);
+}
+
+
+.decor-circle-three {
+  width: 25px;
+  height: 25px;
+
+  bottom: 19%;
+  left: 13%;
+
+  background:
+    rgba(247, 197, 182, 0.8);
+}
+
+
+.decor-dots {
+  position: absolute;
+
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, 8px);
+
+  gap: 8px;
+
+  top: 46px;
+  right: 68px;
+
+  z-index: 2;
+
+  pointer-events: none;
+}
+
+
+.decor-dots span {
+  width: 7px;
+  height: 7px;
+
+  border-radius: 50%;
+
+  background: #80778a;
+
+  opacity: 0.52;
+}
+
+
+/* =========================================================
+   PANEL DERECHO
+========================================================= */
+
+.login-card {
+  position: relative;
+
+  z-index: 5;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  min-width: 0;
+
+  padding:
+    clamp(38px, 5vw, 70px);
+
+  background: #ffffff;
+}
+
+
+.login-form {
+  width: min(100%, 410px);
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 17px;
+}
+
+
+/* =========================================================
+   HEADER
+========================================================= */
+
+.login-header {
+  margin-bottom: 11px;
+}
+
+
+.login-eyebrow {
+  display: inline-block;
+
+  margin-bottom: 10px;
+
+  color: #80778a;
+
+  font-size: 11px;
+  font-weight: 800;
+
+  letter-spacing: 0.12em;
+}
+
+
+.login-header h2 {
+  margin: 0;
+
+  color: #4f4a52;
+
+  font-size:
+    clamp(38px, 4vw, 48px);
+
+  font-weight: 700;
+
+  letter-spacing: -0.035em;
+
+  line-height: 1.05;
+}
+
+
+.welcome-heart {
+  color: #e7a5a4;
+
+  font-size: 0.76em;
+
+  display: inline-block;
+
+  transform:
+    rotate(8deg)
+    translateY(-2px);
+}
+
+
+.login-header p {
+  margin:
+    10px 0 0;
+
+  color: #7b747d;
+
+  font-size: 16px;
+}
+
+
+/* =========================================================
+   CAMPOS
+========================================================= */
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+
+  gap: 7px;
+}
+
+
+.field-group > label {
+  padding-left: 2px;
+
+  color: #5e5961;
+
+  font-size: 13px;
+  font-weight: 600;
+}
+
+
+.field-control {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+
+  min-height: 54px;
+
+  border:
+    1px solid #ccCBD9;
+
+  border-radius: 17px;
+
+  background: #ffffff;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+
+.field-control:focus-within {
+  border-color: #80778a;
+
+  box-shadow:
+    0 0 0 4px
+    rgba(204, 203, 217, 0.35);
+}
+
+
+.field-icon {
+  flex: 0 0 auto;
+
+  margin-left: 17px;
+
+  color: #80778a;
+
+  font-size: 21px;
+}
+
+
+.field-control ion-input {
+  --background: transparent;
+
+  --color: #4f4a52;
+
+  --placeholder-color: #9c959e;
+  --placeholder-opacity: 1;
+
+  --padding-start: 12px;
+  --padding-end: 10px;
+
+  min-height: 52px;
+
+  font-size: 15px;
+}
+
+
+.password-toggle {
+  flex: 0 0 auto;
+
+  width: 45px;
+  height: 45px;
+
+  margin: 0 4px 0 0;
+
+  --color: #80778a;
+
+  --padding-start: 0;
+  --padding-end: 0;
+
+  --border-radius: 50%;
+}
+
+
+/* =========================================================
+   BOTÓN PRINCIPAL
+========================================================= */
+
+.login-primary {
+  height: 54px;
+
+  margin-top: 7px;
+
+  --background: #80778a;
+  --background-hover: #756d80;
+  --background-activated: #716978;
+
+  --color: #ffffff;
+
+  --border-radius: 17px;
+
+  --box-shadow:
+    0 9px 22px rgba(128, 119, 138, 0.20);
+
+  font-weight: 700;
+
+  text-transform: none;
+}
+
+
+/* =========================================================
+   DIVISOR
+========================================================= */
+
+.login-divider {
+  display: flex;
+  align-items: center;
+
+  gap: 13px;
+
+  color: #928b95;
+
+  font-size: 13px;
+}
+
+
+.login-divider::before,
+.login-divider::after {
+  content: "";
+
+  flex: 1;
+
+  height: 1px;
+
+  background:
+    rgba(204, 203, 217, 0.72);
+}
+
+
+/* =========================================================
+   CLIENTE / GOOGLE
+========================================================= */
+
+.client-copy {
+  margin:
+    -2px 0 -4px;
+
+  color: #777179;
+
+  font-size: 13px;
+
+  text-align: center;
+}
+
+
+.google-button {
+  height: 52px;
+
+  --background: #ffffff;
+
+  --color: #4f4a52;
+
+  --border-color: #ccCBD9;
+  --border-width: 1px;
+  --border-style: solid;
+
+  --border-radius: 17px;
+
+  --box-shadow: none;
+
+  font-weight: 600;
+
+  text-transform: none;
+}
+
+
+.google-button:hover {
+  --background: #f8f7fa;
+}
+
+
+.google-letter {
+  display: grid;
+  place-items: center;
+
+  width: 25px;
+  height: 25px;
+
+  margin-right: 12px;
+
+  border-radius: 50%;
+
+  color: #80778a;
+
+  background:
+    #f3e6d5;
+
+  font-size: 16px;
+  font-weight: 800;
+}
+
+
+.google-warning {
+  display: block;
+
+  color: #8b848d;
+
+  font-size: 12px;
+  line-height: 1.45;
+
+  text-align: center;
+}
+
+
+/* =========================================================
+   CATÁLOGO
+========================================================= */
+
+.catalog-link {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  flex-wrap: wrap;
+
+  margin-top: 3px;
+
+  color: #777179;
+
+  font-size: 13px;
+}
+
+
+.catalog-link ion-button {
+  --color: #80778a;
+
+  margin: 0;
+
+  font-size: 13px;
+
+  font-weight: 700;
+
+  text-transform: none;
+}
+
+
+/* =========================================================
+   TABLET
+========================================================= */
+
+@media (max-width: 992px) {
+
+  .login-shell {
+    grid-template-columns:
+      minmax(0, 0.95fr)
+      minmax(360px, 1.05fr);
+
+    width:
+      min(940px, calc(100% - 28px));
+
+    min-height:
+      calc(100vh - 28px);
+
+    margin:
+      14px auto;
+
+    border-radius:
+      28px;
+  }
+
+
+  .login-brand {
+    padding:
+      30px;
+  }
+
+
+  .login-brand::after {
+    right: -270px;
+  }
+
+
+  .house-wrapper {
+    min-height: 310px;
+  }
+
+
+  .house-image {
+    width: 100%;
+  }
+
+
+  .brand-copy h1 {
+    font-size: 27px;
+  }
+
+
+  .login-card {
+    padding:
+      38px 34px;
+  }
+
+
+  .decor-dots {
+    right: 36px;
+  }
+
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 760px) {
+
+  .login-content {
+    --background:
+      linear-gradient(
+        160deg,
+        #d8e9f0 0%,
+        #f3e6d5 52%,
+        #ffffff 100%
+      );
+  }
+
+
+  .login-shell {
+    display: block;
+
+    width:
+      calc(100% - 24px);
+
+    min-height: 0;
+
+    margin:
+      12px auto 24px;
+
+    overflow: visible;
+
+    border-radius:
+      27px;
+
+    background:
+      #ffffff;
+  }
+
+
+  .login-brand {
+    align-items: center;
+
+    min-height: auto;
+
+    padding:
+      22px 22px 25px;
+
+    overflow: hidden;
+
+    border-radius:
+      27px 27px 0 0;
+
+    text-align: center;
+  }
+
+
+  .login-brand::after {
+    display: none;
+  }
+
+
+  .brand-top {
+    width: 100%;
+
+    justify-content: flex-start;
+
+    text-align: left;
+  }
+
+
+  .login-logo {
+    width: 54px;
+    height: 54px;
+
+    border-radius: 17px;
+  }
+
+
+  .brand-name span {
+    font-size: 10px;
+  }
+
+
+  .brand-name strong {
+    font-size: 15px;
+  }
+
+
+  .house-wrapper {
+    flex: none;
+
+    width: 100%;
+
+    min-height: 210px;
+
+    padding:
+      10px 0 3px;
+  }
+
+
+  .house-background {
+    width: 285px;
+  }
+
+
+  .house-image {
+    width:
+      min(310px, 82vw);
+
+    max-height:
+      225px;
+  }
+
+
+  .brand-copy {
+    display: none;
+  }
+
+
+  .decor-circle-one {
+    width: 60px;
+    height: 60px;
+  }
+
+
+  .decor-circle-two {
+    width: 30px;
+    height: 30px;
+  }
+
+
+  .decor-circle-three {
+    display: none;
+  }
+
+
+  .decor-dots {
+    top: 24px;
+    right: 22px;
+
+    grid-template-columns:
+      repeat(3, 6px);
+
+    gap: 6px;
+  }
+
+
+  .decor-dots span {
+    width: 5px;
+    height: 5px;
+  }
+
+
+  .login-card {
+    display: block;
+
+    padding:
+      31px 22px 34px;
+
+    border-radius:
+      0 0 27px 27px;
+  }
+
+
+  .login-form {
+    width: 100%;
+
+    gap: 15px;
+  }
+
+
+  .login-header {
+    margin-bottom: 8px;
+  }
+
+
+  .login-header h2 {
+    font-size: 35px;
+  }
+
+
+  .login-header p {
+    font-size: 14px;
+  }
+
+}
+
+
+/* =========================================================
+   MOBILE PEQUEÑO
+========================================================= */
+
+@media (max-width: 390px) {
+
+  .login-shell {
+    width:
+      calc(100% - 16px);
+
+    margin-top: 8px;
+  }
+
+
+  .login-brand {
+    padding:
+      18px 17px 21px;
+  }
+
+
+  .house-wrapper {
+    min-height: 185px;
+  }
+
+
+  .house-image {
+    width:
+      min(270px, 82vw);
+
+    max-height:
+      195px;
+  }
+
+
+  .house-background {
+    width: 245px;
+  }
+
+
+  .login-card {
+    padding:
+      27px 17px 31px;
+  }
+
+
+  .login-header h2 {
+    font-size: 31px;
+  }
+
+
+  .field-control {
+    min-height: 52px;
+
+    border-radius: 15px;
+  }
+
+
+  .login-primary,
+  .google-button {
+    height: 51px;
+  }
+
+}
+
+
+/* =========================================================
+   REDUCIR MOVIMIENTO
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+  .house-image {
+    animation: none;
+  }
+
+}

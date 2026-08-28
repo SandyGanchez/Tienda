@@ -1,0 +1,10 @@
+<app-cliente-shell><ion-content class="orders-page"><main class="orders-container">
+  <header><span>Tu actividad</span><h1>Mis pedidos</h1><p>Consulta tus reservas, pagos y el estado de cada pedido.</p></header>
+  <section class="loading-orders" *ngIf="cargando"><ion-spinner name="crescent"></ion-spinner><p>Cargando pedidos…</p></section>
+  <section class="empty-orders" *ngIf="!cargando && pedidos.length === 0"><span class="illustration"><ion-icon name="receipt-outline"></ion-icon></span><h2>Aún no tienes pedidos</h2><p>Cuando reserves productos, aquí podrás consultar su estado y detalle.</p><ion-button routerLink="/catalogo" shape="round">Explorar productos</ion-button></section>
+  <section class="orders-grid" *ngIf="!cargando && pedidos.length">
+    <article *ngFor="let pedido of pedidos"><div class="order-top"><div><span>Pedido</span><h2>{{ pedido.folio }}</h2></div><span class="status" [attr.data-status]="pedido.estado">{{ etiqueta(pedido.estado) }}</span></div>
+      <dl><div><dt>Fecha</dt><dd>{{ pedido.fechaPedido | date:'mediumDate' }}</dd></div><div><dt>Total</dt><dd>{{ pedido.total | currency:'MXN':'symbol-narrow':'1.2-2' }}</dd></div></dl>
+      <a [routerLink]="[pedido.idPedido]">Ver pedido <ion-icon name="arrow-forward-outline"></ion-icon></a></article>
+  </section>
+</main></ion-content></app-cliente-shell>

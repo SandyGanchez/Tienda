@@ -1,0 +1,373 @@
+<app-admin-shell menuId="admin-sales-menu" contentId="sales-main" activeSection="ventas">
+<ion-header class="sales-header">
+  <ion-toolbar>
+
+    <ion-buttons slot="start">
+      <ion-menu-button class="mobile-menu-button" menu="admin-sales-menu"></ion-menu-button>
+      <ion-back-button defaultHref="/cajero"></ion-back-button>
+    </ion-buttons>
+
+    <ion-title>
+      {{ auth.tieneRol('CAJERO') ? 'Mis ventas' : 'Ventas' }}
+    </ion-title>
+
+    <ion-buttons slot="end">
+
+      <ion-button routerLink="/cajero">
+        <ion-icon slot="start" name="cart-outline"></ion-icon>
+        <span class="desktop-action">Punto de venta</span>
+      </ion-button>
+
+      <ion-button (click)="auth.logout()">
+        <ion-icon slot="icon-only" name="log-out-outline"></ion-icon>
+      </ion-button>
+
+    </ion-buttons>
+
+  </ion-toolbar>
+</ion-header>
+
+
+<ion-content class="sales-content">
+
+  <main class="sales-shell">
+
+    <!-- =========================================
+         CABECERA
+    ========================================== -->
+
+    <header class="sales-heading">
+
+      <div>
+
+        <span class="sales-eyebrow">
+          Historial
+        </span>
+
+        <h1>
+          {{
+            auth.tieneRol('CAJERO')
+              ? 'Mis ventas'
+              : 'Ventas de la sucursal'
+          }}
+        </h1>
+
+        <p>
+          Consulta los cobros registrados y abre cualquier venta
+          para revisar sus productos, pago y comprobante.
+        </p>
+
+      </div>
+
+
+      <ion-button
+        class="new-sale-button"
+        routerLink="/cajero"
+      >
+        <ion-icon
+          slot="start"
+          name="add-circle-outline"
+        ></ion-icon>
+
+        Nueva venta
+      </ion-button>
+
+    </header>
+
+
+    <!-- =========================================
+         RESUMEN
+    ========================================== -->
+
+    <section
+      class="sales-stats"
+      *ngIf="!cargando"
+    >
+
+      <article class="sales-stat">
+
+        <div class="stat-icon">
+          <ion-icon name="receipt-outline"></ion-icon>
+        </div>
+
+        <div>
+          <small>Ventas registradas</small>
+          <strong>{{ ventas.length }}</strong>
+        </div>
+
+      </article>
+
+
+      <article class="sales-stat">
+
+        <div class="stat-icon">
+          <ion-icon name="checkmark-circle-outline"></ion-icon>
+        </div>
+
+        <div>
+          <small>Completadas</small>
+          <strong>{{ ventasCompletadas }}</strong>
+        </div>
+
+      </article>
+
+
+      <article class="sales-stat">
+
+        <div class="stat-icon">
+          <ion-icon name="close-circle-outline"></ion-icon>
+        </div>
+
+        <div>
+          <small>Canceladas</small>
+          <strong>{{ ventasCanceladas }}</strong>
+        </div>
+
+      </article>
+
+
+      <article class="sales-stat total-stat">
+
+        <div class="stat-icon">
+          <ion-icon name="cash-outline"></ion-icon>
+        </div>
+
+        <div>
+          <small>Total vendido</small>
+          <strong>
+            {{ totalVendido | currency:'MXN' }}
+          </strong>
+        </div>
+
+      </article>
+
+    </section>
+
+
+    <!-- =========================================
+         CARGANDO
+    ========================================== -->
+
+    <div
+      class="sales-loading"
+      *ngIf="cargando"
+    >
+      <ion-spinner></ion-spinner>
+      <p>Cargando ventas...</p>
+    </div>
+
+
+    <!-- =========================================
+         LISTA
+    ========================================== -->
+
+    <section
+      class="sales-list-section"
+      *ngIf="!cargando"
+    >
+
+      <div
+        class="list-heading"
+        *ngIf="ventas.length"
+      >
+
+        <div>
+          <span class="sales-eyebrow">
+            Movimientos
+          </span>
+
+          <h2>
+            Ventas recientes
+          </h2>
+        </div>
+
+        <span class="results-count">
+          {{ ventas.length }}
+          {{ ventas.length === 1 ? 'registro' : 'registros' }}
+        </span>
+
+      </div>
+
+
+      <!-- CABECERA ESCRITORIO -->
+
+      <div
+        class="sales-table-header"
+        *ngIf="ventas.length"
+      >
+        <span>Venta</span>
+        <span>Fecha</span>
+        <span>Cajero</span>
+        <span>Pago</span>
+        <span>Estado</span>
+        <span class="right">Total</span>
+        <span></span>
+      </div>
+
+
+      <div class="sales-list">
+
+        <a
+          class="sale-row"
+          *ngFor="let venta of ventas"
+          [routerLink]="[
+            '/ventas',
+            venta.idVenta
+          ]"
+        >
+
+          <!-- FOLIO -->
+
+          <div class="sale-folio">
+
+            <div class="sale-icon">
+              <ion-icon name="receipt-outline"></ion-icon>
+            </div>
+
+            <div>
+              <small>Folio</small>
+              <strong>#{{ venta.idVenta }}</strong>
+              <span class="origin-badge" [class.online]="venta.origenVenta==='ONLINE'">{{venta.origenVenta==='ONLINE'?'Online':'Punto de venta'}}</span>
+            </div>
+
+          </div>
+
+
+          <!-- FECHA -->
+
+          <div class="sale-data">
+
+            <small>Fecha y hora</small>
+
+            <span>
+              {{ venta.fechaVenta }}
+            </span>
+
+            <small class="secondary-value">
+              {{ venta.horaVenta }}
+            </small>
+
+          </div>
+
+
+          <!-- CAJERO -->
+
+          <div class="sale-data">
+
+            <small>{{venta.origenVenta==='ONLINE'?'Revisó':'Cajero'}}</small>
+
+            <span>
+              {{ venta.cajero || 'Sin nombre' }}
+            </span>
+
+          </div>
+
+
+          <!-- MÉTODO -->
+
+          <div class="sale-data">
+
+            <small>Método</small>
+
+            <span class="payment-badge">
+
+              <ion-icon
+                [name]="
+                  venta.metodoPago === 'EFECTIVO'
+                    ? 'cash-outline'
+                    : venta.metodoPago === 'TARJETA'
+                    ? 'card-outline'
+                    : 'phone-portrait-outline'
+                "
+              ></ion-icon>
+
+              {{ venta.metodoPago }}
+
+            </span>
+
+          </div>
+
+
+          <!-- ESTADO -->
+
+          <div class="sale-data">
+
+            <small>Estado</small>
+
+            <span
+              class="sale-state"
+              [class.cancelled]="
+                venta.estadoVenta === 'CANCELADA'
+              "
+            >
+              <span class="state-dot"></span>
+
+              {{
+                venta.estadoVenta === 'CANCELADA'
+                  ? 'Cancelada'
+                  : 'Completada'
+              }}
+            </span>
+
+          </div>
+
+
+          <!-- TOTAL -->
+
+          <div class="sale-total">
+
+            <small>Total</small>
+
+            <strong>
+              {{ venta.total | currency:'MXN' }}
+            </strong>
+
+          </div>
+
+
+          <div class="sale-arrow">
+            <ion-icon name="chevron-forward-outline"></ion-icon>
+          </div>
+
+        </a>
+
+      </div>
+
+
+      <!-- VACÍO -->
+
+      <div
+        class="sales-empty"
+        *ngIf="!ventas.length"
+      >
+
+        <div class="empty-icon">
+          <ion-icon name="receipt-outline"></ion-icon>
+        </div>
+
+        <h2>
+          Aún no hay ventas
+        </h2>
+
+        <p>
+          Las ventas registradas desde el punto de venta
+          aparecerán aquí.
+        </p>
+
+        <ion-button routerLink="/cajero">
+          <ion-icon
+            slot="start"
+            name="cart-outline"
+          ></ion-icon>
+
+          Ir al punto de venta
+        </ion-button>
+
+      </div>
+
+    </section>
+
+  </main>
+
+</ion-content>
+</app-admin-shell>

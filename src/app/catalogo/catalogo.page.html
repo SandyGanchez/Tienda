@@ -1,0 +1,103 @@
+<app-cliente-shell>
+  <ion-content class="catalog-page">
+    <main class="catalog-container">
+      <section class="catalog-intro">
+        <div>
+          <span class="eyebrow">Compra fácil y cerca de ti</span>
+          <h1>{{ nombreCliente ? 'Hola, ' + nombreCliente : 'Nuestro catálogo' }}</h1>
+          <p>Explora los productos disponibles y arma tu carrito con tranquilidad.</p>
+        </div>
+        <div class="search-panel" aria-label="Filtros del catálogo">
+          <ion-searchbar
+            [(ngModel)]="busqueda"
+            placeholder="Buscar productos o marcas"
+            debounce="150"
+            aria-label="Buscar productos">
+          </ion-searchbar>
+          <ion-select [(ngModel)]="marca" interface="popover" aria-label="Filtrar por marca">
+            <ion-select-option value="todas">Todas las marcas</ion-select-option>
+            <ion-select-option *ngFor="let opcion of marcas" [value]="opcion">{{ opcion }}</ion-select-option>
+          </ion-select>
+        </div>
+      </section>
+
+      <nav class="category-strip" aria-label="Categorías de productos">
+        <button type="button" [class.active]="categoria === 'todas'" (click)="seleccionarCategoria('todas')">Todo</button>
+        <button
+          type="button"
+          *ngFor="let opcion of categorias"
+          [class.active]="categoria === opcion"
+          (click)="seleccionarCategoria(opcion)">
+          {{ opcion }}
+        </button>
+      </nav>
+
+      <section *ngIf="cargando" class="state-card" aria-live="polite">
+        <ion-spinner name="crescent"></ion-spinner>
+        <p>Cargando productos…</p>
+      </section>
+
+      <section *ngIf="!cargando && errorCarga" class="state-card error-state">
+        <ion-icon name="cloud-offline-outline"></ion-icon>
+        <h2>No pudimos cargar el catálogo</h2>
+        <p>Comprueba tu conexión e inténtalo nuevamente.</p>
+        <ion-button (click)="cargarProductos()">Reintentar</ion-button>
+      </section>
+
+      <section *ngIf="!cargando && !errorCarga && productos.length === 0" class="state-card">
+        <ion-icon name="basket-outline"></ion-icon>
+        <h2>El catálogo está vacío</h2>
+        <p>Los productos publicados aparecerán aquí.</p>
+      </section>
+
+      <ng-container *ngIf="!cargando && !errorCarga && productos.length > 0">
+        <header class="results-heading">
+          <div>
+            <h2>Productos</h2>
+            <p>{{ productosFiltrados.length }} {{ productosFiltrados.length === 1 ? 'resultado' : 'resultados' }}</p>
+          </div>
+          <button type="button" *ngIf="busqueda || categoria !== 'todas' || marca !== 'todas'" (click)="limpiarFiltros()">
+            Limpiar filtros
+          </button>
+        </header>
+
+        <section *ngIf="productosFiltrados.length === 0" class="state-card compact-state">
+          <ion-icon name="search-outline"></ion-icon>
+          <h2>Sin coincidencias</h2>
+          <p>Prueba otra búsqueda o limpia los filtros.</p>
+        </section>
+
+        <section class="product-grid" *ngIf="productosFiltrados.length > 0">
+          <article class="product-card" *ngFor="let producto of productosFiltrados">
+            <div class="product-image">
+              <img *ngIf="imagen(producto.imagenPro) as src; else imagePlaceholder" [src]="src" [alt]="producto.nombrePro">
+              <ng-template #imagePlaceholder><ion-icon name="cube-outline"></ion-icon></ng-template>
+              <span class="availability" [class.unavailable]="!disponible(producto)">
+                {{ disponible(producto) ? 'Disponible' : 'Agotado' }}
+              </span>
+            </div>
+            <div class="product-body">
+              <span class="category-label">{{ producto.nombreCat || 'Abarrotes' }}</span>
+              <h3>{{ producto.nombrePro }}</h3>
+              <p class="product-meta">{{ producto.nombreMarca || 'Sin marca' }}</p>
+              <p class="product-presentation" *ngIf="producto.tamanoPro || producto.presentacionPro">
+                {{ producto.tamanoPro }} {{ producto.presentacionPro }}
+              </p>
+              <div class="product-footer">
+                <strong>{{ producto.precioVentaPro | currency:'MXN':'symbol-narrow':'1.2-2' }}</strong>
+                <ion-button
+                  size="small"
+                  shape="round"
+                  [disabled]="!disponible(producto)"
+                  (click)="agregar(producto)">
+                  <ion-icon slot="start" name="add-outline"></ion-icon>
+                  Agregar
+                </ion-button>
+              </div>
+            </div>
+          </article>
+        </section>
+      </ng-container>
+    </main>
+  </ion-content>
+</app-cliente-shell>

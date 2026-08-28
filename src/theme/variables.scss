@@ -1,2 +1,31 @@
 // For information on how to create your own theme, please refer to:
 // https://ionicframework.com/docs/theming/
+:root {
+  --pastel-blue-gray: #9bafbe;
+  --pastel-blue: #aec2cd;
+  --pastel-sky: #c3d9e4;
+  --pastel-light-blue: #d5e8ed;
+  --pastel-lavender-gray: #adb0c1;
+  --pastel-lavender: #bdbdcc;
+  --pastel-soft-purple: #8f8598;
+  --pastel-purple: #776a80;
+  --pastel-mauve: #beacbe;
+  --pastel-pink: #d8bfd4;
+  --pastel-rose: #ddb0b5;
+  --pastel-coral: #e89e9e;
+  --pastel-peach: #f2bead;
+  --pastel-soft-pink: #f1c6c6;
+  --pastel-beige: #f1dfca;
+  --pastel-cream: #f5e7d1;
+  --pastel-brown: #8d746c;
+  --surface: #ffffff;
+  --surface-soft: #f8f7f8;
+  --text-primary: #2f2d32;
+  --text-secondary: #74707a;
+  --ion-color-primary: #776a80;
+  --ion-color-primary-rgb: 119, 106, 128;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #695d71;
+  --ion-color-primary-tint: #85798d;
+}

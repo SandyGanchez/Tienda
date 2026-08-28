@@ -1,0 +1,39 @@
+<app-cliente-shell>
+  <ion-content class="profile-page">
+    <main class="profile-container" *ngIf="clienteAuth.sesion as sesion">
+      <header>
+        <span>Tu cuenta</span>
+        <h1>Perfil</h1>
+        <p>Información asociada a tu inicio de sesión con Google.</p>
+      </header>
+
+      <section class="profile-card">
+        <div class="profile-identity">
+          <span class="profile-photo">
+            <img *ngIf="foto(sesion.cliente.fotoPerfil) as src; else profilePlaceholder" [src]="src" alt="Foto de perfil">
+            <ng-template #profilePlaceholder><ion-icon name="person-outline"></ion-icon></ng-template>
+          </span>
+          <div>
+            <h2>{{ sesion.cliente.nombre }} {{ sesion.cliente.apellidoPat }} {{ sesion.cliente.apellidoMat }}</h2>
+            <p>{{ sesion.cliente.correo }}</p>
+          </div>
+        </div>
+
+        <dl>
+          <div><dt>Nombre</dt><dd>{{ sesion.cliente.nombre }}</dd></div>
+          <div><dt>Apellidos</dt><dd>{{ sesion.cliente.apellidoPat || '—' }} {{ sesion.cliente.apellidoMat || '' }}</dd></div>
+          <div><dt>Correo</dt><dd>{{ sesion.cliente.correo }}</dd></div>
+          <div><dt>Cliente desde</dt><dd>{{ sesion.cliente.fechaRegistro | date:'longDate' }}</dd></div>
+        </dl>
+
+        <div class="profile-actions">
+          <p>La información de esta cuenta se administra desde Google.</p>
+          <ion-button fill="outline" color="danger" (click)="clienteAuth.logout()">
+            <ion-icon slot="start" name="log-out-outline"></ion-icon>
+            Cerrar sesión
+          </ion-button>
+        </div>
+      </section>
+    </main>
+  </ion-content>
+</app-cliente-shell>

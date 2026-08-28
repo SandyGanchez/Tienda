@@ -1,0 +1,271 @@
+<ion-content class="login-content">
+
+  <main class="login-shell">
+
+    <!-- =====================================================
+         PANEL IZQUIERDO / ILUSTRACIÓN
+    ====================================================== -->
+    <section class="login-brand">
+
+      <!-- Decoraciones -->
+      <span class="decor-circle decor-circle-one"></span>
+      <span class="decor-circle decor-circle-two"></span>
+      <span class="decor-circle decor-circle-three"></span>
+
+      <div class="decor-dots" aria-hidden="true">
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+
+      <!-- Branding -->
+      <div class="brand-top">
+
+        <div class="login-logo">
+
+          <img
+            *ngIf="resolverLogo() as logo; else logoFallback"
+            [src]="logo"
+            alt="Logo de la tienda"
+          >
+
+          <ng-template #logoFallback>
+            <ion-icon name="storefront-outline"></ion-icon>
+          </ng-template>
+
+        </div>
+
+        <div class="brand-name">
+          <span>Tienda de abarrotes</span>
+          <strong>{{ nombreTienda }}</strong>
+        </div>
+
+      </div>
+
+
+      <!-- Ilustración principal -->
+      <div class="house-wrapper">
+
+        <div class="house-background"></div>
+
+        <img
+          class="house-image"
+          src="assets/img/login-house.png"
+          alt="Ilustración de la tienda"
+        >
+
+      </div>
+
+
+      <!-- Texto inferior -->
+      <div class="brand-copy">
+
+        <h1>
+          Todo lo que necesitas,
+          <span>cerca de ti.</span>
+        </h1>
+
+        <p>
+          {{
+            tienda?.descripcionSuc ||
+            'Productos para tu día a día, en un solo lugar.'
+          }}
+        </p>
+
+      </div>
+
+    </section>
+
+
+    <!-- =====================================================
+         PANEL DERECHO / LOGIN
+    ====================================================== -->
+    <section class="login-card">
+
+      <div class="login-form">
+
+        <header class="login-header">
+
+         
+
+          <h2>
+            Bienvenido
+            <span class="welcome-heart"></span>
+          </h2>
+
+          <p>
+            Inicia sesión para continuar
+          </p>
+
+        </header>
+
+
+        <!-- CORREO -->
+        <div class="field-group">
+
+          <label>
+            Correo electrónico
+          </label>
+
+          <div class="field-control">
+
+            <ion-icon
+              name="person-outline"
+              class="field-icon"
+            ></ion-icon>
+
+            <ion-input
+              type="email"
+              autocomplete="email"
+              placeholder="Ingresa tu correo"
+              [disabled]="autenticando"
+              [(ngModel)]="correo"
+            ></ion-input>
+
+          </div>
+
+        </div>
+
+
+        <!-- CONTRASEÑA -->
+        <div class="field-group">
+
+          <label>
+            Contraseña
+          </label>
+
+          <div class="field-control">
+
+            <ion-icon
+              name="lock-closed-outline"
+              class="field-icon"
+            ></ion-icon>
+
+            <ion-input
+              [type]="mostrarPassword ? 'text' : 'password'"
+              autocomplete="current-password"
+              placeholder="Ingresa tu contraseña"
+              [disabled]="autenticando"
+              [(ngModel)]="password"
+            ></ion-input>
+
+            <ion-button
+              class="password-toggle"
+              fill="clear"
+              type="button"
+              [disabled]="autenticando"
+              (click)="mostrarPassword = !mostrarPassword"
+              aria-label="Mostrar u ocultar contraseña"
+            >
+
+              <ion-icon
+                slot="icon-only"
+                [name]="mostrarPassword
+                  ? 'eye-off-outline'
+                  : 'eye-outline'"
+              ></ion-icon>
+
+            </ion-button>
+
+          </div>
+
+        </div>
+
+
+        <!-- LOGIN -->
+        <ion-button
+          expand="block"
+          class="login-primary"
+          [disabled]="autenticando"
+          (click)="ingresar()"
+        >
+
+          <span>
+            {{
+              autenticando
+                ? 'Iniciando sesión...'
+                : 'Iniciar sesión'
+            }}
+          </span>
+
+          <ion-icon
+            *ngIf="!autenticando"
+            slot="end"
+            name="arrow-forward-outline"
+          ></ion-icon>
+
+        </ion-button>
+
+
+        <!-- DIVISOR -->
+        <div class="login-divider">
+
+          <span>o</span>
+
+        </div>
+
+
+        <!-- GOOGLE -->
+        <p class="client-copy">
+          ¿Eres cliente?
+        </p>
+
+        <ion-button
+          expand="block"
+          fill="outline"
+          class="google-button"
+          [disabled]="autenticando || !googleConfigurado"
+          (click)="ingresarGoogle()"
+        >
+
+          <strong class="google-letter">
+            G
+          </strong>
+
+          Continuar con Google
+
+        </ion-button>
+
+
+        <small
+          class="google-warning"
+          *ngIf="!googleConfigurado"
+        >
+          Google estará disponible cuando se configuren
+          las credenciales OAuth.
+        </small>
+
+
+        <!-- CATÁLOGO -->
+        <div class="catalog-link">
+
+          <span>
+            ¿Solo quieres comprar?
+          </span>
+
+          <ion-button
+            fill="clear"
+            routerLink="/catalogo"
+          >
+
+            Ver productos
+
+            <ion-icon
+              slot="end"
+              name="arrow-forward-outline"
+            ></ion-icon>
+
+          </ion-button>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+</ion-content>

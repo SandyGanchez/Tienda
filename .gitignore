@@ -65,6 +65,24 @@ yarn-error.log
 testem.log
 /typings
 
+# Local environment secrets
+.env
+.env.*
+!.env.example
+
+# Comprobantes privados de clientes
+/backend/uploads/comprobantes/*
+!/backend/uploads/comprobantes/.gitkeep
+
 # System files
 .DS_Store
 Thumbs.db
+# Android / Gradle local
+/android/local.properties
+/android/.gradle/
+/android/build/
+/android/app/build/
+
+# Credenciales de firma
+*.jks
+*.keystore
