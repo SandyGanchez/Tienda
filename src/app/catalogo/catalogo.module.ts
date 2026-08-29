@@ -13,7 +13,7 @@ import { CatalogoPage } from './catalogo.page';
     FormsModule,
     IonicModule,
     ClienteSharedModule,
-    RouterModule.forChild([{ path: '', component: CatalogoPage }])
-  ]
+    RouterModule.forChild([{ path: '', component: CatalogoPage }]),
+  ],
 })
 export class CatalogoPageModule {}

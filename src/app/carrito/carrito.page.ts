@@ -10,7 +10,7 @@ import { ClienteAuthService } from '../services/cliente-auth.service';
   selector: 'app-carrito',
   templateUrl: './carrito.page.html',
   styleUrls: ['./carrito.page.scss'],
-  standalone: false
+  standalone: false,
 })
 export class CarritoPage {
   readonly carrito = inject(CarritoService);
@@ -30,7 +30,7 @@ export class CarritoPage {
       message: 'Alcanzaste la existencia disponible de este producto.',
       duration: 1800,
       position: 'bottom',
-      color: 'warning'
+      color: 'warning',
     });
     await toast.present();
   }
@@ -41,16 +41,14 @@ export class CarritoPage {
       message: '¿Quieres quitar todos los productos del carrito?',
       buttons: [
         { text: 'Conservar', role: 'cancel' },
-        { text: 'Vaciar', role: 'destructive', handler: () => this.carrito.vaciar() }
-      ]
+        { text: 'Vaciar', role: 'destructive', handler: () => this.carrito.vaciar() },
+      ],
     });
     await alert.present();
   }
 
   async continuarCompra(): Promise<void> {
-    const destino = this.clienteAuth.estaAutenticado()
-      ? '/checkout'
-      : '/login?returnUrl=%2Fcheckout';
+    const destino = this.clienteAuth.estaAutenticado() ? '/checkout' : '/login?returnUrl=%2Fcheckout';
     await this.router.navigateByUrl(destino);
   }
 }

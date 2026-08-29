@@ -118,7 +118,7 @@ export class HomePage implements OnInit {
     BarcodeFormat.UpcA,
     BarcodeFormat.UpcE,
     BarcodeFormat.Code128,
-    BarcodeFormat.QrCode
+    BarcodeFormat.QrCode,
   ];
   private readonly api = inject(ProductosService);
   private readonly catalogosApi = inject(CatalogosService);
@@ -130,7 +130,7 @@ export class HomePage implements OnInit {
   private readonly scanFeedback = inject(ScanFeedbackService);
 
   ngOnInit(): void {
-    this.route.queryParamMap.subscribe(parametros => {
+    this.route.queryParamMap.subscribe((parametros) => {
       const seccion = parametros.get('seccion');
       if (seccion && ['inicio', 'productos', 'categorias', 'marcas', 'configuracion'].includes(seccion)) {
         this.seccion = seccion as Seccion;
@@ -148,16 +148,19 @@ export class HomePage implements OnInit {
       productos: 'Productos',
       categorias: 'Categorías',
       marcas: 'Marcas',
-      configuracion: 'Configuración'
+      configuracion: 'Configuración',
     };
     return titulos[this.seccion];
   }
 
   get productosFiltrados(): Producto[] {
     const termino = this.busquedaProducto.trim().toLowerCase();
-    return this.productos.filter(producto => {
-      const coincideTexto = !termino || [producto.nombrePro, producto.codigoQR, producto.skuPro]
-        .some(valor => (valor || '').toLowerCase().includes(termino));
+    return this.productos.filter((producto) => {
+      const coincideTexto =
+        !termino ||
+        [producto.nombrePro, producto.codigoQR, producto.skuPro].some((valor) =>
+          (valor || '').toLowerCase().includes(termino),
+        );
       const coincideCategoria = !this.filtroCategoria || Number(producto.idCat) === this.filtroCategoria;
       const coincideMarca = !this.filtroMarca || Number(producto.idMarca) === this.filtroMarca;
       const coincideStock = this.filtroStock === 'todos' || this.estadoStock(producto) === this.filtroStock;
@@ -167,21 +170,32 @@ export class HomePage implements OnInit {
 
   get categoriasFiltradas(): Categoria[] {
     const termino = this.busquedaCategoria.trim().toLowerCase();
-    return this.categorias.filter(categoria => !termino ||
-      `${categoria.nombreCat || ''} ${categoria.descripCat || ''}`.toLowerCase().includes(termino));
+    return this.categorias.filter(
+      (categoria) =>
+        !termino || `${categoria.nombreCat || ''} ${categoria.descripCat || ''}`.toLowerCase().includes(termino),
+    );
   }
 
   get marcasFiltradas(): Marca[] {
     const termino = this.busquedaMarca.trim().toLowerCase();
-    return this.marcas.filter(marca => !termino ||
-      `${marca.nombreMarca || ''} ${marca.descripMarca || ''}`.toLowerCase().includes(termino));
+    return this.marcas.filter(
+      (marca) => !termino || `${marca.nombreMarca || ''} ${marca.descripMarca || ''}`.toLowerCase().includes(termino),
+    );
   }
 
-  get totalDisponibles(): number { return this.productos.filter(p => this.estadoStock(p) === 'disponible').length; }
-  get totalStockBajoInventario(): number { return this.productos.filter(p => this.estadoStock(p) === 'bajo').length; }
-  get totalSinStock(): number { return this.productos.filter(p => this.estadoStock(p) === 'sin-stock').length; }
+  get totalDisponibles(): number {
+    return this.productos.filter((p) => this.estadoStock(p) === 'disponible').length;
+  }
+  get totalStockBajoInventario(): number {
+    return this.productos.filter((p) => this.estadoStock(p) === 'bajo').length;
+  }
+  get totalSinStock(): number {
+    return this.productos.filter((p) => this.estadoStock(p) === 'sin-stock').length;
+  }
   get hayFiltrosProductos(): boolean {
-    return Boolean(this.busquedaProducto.trim() || this.filtroCategoria || this.filtroMarca || this.filtroStock !== 'todos');
+    return Boolean(
+      this.busquedaProducto.trim() || this.filtroCategoria || this.filtroMarca || this.filtroStock !== 'todos',
+    );
   }
 
   get gananciaUnidad(): number | null {
@@ -195,13 +209,23 @@ export class HomePage implements OnInit {
   }
 
   get totalStockBajo(): number {
-    return this.productos.filter((producto) => producto.stockMinimoPro !== null &&
-      producto.existenciaPro !== null && producto.existenciaPro <= producto.stockMinimoPro).length;
+    return this.productos.filter(
+      (producto) =>
+        producto.stockMinimoPro !== null &&
+        producto.existenciaPro !== null &&
+        producto.existenciaPro <= producto.stockMinimoPro,
+    ).length;
   }
 
   get productosStockBajo(): Producto[] {
-    return this.productos.filter((producto) => producto.stockMinimoPro !== null &&
-      producto.existenciaPro !== null && producto.existenciaPro <= producto.stockMinimoPro).slice(0, 6);
+    return this.productos
+      .filter(
+        (producto) =>
+          producto.stockMinimoPro !== null &&
+          producto.existenciaPro !== null &&
+          producto.existenciaPro <= producto.stockMinimoPro,
+      )
+      .slice(0, 6);
   }
 
   get nombreTienda(): string {
@@ -226,7 +250,7 @@ export class HomePage implements OnInit {
       error: (error: unknown) => {
         console.error('No se pudieron cargar los productos', error);
         this.cargandoProductos = false;
-      }
+      },
     });
   }
 
@@ -250,15 +274,15 @@ export class HomePage implements OnInit {
 
   cargarMarcas(): void {
     this.catalogosApi.getMarcas().subscribe({
-      next: (marcas) => this.marcas = marcas,
-      error: (error: unknown) => console.error('No se pudieron cargar las marcas', error)
+      next: (marcas) => (this.marcas = marcas),
+      error: (error: unknown) => console.error('No se pudieron cargar las marcas', error),
     });
   }
 
   cargarCategorias(): void {
     this.catalogosApi.getCategorias().subscribe({
-      next: (categorias) => this.categorias = categorias,
-      error: (error: unknown) => console.error('No se pudieron cargar las categorías', error)
+      next: (categorias) => (this.categorias = categorias),
+      error: (error: unknown) => console.error('No se pudieron cargar las categorías', error),
     });
   }
 
@@ -273,7 +297,7 @@ export class HomePage implements OnInit {
       error: (error: unknown) => {
         console.error('No se pudo cargar la configuración de tienda', error);
         this.cargandoSucursal = false;
-      }
+      },
     });
   }
 
@@ -321,7 +345,7 @@ export class HomePage implements OnInit {
       sku: producto.skuPro || '',
       imagen: producto.imagenPro || '',
       idMarca: producto.idMarca,
-      idCat: producto.idCat
+      idCat: producto.idCat,
     };
     this.reiniciarFotoPendiente();
     this.erroresProducto = {};
@@ -343,9 +367,10 @@ export class HomePage implements OnInit {
     try {
       let guardadoRemoto: Producto;
       try {
-        guardadoRemoto = this.modoProducto === 'editar' && this.productoEditandoId !== null
-          ? await firstValueFrom(this.api.updateProducto(this.productoEditandoId, dto))
-          : await firstValueFrom(this.api.addProducto(dto));
+        guardadoRemoto =
+          this.modoProducto === 'editar' && this.productoEditandoId !== null
+            ? await firstValueFrom(this.api.updateProducto(this.productoEditandoId, dto))
+            : await firstValueFrom(this.api.addProducto(dto));
       } catch (error: unknown) {
         await this.mostrarFeedback(this.mensajeErrorHttp(error, 'No pudimos guardar el producto.'), 'danger');
         return;
@@ -355,11 +380,9 @@ export class HomePage implements OnInit {
       let fotoFallo = false;
       if (this.fotoProductoPendiente) {
         try {
-          productoFinal = await firstValueFrom(this.api.subirImagen(
-            guardadoRemoto.idPro,
-            this.fotoProductoPendiente,
-            this.nombreFotoPendiente
-          ));
+          productoFinal = await firstValueFrom(
+            this.api.subirImagen(guardadoRemoto.idPro, this.fotoProductoPendiente, this.nombreFotoPendiente),
+          );
         } catch (error: unknown) {
           fotoFallo = true;
           console.error('Producto guardado, pero falló la fotografía', error);
@@ -389,8 +412,11 @@ export class HomePage implements OnInit {
       } else if (copiaLocalFallo) {
         await this.mostrarFeedback('Producto guardado, pero no fue posible actualizar la copia local.', 'warning');
       } else {
-        const mensaje = agregarOtro ? 'Producto guardado. Puedes agregar el siguiente.'
-          : this.modoProducto === 'editar' ? 'Producto actualizado correctamente.' : 'Producto guardado correctamente.';
+        const mensaje = agregarOtro
+          ? 'Producto guardado. Puedes agregar el siguiente.'
+          : this.modoProducto === 'editar'
+            ? 'Producto actualizado correctamente.'
+            : 'Producto guardado correctamente.';
         await this.mostrarFeedback(mensaje, 'success');
       }
     } finally {
@@ -436,9 +462,10 @@ export class HomePage implements OnInit {
       if (error instanceof HttpErrorResponse && error.status === 0) {
         this.mensajeBusqueda = 'No fue posible conectar con el servidor. Puedes continuar manualmente.';
       } else {
-        this.mensajeBusqueda = error instanceof HttpErrorResponse && typeof error.error?.message === 'string'
-          ? error.error.message
-          : 'No fue posible completar la búsqueda. Puedes continuar manualmente.';
+        this.mensajeBusqueda =
+          error instanceof HttpErrorResponse && typeof error.error?.message === 'string'
+            ? error.error.message
+            : 'No fue posible completar la búsqueda. Puedes continuar manualmente.';
       }
     } finally {
       this.buscandoProducto = false;
@@ -458,7 +485,8 @@ export class HomePage implements OnInit {
       const permisos = await BarcodeScanner.checkPermissions();
       const estado = permisos.camera === 'granted' ? permisos : await BarcodeScanner.requestPermissions();
       if (estado.camera !== 'granted') {
-        this.mensajeBusqueda = 'Necesitas permitir acceso a la cámara para escanear. Puedes escribir el código manualmente.';
+        this.mensajeBusqueda =
+          'Necesitas permitir acceso a la cámara para escanear. Puedes escribir el código manualmente.';
         return;
       }
       const resultado = await BarcodeScanner.scan({ formats: this.formatosComerciales, autoZoom: true });
@@ -508,8 +536,12 @@ export class HomePage implements OnInit {
     if (sugerencia.tamano) this.formProducto.tamano = sugerencia.tamano;
     if (sugerencia.presentacion) this.formProducto.presentacion = sugerencia.presentacion;
     if (sugerencia.imagenUrl) this.formProducto.imagen = sugerencia.imagenUrl;
-    const marca = this.marcas.find((item) => (item.nombreMarca || '').toLowerCase() === (sugerencia.marca || '').toLowerCase());
-    const categoria = this.categorias.find((item) => (item.nombreCat || '').toLowerCase() === (sugerencia.categoria || '').toLowerCase());
+    const marca = this.marcas.find(
+      (item) => (item.nombreMarca || '').toLowerCase() === (sugerencia.marca || '').toLowerCase(),
+    );
+    const categoria = this.categorias.find(
+      (item) => (item.nombreCat || '').toLowerCase() === (sugerencia.categoria || '').toLowerCase(),
+    );
     if (marca) this.formProducto.idMarca = marca.idMarca;
     if (categoria) this.formProducto.idCat = categoria.idCat;
     this.mensajeBusqueda = 'Información sugerida aplicada. Revisa los datos antes de guardar.';
@@ -553,11 +585,14 @@ export class HomePage implements OnInit {
   }
 
   async eliminarProducto(producto: Producto): Promise<void> {
-    if (!await this.confirmarAccion(
-      'Eliminar producto',
-      `¿Quieres eliminar “${producto.nombrePro}”? Solo podrá eliminarse si no tiene movimientos relacionados.`,
-      'Eliminar'
-    )) return;
+    if (
+      !(await this.confirmarAccion(
+        'Eliminar producto',
+        `¿Quieres eliminar “${producto.nombrePro}”? Solo podrá eliminarse si no tiene movimientos relacionados.`,
+        'Eliminar',
+      ))
+    )
+      return;
     try {
       const respuesta = await firstValueFrom(this.api.deleteProducto(producto.idPro));
       this.productos = this.productos.filter((item) => item.idPro !== producto.idPro);
@@ -568,9 +603,10 @@ export class HomePage implements OnInit {
       }
       await this.mostrarFeedback(respuesta.message, 'success');
     } catch (error: unknown) {
-      const mensaje = error instanceof HttpErrorResponse && error.status === 409
-        ? 'Este producto tiene movimientos asociados y no puede eliminarse.'
-        : this.mensajeErrorHttp(error, 'No pudimos eliminar el producto.');
+      const mensaje =
+        error instanceof HttpErrorResponse && error.status === 409
+          ? 'Este producto tiene movimientos asociados y no puede eliminarse.'
+          : this.mensajeErrorHttp(error, 'No pudimos eliminar el producto.');
       await this.mostrarFeedback(mensaje, 'danger');
     }
   }
@@ -610,10 +646,13 @@ export class HomePage implements OnInit {
     if (this.guardandoCatalogo) return;
     const dto: CatalogoDto = {
       nombre: this.formCatalogo.nombre.trim(),
-      descripcion: this.formCatalogo.descripcion.trim()
+      descripcion: this.formCatalogo.descripcion.trim(),
     };
     if (!dto.nombre) {
-      await this.mostrarFeedback(`Ingresa el nombre de la ${this.tipoCatalogo === 'marca' ? 'marca' : 'categoría'}.`, 'warning');
+      await this.mostrarFeedback(
+        `Ingresa el nombre de la ${this.tipoCatalogo === 'marca' ? 'marca' : 'categoría'}.`,
+        'warning',
+      );
       return;
     }
 
@@ -621,15 +660,17 @@ export class HomePage implements OnInit {
     try {
       let nuevoId: number;
       if (this.tipoCatalogo === 'marca') {
-        const marca = this.catalogoEditandoId === null
-          ? await firstValueFrom(this.catalogosApi.crearMarca(dto))
-          : await firstValueFrom(this.catalogosApi.actualizarMarca(this.catalogoEditandoId, dto));
+        const marca =
+          this.catalogoEditandoId === null
+            ? await firstValueFrom(this.catalogosApi.crearMarca(dto))
+            : await firstValueFrom(this.catalogosApi.actualizarMarca(this.catalogoEditandoId, dto));
         this.marcas = this.reemplazarPorId(this.marcas, marca, 'idMarca');
         nuevoId = marca.idMarca;
       } else {
-        const categoria = this.catalogoEditandoId === null
-          ? await firstValueFrom(this.catalogosApi.crearCategoria(dto))
-          : await firstValueFrom(this.catalogosApi.actualizarCategoria(this.catalogoEditandoId, dto));
+        const categoria =
+          this.catalogoEditandoId === null
+            ? await firstValueFrom(this.catalogosApi.crearCategoria(dto))
+            : await firstValueFrom(this.catalogosApi.actualizarCategoria(this.catalogoEditandoId, dto));
         this.categorias = this.reemplazarPorId(this.categorias, categoria, 'idCat');
         nuevoId = categoria.idCat;
       }
@@ -639,28 +680,32 @@ export class HomePage implements OnInit {
         else this.formProducto.idCat = nuevoId;
         this.catalogoDesdeProducto = false;
       }
-      await this.mostrarFeedback(`${this.tipoCatalogo === 'marca' ? 'Marca' : 'Categoría'} guardada correctamente.`, 'success');
+      await this.mostrarFeedback(
+        `${this.tipoCatalogo === 'marca' ? 'Marca' : 'Categoría'} guardada correctamente.`,
+        'success',
+      );
     } catch (error: unknown) {
       await this.mostrarFeedback(this.mensajeErrorHttp(error, 'No se pudo guardar el registro.'), 'danger');
     } finally {
       this.guardandoCatalogo = false;
     }
   }
-get saludoActual(): string {
-  const hora = new Date().getHours();
+  get saludoActual(): string {
+    const hora = new Date().getHours();
 
-  if (hora >= 5 && hora < 12) {
-    return 'Buenos días';
+    if (hora >= 5 && hora < 12) {
+      return 'Buenos días';
+    }
+
+    if (hora >= 12 && hora < 19) {
+      return 'Buenas tardes';
+    }
+
+    return 'Buenas noches';
   }
-
-  if (hora >= 12 && hora < 19) {
-    return 'Buenas tardes';
-  }
-
-  return 'Buenas noches';
-}
   async eliminarMarca(marca: Marca): Promise<void> {
-    if (!await this.confirmarAccion('Eliminar marca', `¿Quieres eliminar “${marca.nombreMarca}”?`, 'Eliminar')) return;
+    if (!(await this.confirmarAccion('Eliminar marca', `¿Quieres eliminar “${marca.nombreMarca}”?`, 'Eliminar')))
+      return;
     try {
       const respuesta = await firstValueFrom(this.catalogosApi.eliminarMarca(marca.idMarca));
       this.marcas = this.marcas.filter((item) => item.idMarca !== marca.idMarca);
@@ -671,7 +716,8 @@ get saludoActual(): string {
   }
 
   async eliminarCategoria(categoria: Categoria): Promise<void> {
-    if (!await this.confirmarAccion('Eliminar categoría', `¿Quieres eliminar “${categoria.nombreCat}”?`, 'Eliminar')) return;
+    if (!(await this.confirmarAccion('Eliminar categoría', `¿Quieres eliminar “${categoria.nombreCat}”?`, 'Eliminar')))
+      return;
     try {
       const respuesta = await firstValueFrom(this.catalogosApi.eliminarCategoria(categoria.idCat));
       this.categorias = this.categorias.filter((item) => item.idCat !== categoria.idCat);
@@ -693,9 +739,8 @@ get saludoActual(): string {
     try {
       if (origen === CameraSource.Camera) {
         const permisos = await Camera.checkPermissions();
-        const estado = permisos.camera === 'granted'
-          ? permisos
-          : await Camera.requestPermissions({ permissions: ['camera'] });
+        const estado =
+          permisos.camera === 'granted' ? permisos : await Camera.requestPermissions({ permissions: ['camera'] });
         if (estado.camera !== 'granted') {
           this.mensajeBusqueda = 'Necesitas permitir acceso a la cámara. Puedes escribir el código manualmente.';
           return;
@@ -709,7 +754,7 @@ get saludoActual(): string {
       }
       const resultado = await BarcodeScanner.readBarcodesFromImage({
         path: ruta,
-        formats: this.formatosComerciales
+        formats: this.formatosComerciales,
       });
       const codigos = [...new Set(resultado.barcodes.map((item) => item.rawValue?.trim() || '').filter(Boolean))];
       if (codigos.length === 0) {
@@ -747,7 +792,7 @@ get saludoActual(): string {
       allowEditing: false,
       saveToGallery: false,
       correctOrientation: true,
-      webUseInput: true
+      webUseInput: true,
     });
   }
 
@@ -755,9 +800,8 @@ get saludoActual(): string {
     try {
       if (origen === CameraSource.Camera) {
         const permisos = await Camera.checkPermissions();
-        const estado = permisos.camera === 'granted'
-          ? permisos
-          : await Camera.requestPermissions({ permissions: ['camera'] });
+        const estado =
+          permisos.camera === 'granted' ? permisos : await Camera.requestPermissions({ permissions: ['camera'] });
         if (estado.camera !== 'granted') {
           await this.mostrarFeedback('Necesitas permitir acceso a la cámara para tomar la fotografía.', 'warning');
           return;
@@ -817,7 +861,7 @@ get saludoActual(): string {
       sku: f.sku.trim(),
       imagen: f.imagen.trim(),
       idMarca: f.idMarca!,
-      idCat: f.idCat!
+      idCat: f.idCat!,
     };
   }
 
@@ -825,11 +869,15 @@ get saludoActual(): string {
     const errores: ErroresProducto = {};
     if (!f.nombre.trim()) errores.nombre = 'Ingresa el nombre del producto.';
     if (f.precio === null) errores.precio = 'El precio es obligatorio.';
-    else if (!Number.isFinite(Number(f.precio)) || Number(f.precio) < 0) errores.precio = 'El precio debe ser mayor o igual a cero.';
-    if (f.costo !== null && (!Number.isFinite(Number(f.costo)) || Number(f.costo) < 0)) errores.costo = 'El costo debe ser mayor o igual a cero.';
+    else if (!Number.isFinite(Number(f.precio)) || Number(f.precio) < 0)
+      errores.precio = 'El precio debe ser mayor o igual a cero.';
+    if (f.costo !== null && (!Number.isFinite(Number(f.costo)) || Number(f.costo) < 0))
+      errores.costo = 'El costo debe ser mayor o igual a cero.';
     if (f.existencia === null) errores.existencia = 'El stock es obligatorio.';
-    else if (!Number.isInteger(Number(f.existencia)) || Number(f.existencia) < 0) errores.existencia = 'El stock debe ser un entero mayor o igual a cero.';
-    if (f.stockMinimo !== null && (!Number.isInteger(Number(f.stockMinimo)) || Number(f.stockMinimo) < 0)) errores.stockMinimo = 'El stock mínimo debe ser un entero mayor o igual a cero.';
+    else if (!Number.isInteger(Number(f.existencia)) || Number(f.existencia) < 0)
+      errores.existencia = 'El stock debe ser un entero mayor o igual a cero.';
+    if (f.stockMinimo !== null && (!Number.isInteger(Number(f.stockMinimo)) || Number(f.stockMinimo) < 0))
+      errores.stockMinimo = 'El stock mínimo debe ser un entero mayor o igual a cero.';
     if (f.idCat === null) errores.idCat = 'Selecciona una categoría.';
     if (f.idMarca === null) errores.idMarca = 'Selecciona una marca.';
     return errores;
@@ -837,7 +885,8 @@ get saludoActual(): string {
 
   private enfocarCampoInvalido(campo: CampoProducto): void {
     requestAnimationFrame(() => {
-      const elemento = document.getElementById(`producto-${campo}`) as (HTMLElement & { setFocus?: () => Promise<void> }) | null;
+      const elemento = document.getElementById(`producto-${campo}`) as
+        (HTMLElement & { setFocus?: () => Promise<void> }) | null;
       elemento?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       void elemento?.setFocus?.();
     });
@@ -857,7 +906,7 @@ get saludoActual(): string {
       sku: datos.sku || null,
       imagen: datos.imagen || null,
       idMarca: datos.idMarca,
-      idCat: datos.idCat
+      idCat: datos.idCat,
     };
   }
 
@@ -875,7 +924,7 @@ get saludoActual(): string {
       sku: '',
       imagen: '',
       idMarca: null,
-      idCat: null
+      idCat: null,
     };
   }
 
@@ -898,7 +947,7 @@ get saludoActual(): string {
   private reemplazarPorId<T>(elementos: T[], elemento: T, llave: keyof T): T[] {
     const indice = elementos.findIndex((actual) => String(actual[llave]) === String(elemento[llave]));
     if (indice < 0) return [...elementos, elemento];
-    return elementos.map((actual, posicion) => posicion === indice ? elemento : actual);
+    return elementos.map((actual, posicion) => (posicion === indice ? elemento : actual));
   }
 
   private async mostrarFeedback(mensaje: string, tipo: TipoFeedback): Promise<void> {
@@ -908,7 +957,7 @@ get saludoActual(): string {
       position: 'top',
       color: tipo,
       cssClass: ['pastel-toast', `toast-${tipo}`],
-      buttons: [{ icon: 'close-outline', role: 'cancel' }]
+      buttons: [{ icon: 'close-outline', role: 'cancel' }],
     });
     await toast.present();
   }
@@ -920,8 +969,8 @@ get saludoActual(): string {
       cssClass: 'pastel-alert',
       buttons: [
         { text: 'Cancelar', role: 'cancel' },
-        { text: confirmar, role: 'confirm', cssClass: 'alert-destructive' }
-      ]
+        { text: confirmar, role: 'confirm', cssClass: 'alert-destructive' },
+      ],
     });
     await alerta.present();
     const resultado = await alerta.onDidDismiss();

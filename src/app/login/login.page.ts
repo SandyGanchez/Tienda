@@ -8,29 +8,53 @@ import { SucursalService } from '../services/sucursal.service';
 import { AuthService } from '../services/auth.service';
 import { ClienteAuthService } from '../services/cliente-auth.service';
 
-interface TiendaPublica { nombreSuc: string | null; descripcionSuc: string | null; logoSuc: string | null; }
+interface TiendaPublica {
+  nombreSuc: string | null;
+  descripcionSuc: string | null;
+  logoSuc: string | null;
+}
 
-@Component({ selector: 'app-login', templateUrl: './login.page.html', styleUrls: ['./login.page.scss'], standalone: false })
+@Component({
+  selector: 'app-login',
+  templateUrl: './login.page.html',
+  styleUrls: ['./login.page.scss'],
+  standalone: false,
+})
 export class LoginPage implements OnInit {
-  correo = ''; password = ''; mostrarPassword = false; autenticando = false;
+  correo = '';
+  password = '';
+  mostrarPassword = false;
+  autenticando = false;
   tienda: TiendaPublica | null = null;
   readonly googleConfigurado = Boolean(environment.GOOGLE_WEB_CLIENT_ID);
-  private readonly auth = inject(AuthService); private readonly http = inject(HttpClient);
+  private readonly auth = inject(AuthService);
+  private readonly http = inject(HttpClient);
   private readonly clienteAuth = inject(ClienteAuthService);
-  private readonly router = inject(Router); private readonly toast = inject(ToastController);
+  private readonly router = inject(Router);
+  private readonly toast = inject(ToastController);
   private readonly route = inject(ActivatedRoute);
   private readonly imagenes = inject(SucursalService);
 
   ngOnInit(): void {
-    if (this.auth.estaAutenticado()) { void this.irSegunRol(); return; }
-    if (this.clienteAuth.estaAutenticado()) { void this.router.navigateByUrl(this.returnUrlCliente(), { replaceUrl: true }); return; }
+    if (this.auth.estaAutenticado()) {
+      void this.irSegunRol();
+      return;
+    }
+    if (this.clienteAuth.estaAutenticado()) {
+      void this.router.navigateByUrl(this.returnUrlCliente(), { replaceUrl: true });
+      return;
+    }
     this.http.get<TiendaPublica[]>(`${environment.API_BASE_URL}/public/tienda`).subscribe({
-      next: (tiendas) => this.tienda = tiendas.length === 1 ? tiendas[0] : null,
-      error: () => undefined
+      next: (tiendas) => (this.tienda = tiendas.length === 1 ? tiendas[0] : null),
+      error: () => undefined,
     });
   }
-  get nombreTienda(): string { return this.tienda?.nombreSuc?.trim() || 'Mi tienda'; }
-  resolverLogo(): string | null { return this.imagenes.resolverImagen(this.tienda?.logoSuc); }
+  get nombreTienda(): string {
+    return this.tienda?.nombreSuc?.trim() || 'Mi tienda';
+  }
+  resolverLogo(): string | null {
+    return this.imagenes.resolverImagen(this.tienda?.logoSuc);
+  }
 
   async ingresar(): Promise<void> {
     if (this.autenticando) return;
@@ -42,9 +66,14 @@ export class LoginPage implements OnInit {
     try {
       const sesion = await firstValueFrom(this.auth.login(correo, this.password));
       this.clienteAuth.limpiarSesion();
-      this.auth.guardarSesion(sesion); this.password = ''; await this.irSegunRol();
-    } catch (error: unknown) { await this.feedback(this.mensajeError(error)); }
-    finally { this.autenticando = false; }
+      this.auth.guardarSesion(sesion);
+      this.password = '';
+      await this.irSegunRol();
+    } catch (error: unknown) {
+      await this.feedback(this.mensajeError(error));
+    } finally {
+      this.autenticando = false;
+    }
   }
 
   async ingresarGoogle(): Promise<void> {
@@ -55,20 +84,36 @@ export class LoginPage implements OnInit {
       this.auth.limpiarSesion();
       this.clienteAuth.guardarSesion(sesion);
       await this.router.navigateByUrl(this.returnUrlCliente(), { replaceUrl: true });
+    } catch (error: unknown) {
+      if (!this.clienteAuth.esCancelacionGoogle(error)) await this.feedback(this.mensajeError(error));
+    } finally {
+      this.autenticando = false;
     }
-    catch (error: unknown) { if (!this.clienteAuth.esCancelacionGoogle(error)) await this.feedback(this.mensajeError(error)); }
-    finally { this.autenticando = false; }
   }
 
-  private async irSegunRol(): Promise<void> { await this.router.navigateByUrl(this.auth.tieneRol('ADMINISTRADOR') ? '/home' : '/cajero', { replaceUrl: true }); }
+  private async irSegunRol(): Promise<void> {
+    await this.router.navigateByUrl(this.auth.tieneRol('ADMINISTRADOR') ? '/home' : '/cajero', { replaceUrl: true });
+  }
   private returnUrlCliente(): string {
     const permitidas = ['/checkout', '/carrito', '/catalogo', '/mis-pedidos', '/perfil'];
     const solicitada = this.route.snapshot.queryParamMap.get('returnUrl') || '';
     return permitidas.includes(solicitada) || /^\/mis-pedidos\/\d+$/.test(solicitada) ? solicitada : '/catalogo';
   }
-  private async feedback(message: string): Promise<void> { const t = await this.toast.create({ message, duration: 3200, position: 'top', color: 'danger', cssClass: 'pastel-toast' }); await t.present(); }
+  private async feedback(message: string): Promise<void> {
+    const t = await this.toast.create({
+      message,
+      duration: 3200,
+      position: 'top',
+      color: 'danger',
+      cssClass: 'pastel-toast',
+    });
+    await t.present();
+  }
   private mensajeError(error: unknown): string {
-    if (!(error instanceof HttpErrorResponse)) return error instanceof Error && error.message === 'GOOGLE_NOT_CONFIGURED' ? 'Google aún no está configurado.' : 'No pudimos iniciar sesión.';
+    if (!(error instanceof HttpErrorResponse))
+      return error instanceof Error && error.message === 'GOOGLE_NOT_CONFIGURED'
+        ? 'Google aún no está configurado.'
+        : 'No pudimos iniciar sesión.';
     if (error.status === 0) return 'No pudimos conectar con el servidor.';
     return typeof error.error?.message === 'string' ? error.error.message : 'No pudimos iniciar sesión.';
   }

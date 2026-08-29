@@ -11,7 +11,7 @@ export interface CatalogoDto {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class CatalogosService {
   private readonly http = inject(HttpClient);

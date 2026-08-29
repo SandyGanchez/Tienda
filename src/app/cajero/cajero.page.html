@@ -1,1148 +1,693 @@
 <app-admin-shell menuId="admin-pos-menu" contentId="pos-main" activeSection="cajero">
-<ion-header class="pos-header">
-  <ion-toolbar>
-    <div class="toolbar-shell">
+  <ion-header class="pos-header">
+    <ion-toolbar>
+      <div class="toolbar-shell">
+        <div class="toolbar-brand">
+          <ion-menu-button class="mobile-menu-button" menu="admin-pos-menu"></ion-menu-button>
+          <div class="toolbar-icon">
+            <ion-icon name="storefront-outline"></ion-icon>
+          </div>
 
-      <div class="toolbar-brand">
-        <ion-menu-button class="mobile-menu-button" menu="admin-pos-menu"></ion-menu-button>
-        <div class="toolbar-icon">
-          <ion-icon name="storefront-outline"></ion-icon>
+          <div>
+            <strong>Punto de venta</strong>
+            <small *ngIf="auth.sesion?.empleado as empleado"> {{ empleado.nombre }} · {{ empleado.cargo }} </small>
+          </div>
         </div>
 
-        <div>
-          <strong>Punto de venta</strong>
-          <small *ngIf="auth.sesion?.empleado as empleado">
-            {{ empleado.nombre }} · {{ empleado.cargo }}
-          </small>
-        </div>
+        <ion-buttons class="toolbar-actions">
+          <ion-button routerLink="/ventas">
+            <ion-icon slot="start" name="receipt-outline"></ion-icon>
+            <span class="toolbar-text">Ventas</span>
+          </ion-button>
+
+          <ion-button *ngIf="auth.tieneRol('ADMINISTRADOR')" routerLink="/home">
+            <ion-icon slot="start" name="grid-outline"></ion-icon>
+            <span class="toolbar-text">Administración</span>
+          </ion-button>
+
+          <ion-button class="logout-button" (click)="auth.logout()">
+            <ion-icon slot="icon-only" name="log-out-outline"></ion-icon>
+          </ion-button>
+        </ion-buttons>
       </div>
+    </ion-toolbar>
+  </ion-header>
 
-      <ion-buttons class="toolbar-actions">
-
-        <ion-button routerLink="/ventas">
-          <ion-icon slot="start" name="receipt-outline"></ion-icon>
-          <span class="toolbar-text">Ventas</span>
-        </ion-button>
-
-        <ion-button
-          *ngIf="auth.tieneRol('ADMINISTRADOR')"
-          routerLink="/home"
-        >
-          <ion-icon slot="start" name="grid-outline"></ion-icon>
-          <span class="toolbar-text">Administración</span>
-        </ion-button>
-
-        <ion-button
-          class="logout-button"
-          (click)="auth.logout()"
-        >
-          <ion-icon slot="icon-only" name="log-out-outline"></ion-icon>
-        </ion-button>
-
-      </ion-buttons>
-
-    </div>
-  </ion-toolbar>
-</ion-header>
-
-
-<ion-content class="pos-content">
-
-  <main class="pos-shell">
-
-    <!-- =========================================
+  <ion-content class="pos-content">
+    <main class="pos-shell">
+      <!-- =========================================
          ESTADO DE CONEXIÓN
     ========================================== -->
 
-    <div
-      class="sync-status"
-      *ngIf="sync.estado$ | async as s"
-      [class.offline]="!s.conectado"
-      [class.has-conflicts]="s.conflictos"
-    >
+      <div
+        class="sync-status"
+        *ngIf="sync.estado$ | async as s"
+        [class.offline]="!s.conectado"
+        [class.has-conflicts]="s.conflictos"
+      >
+        <div class="sync-main">
+          <span class="sync-dot"></span>
 
-      <div class="sync-main">
+          <div>
+            <strong> {{ s.conectado ? 'En línea' : 'Sin conexión' }} </strong>
 
-        <span class="sync-dot"></span>
-
-        <div>
-          <strong>
-            {{ s.conectado ? 'En línea' : 'Sin conexión' }}
-          </strong>
-
-          <small *ngIf="!s.conectado">
-            Puedes continuar con las operaciones disponibles sin conexión.
-          </small>
+            <small *ngIf="!s.conectado"> Puedes continuar con las operaciones disponibles sin conexión. </small>
+          </div>
         </div>
 
+        <div class="sync-details">
+          <span class="status-chip pending" *ngIf="s.pendientes">
+            <ion-icon name="cloud-upload-outline"></ion-icon>
+            {{ s.pendientes }} pendientes
+          </span>
+
+          <span class="status-chip conflict" *ngIf="s.conflictos">
+            <ion-icon name="warning-outline"></ion-icon>
+            {{ s.conflictos }} conflictos
+          </span>
+
+          <ion-button size="small" fill="clear" *ngIf="s.pendientes && s.conectado" (click)="sync.reintentar()">
+            Sincronizar
+          </ion-button>
+        </div>
       </div>
 
-      <div class="sync-details">
-
-        <span
-          class="status-chip pending"
-          *ngIf="s.pendientes"
-        >
-          <ion-icon name="cloud-upload-outline"></ion-icon>
-          {{ s.pendientes }} pendientes
-        </span>
-
-        <span
-          class="status-chip conflict"
-          *ngIf="s.conflictos"
-        >
-          <ion-icon name="warning-outline"></ion-icon>
-          {{ s.conflictos }} conflictos
-        </span>
-
-        <ion-button
-          size="small"
-          fill="clear"
-          *ngIf="s.pendientes && s.conectado"
-          (click)="sync.reintentar()"
-        >
-          Sincronizar
-        </ion-button>
-
-      </div>
-
-    </div>
-
-
-    <!-- =========================================
+      <!-- =========================================
          CARGANDO
     ========================================== -->
 
-    <div
-      *ngIf="cargando"
-      class="loading"
-    >
-      <ion-spinner></ion-spinner>
-      <p>Preparando punto de venta...</p>
-    </div>
+      <div *ngIf="cargando" class="loading">
+        <ion-spinner></ion-spinner>
+        <p>Preparando punto de venta...</p>
+      </div>
 
-
-    <!-- =========================================
+      <!-- =========================================
          APERTURA DE CAJA
     ========================================== -->
 
-    <section
-      class="opening-card"
-      *ngIf="!cargando && !caja && !ultimaCaja"
-    >
-
-      <div class="opening-visual">
-
-        <div class="opening-icon">
-          <ion-icon name="cash-outline"></ion-icon>
-        </div>
-
-        <span class="eyebrow">
-          Apertura de caja
-        </span>
-
-        <h1>Comienza tu turno</h1>
-
-        <p>
-          Registra el efectivo inicial disponible en caja antes de
-          comenzar a realizar ventas.
-        </p>
-
-      </div>
-
-
-      <div class="opening-data">
-
-        <div class="employee-card">
-
-          <ion-icon name="person-circle-outline"></ion-icon>
-
-          <div>
-            <small>Cajero</small>
-            <strong>
-              {{ auth.sesion?.empleado?.nombre }}
-            </strong>
+      <section class="opening-card" *ngIf="!cargando && !caja && !ultimaCaja">
+        <div class="opening-visual">
+          <div class="opening-icon">
+            <ion-icon name="cash-outline"></ion-icon>
           </div>
 
+          <span class="eyebrow"> Apertura de caja </span>
+
+          <h1>Comienza tu turno</h1>
+
+          <p>Registra el efectivo inicial disponible en caja antes de comenzar a realizar ventas.</p>
         </div>
 
+        <div class="opening-data">
+          <div class="employee-card">
+            <ion-icon name="person-circle-outline"></ion-icon>
 
-        <div class="employee-card">
-
-          <ion-icon name="storefront-outline"></ion-icon>
-
-          <div>
-            <small>Sucursal</small>
-            <strong>
-              {{ auth.sesion?.empleado?.nombreSuc }}
-            </strong>
+            <div>
+              <small>Cajero</small>
+              <strong> {{ auth.sesion?.empleado?.nombre }} </strong>
+            </div>
           </div>
 
-        </div>
+          <div class="employee-card">
+            <ion-icon name="storefront-outline"></ion-icon>
 
-
-        <div class="employee-card">
-
-          <ion-icon name="calendar-outline"></ion-icon>
-
-          <div>
-            <small>Fecha</small>
-            <strong>
-              {{ fechaActual | date:'medium' }}
-            </strong>
+            <div>
+              <small>Sucursal</small>
+              <strong> {{ auth.sesion?.empleado?.nombreSuc }} </strong>
+            </div>
           </div>
 
+          <div class="employee-card">
+            <ion-icon name="calendar-outline"></ion-icon>
+
+            <div>
+              <small>Fecha</small>
+              <strong> {{ fechaActual | date:'medium' }} </strong>
+            </div>
+          </div>
+
+          <ion-input
+            class="form-control"
+            fill="outline"
+            type="number"
+            min="0"
+            label="Fondo inicial"
+            labelPlacement="stacked"
+            placeholder="0.00"
+            [(ngModel)]="fondoInicial"
+          ></ion-input>
+
+          <ion-button
+            class="primary-action"
+            expand="block"
+            [disabled]="
+            abriendo ||
+            fondoInicial === null ||
+            fondoInicial < 0
+          "
+            (click)="abrirCaja()"
+          >
+            <ion-spinner *ngIf="abriendo" name="crescent"></ion-spinner>
+
+            <ion-icon *ngIf="!abriendo" slot="start" name="lock-open-outline"></ion-icon>
+
+            {{ abriendo ? 'Abriendo caja...' : 'Abrir caja' }}
+          </ion-button>
+        </div>
+      </section>
+
+      <!-- =========================================
+         CAJA CERRADA
+    ========================================== -->
+
+      <section class="opening-card closed-card" *ngIf="ultimaCaja as c">
+        <div class="opening-visual">
+          <div class="opening-icon">
+            <ion-icon name="checkmark-circle-outline"></ion-icon>
+          </div>
+
+          <span class="eyebrow"> Caja cerrada </span>
+
+          <h1>{{ c.diferencia === 0 ? 'CAJA CUADRADA' : c.diferencia > 0 ? 'SOBRANTE' : 'FALTANTE' }}</h1>
+
+          <p>El turno ha finalizado correctamente.</p>
         </div>
 
+        <div class="closed-summary">
+          <div>
+            <span>Total vendido</span>
+            <strong> {{ c.totalVentas | currency:'MXN' }} </strong>
+          </div>
 
-        <ion-input
-          class="form-control"
-          fill="outline"
-          type="number"
-          min="0"
-          label="Fondo inicial"
-          labelPlacement="stacked"
-          placeholder="0.00"
-          [(ngModel)]="fondoInicial"
-        ></ion-input>
+          <div>
+            <span>Efectivo esperado</span>
+            <strong> {{ c.efectivoEsperado | currency:'MXN' }} </strong>
+          </div>
 
+          <div>
+            <span>Efectivo contado</span>
+            <strong> {{ c.efectivoContado | currency:'MXN' }} </strong>
+          </div>
+
+          <div class="difference-row">
+            <span>Diferencia</span>
+            <strong> {{ c.diferencia | currency:'MXN' }} </strong>
+          </div>
+
+          <div>
+            <span>Número de ventas</span>
+            <strong> {{ c.numeroVentas }} </strong>
+          </div>
+
+          <div>
+            <span>Apertura</span>
+            <strong> {{ c.fechaHoraApertura | date:'short' }} </strong>
+          </div>
+
+          <div>
+            <span>Cierre</span>
+            <strong> {{ c.fechaHoraCierre | date:'short' }} </strong>
+          </div>
+
+          <div class="closed-actions">
+            <ion-button routerLink="/caja">
+              <ion-icon slot="start" name="document-text-outline"></ion-icon>
+              Ver corte
+            </ion-button>
+
+            <ion-button fill="outline" (click)="auth.logout()"> Cerrar sesión </ion-button>
+          </div>
+        </div>
+      </section>
+
+      <!-- =========================================
+         POS
+    ========================================== -->
+
+      <ng-container *ngIf="caja">
+        <!-- CABECERA DE CAJA -->
+
+        <header class="pos-heading">
+          <div>
+            <span class="eyebrow"> Nueva venta </span>
+
+            <h1>Punto de venta</h1>
+
+            <div class="cashier-information">
+              <span class="cashier-chip">
+                <ion-icon name="person-outline"></ion-icon>
+                {{ auth.sesion?.empleado?.nombre }}
+              </span>
+
+              <span class="cashier-chip open">
+                <ion-icon name="checkmark-circle-outline"></ion-icon>
+                Caja abierta
+              </span>
+
+              <span class="cashier-chip"> Fondo {{ caja.fondoInicial | currency:'MXN' }} </span>
+            </div>
+          </div>
+
+          <div class="pos-heading-actions">
+            <ion-button fill="outline" (click)="mostrarMovimiento = true">
+              <ion-icon slot="start" name="swap-horizontal-outline"></ion-icon>
+              Movimiento
+            </ion-button>
+
+            <ion-button fill="outline" (click)="abrirCorte()">
+              <ion-icon slot="start" name="calculator-outline"></ion-icon>
+              Corte de caja
+            </ion-button>
+          </div>
+        </header>
+
+        <div class="pos-layout">
+          <!-- =========================================
+             CATÁLOGO
+        ========================================== -->
+
+          <section class="catalog-panel">
+            <div class="catalog-heading">
+              <div>
+                <span class="eyebrow"> Productos </span>
+
+                <h2>¿Qué vas a vender?</h2>
+              </div>
+
+              <span class="product-count"> {{ resultados.length }} productos </span>
+            </div>
+
+            <!-- BUSCADOR -->
+
+            <div class="scanner-card">
+              <div class="search-row">
+                <ion-searchbar
+                  #lector
+                  placeholder="Código o nombre del producto"
+                  [(ngModel)]="busqueda"
+                  (keyup.enter)="agregarDesdeEntrada()"
+                  [debounce]="120"
+                ></ion-searchbar>
+
+                <ion-button
+                  class="scan-button"
+                  [disabled]="leyendoCodigo"
+                  (click)="escanear()"
+                  aria-label="Escanear código"
+                >
+                  <ion-spinner *ngIf="leyendoCodigo" name="crescent"></ion-spinner>
+
+                  <ion-icon *ngIf="!leyendoCodigo" slot="icon-only" name="scan-outline"></ion-icon>
+                </ion-button>
+              </div>
+
+              <div class="scanner-help">
+                <ion-icon name="barcode-outline"></ion-icon>
+
+                <span>
+                  Escanea con la cámara o escribe el código y presiona Enter. El lector Bluetooth HID funciona con el
+                  mismo campo.
+                </span>
+              </div>
+            </div>
+
+            <!-- PRODUCTOS -->
+
+            <div class="empty-products" *ngIf="!resultados.length">
+              <ion-icon name="search-outline"></ion-icon>
+
+              <strong>No encontramos productos</strong>
+
+              <p>Intenta buscar con otro nombre o código.</p>
+            </div>
+
+            <div class="pos-products">
+              <button
+                type="button"
+                class="pos-product"
+                *ngFor="let producto of resultados"
+                (click)="agregar(producto)"
+                [disabled]="producto.existenciaPro <= 0"
+                [class.out-of-stock]="producto.existenciaPro <= 0"
+              >
+                <div class="product-image">
+                  <ion-icon name="cube-outline"></ion-icon>
+
+                  <img
+                    *ngIf="imagen(producto.imagenPro) as src"
+                    [src]="src"
+                    [alt]="producto.nombrePro"
+                    (load)="mostrarImagen($event)"
+                    (error)="ocultarImagen($event)"
+                  />
+                </div>
+
+                <div class="product-copy">
+                  <strong> {{ producto.nombrePro }} </strong>
+
+                  <small> {{ producto.nombreMarca || 'Sin marca' }} </small>
+
+                  <small *ngIf="producto.tamanoPro || producto.presentacionPro">
+                    {{ producto.tamanoPro || '' }} {{ producto.presentacionPro || '' }}
+                  </small>
+
+                  <div class="product-bottom">
+                    <b> {{ producto.precioVentaPro | currency:'MXN' }} </b>
+
+                    <span class="stock-chip" [class.empty]="producto.existenciaPro <= 0">
+                      {{ producto.existenciaPro > 0 ? 'Stock: ' + producto.existenciaPro : 'Agotado' }}
+                    </span>
+                  </div>
+                </div>
+
+                <div class="add-product" *ngIf="producto.existenciaPro > 0">
+                  <ion-icon name="add-outline"></ion-icon>
+                </div>
+              </button>
+            </div>
+          </section>
+
+          <!-- =========================================
+             RESUMEN DE VENTA
+        ========================================== -->
+
+          <aside class="sale-panel" id="resumenVenta">
+            <div class="sale-heading">
+              <div>
+                <span class="eyebrow"> Tu venta </span>
+                <h2>Resumen</h2>
+              </div>
+
+              <span class="cart-count" *ngIf="carrito.length"> {{ cantidadArticulos }} artículos </span>
+            </div>
+
+            <!-- CARRITO VACÍO -->
+
+            <div class="empty-cart" *ngIf="!carrito.length">
+              <div class="empty-cart-icon">
+                <ion-icon name="cart-outline"></ion-icon>
+              </div>
+
+              <strong>Tu venta está vacía</strong>
+
+              <p>Escanea o selecciona un producto para comenzar.</p>
+            </div>
+
+            <!-- ARTÍCULOS -->
+
+            <div class="cart-list" *ngIf="carrito.length">
+              <article *ngFor="let item of carrito" class="cart-item">
+                <div class="cart-main">
+                  <div class="cart-product-image">
+                    <ion-icon name="cube-outline"></ion-icon>
+
+                    <img
+                      *ngIf="imagen(item.imagen) as src"
+                      [src]="src"
+                      [alt]="item.nombre"
+                      (load)="mostrarImagen($event)"
+                      (error)="ocultarImagen($event)"
+                    />
+                  </div>
+
+                  <div class="cart-copy">
+                    <strong> {{ item.nombre }} </strong>
+
+                    <small> {{ item.precioUnitario | currency:'MXN' }} c/u </small>
+                  </div>
+
+                  <strong class="cart-subtotal"> {{ item.subtotal | currency:'MXN' }} </strong>
+                </div>
+
+                <div class="quantity">
+                  <ion-button fill="clear" size="small" (click)="decrementar(item)" aria-label="Disminuir cantidad">
+                    <ion-icon slot="icon-only" name="remove-outline"></ion-icon>
+                  </ion-button>
+
+                  <span> {{ item.cantidad }} </span>
+
+                  <ion-button fill="clear" size="small" (click)="incrementar(item)" aria-label="Aumentar cantidad">
+                    <ion-icon slot="icon-only" name="add-outline"></ion-icon>
+                  </ion-button>
+
+                  <span class="available-stock"> de {{ item.existenciaDisponible }} </span>
+
+                  <ion-button
+                    fill="clear"
+                    size="small"
+                    class="remove-item"
+                    (click)="eliminar(item)"
+                    aria-label="Eliminar producto"
+                  >
+                    <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
+                  </ion-button>
+                </div>
+              </article>
+            </div>
+
+            <!-- TOTAL -->
+
+            <div class="totals" *ngIf="carrito.length">
+              <div class="articles-line">
+                <span> {{ cantidadArticulos }} {{ cantidadArticulos === 1 ? 'artículo' : 'artículos' }} </span>
+
+                <span> {{ total | currency:'MXN' }} </span>
+              </div>
+
+              <div class="grand-total">
+                <span>Total</span>
+
+                <strong> {{ total | currency:'MXN' }} </strong>
+              </div>
+            </div>
+
+            <!-- MÉTODO -->
+
+            <div class="payment-section" *ngIf="carrito.length">
+              <label>Método de pago</label>
+
+              <ion-segment [scrollable]="true" [(ngModel)]="metodoPago" (ionChange)="cambiarMetodo()">
+                <ion-segment-button value="EFECTIVO">
+                  <ion-icon name="cash-outline"></ion-icon>
+                  <ion-label>Efectivo</ion-label>
+                </ion-segment-button>
+
+                <ion-segment-button value="TARJETA">
+                  <ion-icon name="card-outline"></ion-icon>
+                  <ion-label>Tarjeta</ion-label>
+                </ion-segment-button>
+
+                <ion-segment-button value="TRANSFERENCIA">
+                  <ion-icon name="phone-portrait-outline"></ion-icon>
+                  <ion-label>Transferencia</ion-label>
+                </ion-segment-button>
+              </ion-segment>
+            </div>
+
+            <!-- EFECTIVO -->
+
+            <div
+              class="cash-fields"
+              *ngIf="
+              carrito.length &&
+              metodoPago === 'EFECTIVO'
+            "
+            >
+              <ion-input
+                class="form-control"
+                fill="outline"
+                type="number"
+                min="0"
+                inputmode="decimal"
+                label="Monto recibido"
+                labelPlacement="stacked"
+                placeholder="0.00"
+                [(ngModel)]="montoRecibido"
+              ></ion-input>
+
+              <div
+                class="change-card"
+                [class.ready]="
+                montoRecibido !== null &&
+                montoRecibido >= total
+              "
+              >
+                <span>Cambio</span>
+
+                <strong> {{ cambio | currency:'MXN' }} </strong>
+              </div>
+            </div>
+
+            <!-- COBRAR -->
+
+            <ion-button
+              *ngIf="carrito.length"
+              class="charge"
+              expand="block"
+              [disabled]="!puedeCobrar"
+              (click)="cobrar()"
+            >
+              <ion-spinner *ngIf="procesandoVenta" name="crescent"></ion-spinner>
+
+              <ng-container *ngIf="!procesandoVenta">
+                <ion-icon slot="start" name="checkmark-circle-outline"></ion-icon>
+
+                Cobrar {{ total | currency:'MXN' }}
+              </ng-container>
+
+              <span *ngIf="procesandoVenta"> Procesando venta... </span>
+            </ion-button>
+          </aside>
+        </div>
+      </ng-container>
+    </main>
+  </ion-content>
+
+  <!-- =============================================
+     BARRA MÓVIL DEL CARRITO
+============================================== -->
+
+  <div class="mobile-cart-bar" *ngIf="caja && carrito.length">
+    <div>
+      <small> {{ cantidadArticulos }} {{ cantidadArticulos === 1 ? 'artículo' : 'artículos' }} </small>
+
+      <strong> {{ total | currency:'MXN' }} </strong>
+    </div>
+
+    <ion-button size="small" (click)="irAlResumen()">
+      Ver venta
+      <ion-icon slot="end" name="chevron-up-outline"></ion-icon>
+    </ion-button>
+  </div>
+
+  <!-- =============================================
+     MOVIMIENTO DE CAJA
+============================================== -->
+
+  <ion-modal cssClass="pos-modal" [isOpen]="mostrarMovimiento" (didDismiss)="mostrarMovimiento = false">
+    <ng-template>
+      <ion-header>
+        <ion-toolbar>
+          <ion-title> Movimiento de caja </ion-title>
+
+          <ion-buttons slot="end">
+            <ion-button (click)="mostrarMovimiento = false"> Cerrar </ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+
+      <ion-content class="ion-padding">
+        <div class="modal-intro">
+          <span class="eyebrow">Caja</span>
+          <h2>Registrar movimiento</h2>
+          <p>Registra cualquier entrada o salida de efectivo diferente a una venta.</p>
+        </div>
+
+        <ion-segment [(ngModel)]="tipoMovimiento">
+          <ion-segment-button value="INGRESO">
+            <ion-icon name="arrow-down-circle-outline"></ion-icon>
+            <ion-label>Ingreso</ion-label>
+          </ion-segment-button>
+
+          <ion-segment-button value="RETIRO">
+            <ion-icon name="arrow-up-circle-outline"></ion-icon>
+            <ion-label>Retiro</ion-label>
+          </ion-segment-button>
+        </ion-segment>
+
+        <div class="modal-fields">
+          <ion-input
+            fill="outline"
+            type="number"
+            min="0.01"
+            label="Monto"
+            labelPlacement="stacked"
+            [(ngModel)]="montoMovimiento"
+          ></ion-input>
+
+          <ion-textarea
+            fill="outline"
+            maxlength="255"
+            autoGrow="true"
+            label="Concepto"
+            labelPlacement="stacked"
+            placeholder="Ej. Pago a proveedor"
+            [(ngModel)]="conceptoMovimiento"
+          ></ion-textarea>
+        </div>
 
         <ion-button
           class="primary-action"
           expand="block"
           [disabled]="
-            abriendo ||
-            fondoInicial === null ||
-            fondoInicial < 0
-          "
-          (click)="abrirCaja()"
-        >
-          <ion-spinner
-            *ngIf="abriendo"
-            name="crescent"
-          ></ion-spinner>
-
-          <ion-icon
-            *ngIf="!abriendo"
-            slot="start"
-            name="lock-open-outline"
-          ></ion-icon>
-
-          {{ abriendo ? 'Abriendo caja...' : 'Abrir caja' }}
-        </ion-button>
-
-      </div>
-
-    </section>
-
-
-    <!-- =========================================
-         CAJA CERRADA
-    ========================================== -->
-
-    <section
-      class="opening-card closed-card"
-      *ngIf="ultimaCaja as c"
-    >
-
-      <div class="opening-visual">
-
-        <div class="opening-icon">
-          <ion-icon name="checkmark-circle-outline"></ion-icon>
-        </div>
-
-        <span class="eyebrow">
-          Caja cerrada
-        </span>
-
-        <h1>
-          {{
-            c.diferencia === 0
-              ? 'CAJA CUADRADA'
-              : c.diferencia > 0
-              ? 'SOBRANTE'
-              : 'FALTANTE'
-          }}
-        </h1>
-
-        <p>
-          El turno ha finalizado correctamente.
-        </p>
-
-      </div>
-
-
-      <div class="closed-summary">
-
-        <div>
-          <span>Total vendido</span>
-          <strong>
-            {{ c.totalVentas | currency:'MXN' }}
-          </strong>
-        </div>
-
-        <div>
-          <span>Efectivo esperado</span>
-          <strong>
-            {{ c.efectivoEsperado | currency:'MXN' }}
-          </strong>
-        </div>
-
-        <div>
-          <span>Efectivo contado</span>
-          <strong>
-            {{ c.efectivoContado | currency:'MXN' }}
-          </strong>
-        </div>
-
-        <div class="difference-row">
-          <span>Diferencia</span>
-          <strong>
-            {{ c.diferencia | currency:'MXN' }}
-          </strong>
-        </div>
-
-        <div>
-          <span>Número de ventas</span>
-          <strong>
-            {{ c.numeroVentas }}
-          </strong>
-        </div>
-
-        <div>
-          <span>Apertura</span>
-          <strong>
-            {{ c.fechaHoraApertura | date:'short' }}
-          </strong>
-        </div>
-
-        <div>
-          <span>Cierre</span>
-          <strong>
-            {{ c.fechaHoraCierre | date:'short' }}
-          </strong>
-        </div>
-
-
-        <div class="closed-actions">
-
-          <ion-button routerLink="/caja">
-            <ion-icon
-              slot="start"
-              name="document-text-outline"
-            ></ion-icon>
-            Ver corte
-          </ion-button>
-
-          <ion-button
-            fill="outline"
-            (click)="auth.logout()"
-          >
-            Cerrar sesión
-          </ion-button>
-
-        </div>
-
-      </div>
-
-    </section>
-
-
-    <!-- =========================================
-         POS
-    ========================================== -->
-
-    <ng-container *ngIf="caja">
-
-      <!-- CABECERA DE CAJA -->
-
-      <header class="pos-heading">
-
-        <div>
-
-          <span class="eyebrow">
-            Nueva venta
-          </span>
-
-          <h1>Punto de venta</h1>
-
-          <div class="cashier-information">
-
-            <span class="cashier-chip">
-              <ion-icon name="person-outline"></ion-icon>
-              {{ auth.sesion?.empleado?.nombre }}
-            </span>
-
-            <span class="cashier-chip open">
-              <ion-icon name="checkmark-circle-outline"></ion-icon>
-              Caja abierta
-            </span>
-
-            <span class="cashier-chip">
-              Fondo {{ caja.fondoInicial | currency:'MXN' }}
-            </span>
-
-          </div>
-
-        </div>
-
-
-        <div class="pos-heading-actions">
-
-          <ion-button
-            fill="outline"
-            (click)="mostrarMovimiento = true"
-          >
-            <ion-icon
-              slot="start"
-              name="swap-horizontal-outline"
-            ></ion-icon>
-            Movimiento
-          </ion-button>
-
-          <ion-button
-            fill="outline"
-            (click)="abrirCorte()"
-          >
-            <ion-icon
-              slot="start"
-              name="calculator-outline"
-            ></ion-icon>
-            Corte de caja
-          </ion-button>
-
-        </div>
-
-      </header>
-
-
-      <div class="pos-layout">
-
-        <!-- =========================================
-             CATÁLOGO
-        ========================================== -->
-
-        <section class="catalog-panel">
-
-          <div class="catalog-heading">
-
-            <div>
-              <span class="eyebrow">
-                Productos
-              </span>
-
-              <h2>¿Qué vas a vender?</h2>
-            </div>
-
-            <span class="product-count">
-              {{ resultados.length }} productos
-            </span>
-
-          </div>
-
-
-          <!-- BUSCADOR -->
-
-          <div class="scanner-card">
-
-            <div class="search-row">
-
-              <ion-searchbar
-                #lector
-                placeholder="Código o nombre del producto"
-                [(ngModel)]="busqueda"
-                (keyup.enter)="agregarDesdeEntrada()"
-                [debounce]="120"
-              ></ion-searchbar>
-
-              <ion-button
-                class="scan-button"
-                [disabled]="leyendoCodigo"
-                (click)="escanear()"
-                aria-label="Escanear código"
-              >
-                <ion-spinner
-                  *ngIf="leyendoCodigo"
-                  name="crescent"
-                ></ion-spinner>
-
-                <ion-icon
-                  *ngIf="!leyendoCodigo"
-                  slot="icon-only"
-                  name="scan-outline"
-                ></ion-icon>
-              </ion-button>
-
-            </div>
-
-
-            <div class="scanner-help">
-
-              <ion-icon name="barcode-outline"></ion-icon>
-
-              <span>
-                Escanea con la cámara o escribe el código y presiona Enter.
-                El lector Bluetooth HID funciona con el mismo campo.
-              </span>
-
-            </div>
-
-          </div>
-
-
-          <!-- PRODUCTOS -->
-
-          <div
-            class="empty-products"
-            *ngIf="!resultados.length"
-          >
-            <ion-icon name="search-outline"></ion-icon>
-
-            <strong>No encontramos productos</strong>
-
-            <p>
-              Intenta buscar con otro nombre o código.
-            </p>
-          </div>
-
-
-          <div class="pos-products">
-
-            <button
-              type="button"
-              class="pos-product"
-              *ngFor="let producto of resultados"
-              (click)="agregar(producto)"
-              [disabled]="producto.existenciaPro <= 0"
-              [class.out-of-stock]="producto.existenciaPro <= 0"
-            >
-
-              <div class="product-image">
-
-                <ion-icon name="cube-outline"></ion-icon>
-
-                <img
-                  *ngIf="imagen(producto.imagenPro) as src"
-                  [src]="src"
-                  [alt]="producto.nombrePro"
-                  (load)="mostrarImagen($event)"
-                  (error)="ocultarImagen($event)"
-                >
-
-              </div>
-
-
-              <div class="product-copy">
-
-                <strong>
-                  {{ producto.nombrePro }}
-                </strong>
-
-                <small>
-                  {{ producto.nombreMarca || 'Sin marca' }}
-                </small>
-
-                <small
-                  *ngIf="producto.tamanoPro || producto.presentacionPro"
-                >
-                  {{ producto.tamanoPro || '' }}
-                  {{ producto.presentacionPro || '' }}
-                </small>
-
-
-                <div class="product-bottom">
-
-                  <b>
-                    {{ producto.precioVentaPro | currency:'MXN' }}
-                  </b>
-
-                  <span
-                    class="stock-chip"
-                    [class.empty]="producto.existenciaPro <= 0"
-                  >
-                    {{
-                      producto.existenciaPro > 0
-                        ? 'Stock: ' + producto.existenciaPro
-                        : 'Agotado'
-                    }}
-                  </span>
-
-                </div>
-
-              </div>
-
-
-              <div
-                class="add-product"
-                *ngIf="producto.existenciaPro > 0"
-              >
-                <ion-icon name="add-outline"></ion-icon>
-              </div>
-
-            </button>
-
-          </div>
-
-        </section>
-
-
-        <!-- =========================================
-             RESUMEN DE VENTA
-        ========================================== -->
-
-        <aside
-          class="sale-panel"
-          id="resumenVenta"
-        >
-
-          <div class="sale-heading">
-
-            <div>
-              <span class="eyebrow">
-                Tu venta
-              </span>
-              <h2>Resumen</h2>
-            </div>
-
-            <span
-              class="cart-count"
-              *ngIf="carrito.length"
-            >
-              {{ cantidadArticulos }} artículos
-            </span>
-
-          </div>
-
-
-          <!-- CARRITO VACÍO -->
-
-          <div
-            class="empty-cart"
-            *ngIf="!carrito.length"
-          >
-
-            <div class="empty-cart-icon">
-              <ion-icon name="cart-outline"></ion-icon>
-            </div>
-
-            <strong>Tu venta está vacía</strong>
-
-            <p>
-              Escanea o selecciona un producto para comenzar.
-            </p>
-
-          </div>
-
-
-          <!-- ARTÍCULOS -->
-
-          <div
-            class="cart-list"
-            *ngIf="carrito.length"
-          >
-
-            <article
-              *ngFor="let item of carrito"
-              class="cart-item"
-            >
-
-              <div class="cart-main">
-
-                <div class="cart-product-image">
-
-                  <ion-icon name="cube-outline"></ion-icon>
-
-                  <img
-                    *ngIf="imagen(item.imagen) as src"
-                    [src]="src"
-                    [alt]="item.nombre"
-                    (load)="mostrarImagen($event)"
-                    (error)="ocultarImagen($event)"
-                  >
-
-                </div>
-
-
-                <div class="cart-copy">
-
-                  <strong>
-                    {{ item.nombre }}
-                  </strong>
-
-                  <small>
-                    {{ item.precioUnitario | currency:'MXN' }}
-                    c/u
-                  </small>
-
-                </div>
-
-
-                <strong class="cart-subtotal">
-                  {{ item.subtotal | currency:'MXN' }}
-                </strong>
-
-              </div>
-
-
-              <div class="quantity">
-
-                <ion-button
-                  fill="clear"
-                  size="small"
-                  (click)="decrementar(item)"
-                  aria-label="Disminuir cantidad"
-                >
-                  <ion-icon
-                    slot="icon-only"
-                    name="remove-outline"
-                  ></ion-icon>
-                </ion-button>
-
-                <span>
-                  {{ item.cantidad }}
-                </span>
-
-                <ion-button
-                  fill="clear"
-                  size="small"
-                  (click)="incrementar(item)"
-                  aria-label="Aumentar cantidad"
-                >
-                  <ion-icon
-                    slot="icon-only"
-                    name="add-outline"
-                  ></ion-icon>
-                </ion-button>
-
-
-                <span class="available-stock">
-                  de {{ item.existenciaDisponible }}
-                </span>
-
-
-                <ion-button
-                  fill="clear"
-                  size="small"
-                  class="remove-item"
-                  (click)="eliminar(item)"
-                  aria-label="Eliminar producto"
-                >
-                  <ion-icon
-                    slot="icon-only"
-                    name="trash-outline"
-                  ></ion-icon>
-                </ion-button>
-
-              </div>
-
-            </article>
-
-          </div>
-
-
-          <!-- TOTAL -->
-
-          <div
-            class="totals"
-            *ngIf="carrito.length"
-          >
-
-            <div class="articles-line">
-
-              <span>
-                {{ cantidadArticulos }}
-                {{ cantidadArticulos === 1 ? 'artículo' : 'artículos' }}
-              </span>
-
-              <span>
-                {{ total | currency:'MXN' }}
-              </span>
-
-            </div>
-
-
-            <div class="grand-total">
-
-              <span>Total</span>
-
-              <strong>
-                {{ total | currency:'MXN' }}
-              </strong>
-
-            </div>
-
-          </div>
-
-
-          <!-- MÉTODO -->
-
-          <div
-            class="payment-section"
-            *ngIf="carrito.length"
-          >
-
-            <label>Método de pago</label>
-
-            <ion-segment
-              [scrollable]="true"
-              [(ngModel)]="metodoPago"
-              (ionChange)="cambiarMetodo()"
-            >
-
-              <ion-segment-button value="EFECTIVO">
-                <ion-icon name="cash-outline"></ion-icon>
-                <ion-label>Efectivo</ion-label>
-              </ion-segment-button>
-
-              <ion-segment-button value="TARJETA">
-                <ion-icon name="card-outline"></ion-icon>
-                <ion-label>Tarjeta</ion-label>
-              </ion-segment-button>
-
-              <ion-segment-button value="TRANSFERENCIA">
-                <ion-icon name="phone-portrait-outline"></ion-icon>
-                <ion-label>Transferencia</ion-label>
-              </ion-segment-button>
-
-            </ion-segment>
-
-          </div>
-
-
-          <!-- EFECTIVO -->
-
-          <div
-            class="cash-fields"
-            *ngIf="
-              carrito.length &&
-              metodoPago === 'EFECTIVO'
-            "
-          >
-
-            <ion-input
-              class="form-control"
-              fill="outline"
-              type="number"
-              min="0"
-              inputmode="decimal"
-              label="Monto recibido"
-              labelPlacement="stacked"
-              placeholder="0.00"
-              [(ngModel)]="montoRecibido"
-            ></ion-input>
-
-
-            <div
-              class="change-card"
-              [class.ready]="
-                montoRecibido !== null &&
-                montoRecibido >= total
-              "
-            >
-
-              <span>Cambio</span>
-
-              <strong>
-                {{ cambio | currency:'MXN' }}
-              </strong>
-
-            </div>
-
-          </div>
-
-
-          <!-- COBRAR -->
-
-          <ion-button
-            *ngIf="carrito.length"
-            class="charge"
-            expand="block"
-            [disabled]="!puedeCobrar"
-            (click)="cobrar()"
-          >
-
-            <ion-spinner
-              *ngIf="procesandoVenta"
-              name="crescent"
-            ></ion-spinner>
-
-            <ng-container *ngIf="!procesandoVenta">
-              <ion-icon
-                slot="start"
-                name="checkmark-circle-outline"
-              ></ion-icon>
-
-              Cobrar {{ total | currency:'MXN' }}
-            </ng-container>
-
-            <span *ngIf="procesandoVenta">
-              Procesando venta...
-            </span>
-
-          </ion-button>
-
-        </aside>
-
-      </div>
-
-    </ng-container>
-
-  </main>
-
-</ion-content>
-
-
-<!-- =============================================
-     BARRA MÓVIL DEL CARRITO
-============================================== -->
-
-<div
-  class="mobile-cart-bar"
-  *ngIf="caja && carrito.length"
->
-
-  <div>
-
-    <small>
-      {{ cantidadArticulos }}
-      {{ cantidadArticulos === 1 ? 'artículo' : 'artículos' }}
-    </small>
-
-    <strong>
-      {{ total | currency:'MXN' }}
-    </strong>
-
-  </div>
-
-  <ion-button
-    size="small"
-    (click)="irAlResumen()"
-  >
-    Ver venta
-    <ion-icon
-      slot="end"
-      name="chevron-up-outline"
-    ></ion-icon>
-  </ion-button>
-
-</div>
-
-
-<!-- =============================================
-     MOVIMIENTO DE CAJA
-============================================== -->
-
-<ion-modal
-  cssClass="pos-modal"
-  [isOpen]="mostrarMovimiento"
-  (didDismiss)="mostrarMovimiento = false"
->
-
-  <ng-template>
-
-    <ion-header>
-      <ion-toolbar>
-
-        <ion-title>
-          Movimiento de caja
-        </ion-title>
-
-        <ion-buttons slot="end">
-          <ion-button
-            (click)="mostrarMovimiento = false"
-          >
-            Cerrar
-          </ion-button>
-        </ion-buttons>
-
-      </ion-toolbar>
-    </ion-header>
-
-
-    <ion-content class="ion-padding">
-
-      <div class="modal-intro">
-        <span class="eyebrow">Caja</span>
-        <h2>Registrar movimiento</h2>
-        <p>
-          Registra cualquier entrada o salida de efectivo diferente
-          a una venta.
-        </p>
-      </div>
-
-
-      <ion-segment [(ngModel)]="tipoMovimiento">
-
-        <ion-segment-button value="INGRESO">
-          <ion-icon name="arrow-down-circle-outline"></ion-icon>
-          <ion-label>Ingreso</ion-label>
-        </ion-segment-button>
-
-        <ion-segment-button value="RETIRO">
-          <ion-icon name="arrow-up-circle-outline"></ion-icon>
-          <ion-label>Retiro</ion-label>
-        </ion-segment-button>
-
-      </ion-segment>
-
-
-      <div class="modal-fields">
-
-        <ion-input
-          fill="outline"
-          type="number"
-          min="0.01"
-          label="Monto"
-          labelPlacement="stacked"
-          [(ngModel)]="montoMovimiento"
-        ></ion-input>
-
-        <ion-textarea
-          fill="outline"
-          maxlength="255"
-          autoGrow="true"
-          label="Concepto"
-          labelPlacement="stacked"
-          placeholder="Ej. Pago a proveedor"
-          [(ngModel)]="conceptoMovimiento"
-        ></ion-textarea>
-
-      </div>
-
-
-      <ion-button
-        class="primary-action"
-        expand="block"
-        [disabled]="
           !montoMovimiento ||
           montoMovimiento <= 0 ||
           !conceptoMovimiento.trim()
         "
-        (click)="registrarMovimiento()"
-      >
-        Registrar movimiento
-      </ion-button>
+          (click)="registrarMovimiento()"
+        >
+          Registrar movimiento
+        </ion-button>
 
+        <div class="movement-history" *ngIf="movimientos.length">
+          <h3>Movimientos de este turno</h3>
 
-      <div
-        class="movement-history"
-        *ngIf="movimientos.length"
-      >
-
-        <h3>Movimientos de este turno</h3>
-
-        <ion-list lines="none">
-
-          <ion-item
-            *ngFor="let m of movimientos"
-            class="movement-item"
-          >
-
-            <div
-              class="movement-icon"
-              slot="start"
-              [class.withdraw]="m.tipoMovimiento === 'RETIRO'"
-            >
-              <ion-icon
-                [name]="
+          <ion-list lines="none">
+            <ion-item *ngFor="let m of movimientos" class="movement-item">
+              <div class="movement-icon" slot="start" [class.withdraw]="m.tipoMovimiento === 'RETIRO'">
+                <ion-icon
+                  [name]="
                   m.tipoMovimiento === 'INGRESO'
                     ? 'arrow-down-outline'
                     : 'arrow-up-outline'
                 "
-              ></ion-icon>
-            </div>
+                ></ion-icon>
+              </div>
 
+              <ion-label>
+                <strong> {{ m.tipoMovimiento }} </strong>
 
-            <ion-label>
+                <p>{{ m.concepto }}</p>
 
-              <strong>
-                {{ m.tipoMovimiento }}
-              </strong>
+                <small> {{ m.fechaHora | date:'short' }} </small>
+              </ion-label>
 
-              <p>
-                {{ m.concepto }}
-              </p>
-
-              <small>
-                {{ m.fechaHora | date:'short' }}
-              </small>
-
-            </ion-label>
-
-
-            <ion-note slot="end">
-              {{ m.monto | currency:'MXN' }}
-            </ion-note>
-
-          </ion-item>
-
-        </ion-list>
-
-      </div>
-
-    </ion-content>
-
-  </ng-template>
-
-</ion-modal>
+              <ion-note slot="end"> {{ m.monto | currency:'MXN' }} </ion-note>
+            </ion-item>
+          </ion-list>
+        </div>
+      </ion-content>
+    </ng-template>
+  </ion-modal>
 </app-admin-shell>
-
 
 <!-- =============================================
      CORTE DE CAJA
 ============================================== -->
 
-<ion-modal
-  cssClass="pos-modal cut-modal"
-  [isOpen]="mostrarCorte"
-  (didDismiss)="mostrarCorte = false"
->
-
+<ion-modal cssClass="pos-modal cut-modal" [isOpen]="mostrarCorte" (didDismiss)="mostrarCorte = false">
   <ng-template>
-
     <ion-header>
       <ion-toolbar>
-
-        <ion-title>
-          Corte de caja
-        </ion-title>
+        <ion-title> Corte de caja </ion-title>
 
         <ion-buttons slot="end">
-          <ion-button
-            (click)="mostrarCorte = false"
-          >
-            Volver
-          </ion-button>
+          <ion-button (click)="mostrarCorte = false"> Volver </ion-button>
         </ion-buttons>
-
       </ion-toolbar>
     </ion-header>
 
-
     <ion-content class="ion-padding">
-
-      <div
-        *ngIf="resumen as r"
-        class="cut-container"
-      >
-
+      <div *ngIf="resumen as r" class="cut-container">
         <div class="modal-intro">
-
-          <span class="eyebrow">
-            Resumen del turno
-          </span>
+          <span class="eyebrow"> Resumen del turno </span>
 
           <h2>Corte de caja</h2>
 
-          <p>
-            Verifica el efectivo físico antes de finalizar el turno.
-          </p>
-
+          <p>Verifica el efectivo físico antes de finalizar el turno.</p>
         </div>
 
-
         <div class="cut-summary">
-
           <div>
             <span>Fondo inicial</span>
             <b>{{ r.fondoInicial | currency:'MXN' }}</b>
@@ -1187,12 +732,9 @@
             <span>Efectivo esperado</span>
             <b>{{ r.efectivoEsperado | currency:'MXN' }}</b>
           </div>
-
         </div>
 
-
         <div class="counted-section">
-
           <ion-input
             fill="outline"
             type="number"
@@ -1202,32 +744,20 @@
             [(ngModel)]="efectivoContado"
           ></ion-input>
 
-
           <div
             class="difference-card"
             [class.ok]="diferenciaInformativa === 0"
             [class.positive]="diferenciaInformativa > 0"
             [class.negative]="diferenciaInformativa < 0"
           >
-
             <span>Diferencia</span>
 
-            <strong>
-              {{ diferenciaInformativa | currency:'MXN' }}
-            </strong>
+            <strong> {{ diferenciaInformativa | currency:'MXN' }} </strong>
 
             <small>
-              {{
-                diferenciaInformativa === 0
-                  ? 'CAJA CUADRADA'
-                  : diferenciaInformativa > 0
-                  ? 'SOBRANTE'
-                  : 'FALTANTE'
-              }}
+              {{ diferenciaInformativa === 0 ? 'CAJA CUADRADA' : diferenciaInformativa > 0 ? 'SOBRANTE' : 'FALTANTE' }}
             </small>
-
           </div>
-
 
           <ion-textarea
             fill="outline"
@@ -1238,9 +768,7 @@
             placeholder="Opcional"
             [(ngModel)]="observaciones"
           ></ion-textarea>
-
         </div>
-
 
         <ion-button
           class="close-cash-button"
@@ -1252,24 +780,11 @@
           "
           (click)="cerrarCaja()"
         >
+          <ion-spinner *ngIf="cerrando" name="crescent"></ion-spinner>
 
-          <ion-spinner
-            *ngIf="cerrando"
-            name="crescent"
-          ></ion-spinner>
-
-          {{
-            cerrando
-              ? 'Cerrando caja...'
-              : 'Cerrar caja'
-          }}
-
+          {{ cerrando ? 'Cerrando caja...' : 'Cerrar caja' }}
         </ion-button>
-
       </div>
-
     </ion-content>
-
   </ng-template>
-
 </ion-modal>

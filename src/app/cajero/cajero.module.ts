@@ -5,5 +5,14 @@ import { RouterModule } from '@angular/router';
 import { IonicModule } from '@ionic/angular';
 import { SharedModule } from '../shared/shared.module';
 import { CajeroPage } from './cajero.page';
-@NgModule({ declarations:[CajeroPage], imports:[CommonModule,FormsModule,IonicModule,SharedModule,RouterModule.forChild([{path:'',component:CajeroPage}])] })
+@NgModule({
+  declarations: [CajeroPage],
+  imports: [
+    CommonModule,
+    FormsModule,
+    IonicModule,
+    SharedModule,
+    RouterModule.forChild([{ path: '', component: CajeroPage }]),
+  ],
+})
 export class CajeroPageModule {}

@@ -2,7 +2,12 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { ConfiguracionTransferencia, CrearPedidoRequest, PedidoCliente, PedidoClienteResumen } from '../models/pedido-cliente';
+import {
+  ConfiguracionTransferencia,
+  CrearPedidoRequest,
+  PedidoCliente,
+  PedidoClienteResumen,
+} from '../models/pedido-cliente';
 
 @Injectable({ providedIn: 'root' })
 export class PedidosClienteService {

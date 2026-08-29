@@ -2,7 +2,6 @@
   display: block;
 }
 
-
 /* =========================================
    GENERAL
 ========================================= */
@@ -15,8 +14,7 @@
   width: min(1250px, 100%);
   margin: 0 auto;
 
-  padding:
-    clamp(18px, 4vw, 42px);
+  padding: clamp(18px, 4vw, 42px);
 }
 
 .sales-eyebrow {
@@ -45,7 +43,6 @@
   height: 42px;
 }
 
-
 /* =========================================
    HEADER
 ========================================= */
@@ -54,7 +51,6 @@
   --background: var(--surface);
   --border-color: rgba(128, 119, 138, 0.12);
 }
-
 
 /* =========================================
    CABECERA HISTORIAL
@@ -74,8 +70,7 @@
 
   color: var(--text-primary);
 
-  font-size:
-    clamp(30px, 5vw, 44px);
+  font-size: clamp(30px, 5vw, 44px);
 
   line-height: 1.05;
 }
@@ -98,7 +93,6 @@
   --border-radius: 14px;
 }
 
-
 /* =========================================
    TARJETAS RESUMEN
 ========================================= */
@@ -107,8 +101,7 @@
   margin-bottom: 28px;
 
   display: grid;
-  grid-template-columns:
-    repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 
   gap: 12px;
 }
@@ -121,17 +114,13 @@
   align-items: center;
   gap: 12px;
 
-  border:
-    1px solid
-    rgba(128, 119, 138, 0.1);
+  border: 1px solid rgba(128, 119, 138, 0.1);
 
   border-radius: 18px;
 
   background: var(--surface);
 
-  box-shadow:
-    0 8px 24px
-    rgba(71, 61, 78, 0.04);
+  box-shadow: 0 8px 24px rgba(71, 61, 78, 0.04);
 }
 
 .stat-icon {
@@ -179,7 +168,6 @@
   background: var(--pastel-cream);
 }
 
-
 /* =========================================
    HISTORIAL
 ========================================= */
@@ -187,17 +175,13 @@
 .sales-list-section {
   padding: 20px;
 
-  border:
-    1px solid
-    rgba(128, 119, 138, 0.1);
+  border: 1px solid rgba(128, 119, 138, 0.1);
 
   border-radius: 24px;
 
   background: var(--surface);
 
-  box-shadow:
-    0 10px 30px
-    rgba(71, 61, 78, 0.05);
+  box-shadow: 0 10px 30px rgba(71, 61, 78, 0.05);
 }
 
 .list-heading {
@@ -227,7 +211,6 @@
   font-size: 11px;
   font-weight: 700;
 }
-
 
 /* =========================================
    CABECERA TABLA
@@ -262,7 +245,6 @@
   text-align: right;
 }
 
-
 /* =========================================
    FILAS VENTAS
 ========================================= */
@@ -290,9 +272,7 @@
   align-items: center;
   gap: 13px;
 
-  border:
-    1px solid
-    rgba(128, 119, 138, 0.09);
+  border: 1px solid rgba(128, 119, 138, 0.09);
 
   border-radius: 16px;
 
@@ -310,18 +290,13 @@
 .sale-row:hover {
   transform: translateY(-1px);
 
-  border-color:
-    rgba(128, 119, 138, 0.22);
+  border-color: rgba(128, 119, 138, 0.22);
 
-  box-shadow:
-    0 7px 20px
-    rgba(71, 61, 78, 0.06);
+  box-shadow: 0 7px 20px rgba(71, 61, 78, 0.06);
 }
 
 .sale-row:focus-visible {
-  outline:
-    3px solid
-    var(--pastel-purple);
+  outline: 3px solid var(--pastel-purple);
 
   outline-offset: 2px;
 }
@@ -386,7 +361,6 @@
   margin-top: 2px;
 }
 
-
 /* =========================================
    MÉTODO / ESTADO
 ========================================= */
@@ -413,7 +387,20 @@
   background: var(--pastel-cream);
 }
 
-.origin-badge{display:inline-flex!important;width:max-content;margin-top:5px;padding:4px 7px;border-radius:999px;background:#f3e6d5;color:#68616b!important;font-size:.6rem!important;font-weight:800}.origin-badge.online{background:#d8e9f0}
+.origin-badge {
+  display: inline-flex !important;
+  width: max-content;
+  margin-top: 5px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #f3e6d5;
+  color: #68616b !important;
+  font-size: 0.6rem !important;
+  font-weight: 800;
+}
+.origin-badge.online {
+  background: #d8e9f0;
+}
 
 .sale-state {
   color: var(--text-primary);
@@ -438,7 +425,6 @@
   background: var(--ion-color-danger);
 }
 
-
 /* =========================================
    TOTAL FILA
 ========================================= */
@@ -459,7 +445,6 @@
 
   color: var(--text-secondary);
 }
-
 
 /* =========================================
    VACÍO
@@ -508,7 +493,6 @@
   line-height: 1.5;
 }
 
-
 /* =========================================
    DETALLE - CABECERA
 ========================================= */
@@ -548,8 +532,7 @@
 
   color: var(--text-primary);
 
-  font-size:
-    clamp(30px, 5vw, 44px);
+  font-size: clamp(30px, 5vw, 44px);
 }
 
 .detail-subtitle {
@@ -589,32 +572,24 @@
 
   color: var(--text-primary);
 
-  font-size:
-    clamp(25px, 4vw, 34px);
+  font-size: clamp(25px, 4vw, 34px);
 }
-
 
 /* =========================================
    CONTENEDOR DETALLE
 ========================================= */
 
 .sale-detail {
-  padding:
-    clamp(18px, 4vw, 30px);
+  padding: clamp(18px, 4vw, 30px);
 
-  border:
-    1px solid
-    rgba(128, 119, 138, 0.1);
+  border: 1px solid rgba(128, 119, 138, 0.1);
 
   border-radius: 26px;
 
   background: var(--surface);
 
-  box-shadow:
-    0 12px 34px
-    rgba(71, 61, 78, 0.05);
+  box-shadow: 0 12px 34px rgba(71, 61, 78, 0.05);
 }
-
 
 /* =========================================
    META
@@ -622,8 +597,7 @@
 
 .detail-meta {
   display: grid;
-  grid-template-columns:
-    repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 
   gap: 10px;
 }
@@ -654,8 +628,7 @@
 
   color: var(--pastel-purple);
 
-  background:
-    rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.65);
 }
 
 .meta-icon ion-icon {
@@ -684,7 +657,6 @@
   white-space: nowrap;
 }
 
-
 /* =========================================
    CANCELACIÓN INFO
 ========================================= */
@@ -697,14 +669,11 @@
   grid-template-columns: auto 1fr;
   gap: 14px;
 
-  border:
-    1px solid
-    rgba(var(--ion-color-danger-rgb), 0.22);
+  border: 1px solid rgba(var(--ion-color-danger-rgb), 0.22);
 
   border-radius: 18px;
 
-  background:
-    rgba(var(--ion-color-danger-rgb), 0.05);
+  background: rgba(var(--ion-color-danger-rgb), 0.05);
 }
 
 .cancellation-icon {
@@ -718,8 +687,7 @@
 
   color: var(--ion-color-danger);
 
-  background:
-    rgba(var(--ion-color-danger-rgb), 0.1);
+  background: rgba(var(--ion-color-danger-rgb), 0.1);
 }
 
 .cancellation-icon ion-icon {
@@ -753,8 +721,7 @@
 
   border-radius: 12px;
 
-  background:
-    rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.65);
 }
 
 .cancellation-grid small,
@@ -775,7 +742,6 @@
 .reason-row {
   grid-column: 1 / -1;
 }
-
 
 /* =========================================
    PRODUCTOS DETALLE
@@ -877,7 +843,6 @@
   flex-shrink: 0;
 }
 
-
 /* =========================================
    TOTAL DETALLE
 ========================================= */
@@ -916,10 +881,8 @@
 .detail-total strong {
   color: var(--text-primary);
 
-  font-size:
-    clamp(24px, 4vw, 30px);
+  font-size: clamp(24px, 4vw, 30px);
 }
-
 
 /* =========================================
    COMPROBANTE
@@ -934,9 +897,7 @@
   justify-content: space-between;
   gap: 20px;
 
-  border-top:
-    1px solid
-    rgba(128, 119, 138, 0.12);
+  border-top: 1px solid rgba(128, 119, 138, 0.12);
 }
 
 .receipt-actions-section h2 {
@@ -968,7 +929,6 @@
   --border-radius: 12px;
 }
 
-
 /* =========================================
    ZONA ADMIN
 ========================================= */
@@ -982,9 +942,7 @@
   justify-content: space-between;
   gap: 20px;
 
-  border:
-    1px dashed
-    rgba(var(--ion-color-danger-rgb), 0.3);
+  border: 1px dashed rgba(var(--ion-color-danger-rgb), 0.3);
 
   border-radius: 16px;
 }
@@ -1019,7 +977,6 @@
   flex-shrink: 0;
 }
 
-
 /* =========================================
    MODAL CANCELACIÓN
 ========================================= */
@@ -1048,8 +1005,7 @@
 
   color: var(--ion-color-danger);
 
-  background:
-    rgba(var(--ion-color-danger-rgb), 0.08);
+  background: rgba(var(--ion-color-danger-rgb), 0.08);
 }
 
 .cancel-warning-icon ion-icon {
@@ -1116,7 +1072,6 @@
   margin-right: 8px;
 }
 
-
 /* =========================================
    TICKET NORMALMENTE OCULTO
 ========================================= */
@@ -1125,16 +1080,13 @@
   display: none;
 }
 
-
 /* =========================================
    TABLET
 ========================================= */
 
 @media (max-width: 950px) {
-
   .sales-stats {
-    grid-template-columns:
-      repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .sales-table-header {
@@ -1155,8 +1107,7 @@
   }
 
   .detail-meta {
-    grid-template-columns:
-      repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .receipt-actions-section {
@@ -1167,16 +1118,13 @@
   .ticket-actions {
     justify-content: flex-start;
   }
-
 }
-
 
 /* =========================================
    MÓVIL
 ========================================= */
 
 @media (max-width: 650px) {
-
   .desktop-action {
     display: none;
   }
@@ -1197,8 +1145,7 @@
   }
 
   .sales-stats {
-    grid-template-columns:
-      repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 
     gap: 8px;
   }
@@ -1355,16 +1302,13 @@
     margin: 0;
     padding: 18px;
   }
-
 }
-
 
 /* =========================================
    TELÉFONOS PEQUEÑOS
 ========================================= */
 
 @media (max-width: 390px) {
-
   .sales-stats {
     grid-template-columns: 1fr;
   }
@@ -1387,16 +1331,13 @@
   .detail-total strong {
     align-self: flex-end;
   }
-
 }
-
 
 /* =========================================
    IMPRESIÓN DEL TICKET
 ========================================= */
 
 @media print {
-
   ion-header,
   .sales-heading,
   .detail-heading,
@@ -1410,7 +1351,6 @@
     display: none !important;
   }
 
-
   ion-content,
   .sales-content {
     --background: #ffffff !important;
@@ -1418,13 +1358,11 @@
     background: #ffffff !important;
   }
 
-
   .sales-shell {
     width: auto;
     margin: 0;
     padding: 0;
   }
-
 
   .sale-detail {
     width: auto;
@@ -1436,7 +1374,6 @@
     box-shadow: none;
   }
 
-
   .print-ticket {
     width: 80mm;
     margin: 0 auto;
@@ -1447,15 +1384,11 @@
     color: #000000;
     background: #ffffff;
 
-    font-family:
-      Arial,
-      Helvetica,
-      sans-serif;
+    font-family: Arial, Helvetica, sans-serif;
 
     font-size: 11px;
     text-align: center;
   }
-
 
   .print-ticket img {
     display: block;
@@ -1469,26 +1402,21 @@
     object-fit: contain;
   }
 
-
   .print-ticket h2 {
     margin: 0 0 1mm;
 
     font-size: 15px;
   }
 
-
   .print-ticket p {
     margin: 1mm 0;
   }
 
-
   .ticket-divider {
     margin: 3mm 0;
 
-    border-top:
-      1px dashed #999999;
+    border-top: 1px dashed #999999;
   }
-
 
   .ticket-item {
     padding: 2mm 0;
@@ -1501,13 +1429,11 @@
     border: 0;
   }
 
-
   .ticket-item span {
     flex: 1;
 
     text-align: left;
   }
-
 
   .ticket-item small {
     display: block;
@@ -1515,13 +1441,11 @@
     color: #333333;
   }
 
-
   .ticket-item b {
     flex-shrink: 0;
 
     text-align: right;
   }
-
 
   .ticket-total {
     display: flex;
@@ -1531,21 +1455,17 @@
     font-size: 14px;
   }
 
-
   .ticket-cancelled {
     padding: 2mm;
 
-    border:
-      1px solid #000000;
+    border: 1px solid #000000;
 
     font-size: 13px;
   }
-
 
   .thanks {
     margin-top: 4mm !important;
 
     font-weight: bold;
   }
-
 }

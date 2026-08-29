@@ -15,13 +15,24 @@ export class AuthService {
   private readonly google = inject(GoogleIdentityService);
   readonly sesion$ = this.store.sesion$;
 
-  get sesion(): AuthSession | null { return this.store.sesion; }
-  get token(): string | null { return this.store.token; }
-  estaAutenticado(): boolean { return Boolean(this.token); }
-  tieneRol(...roles: Rol[]): boolean { return Boolean(this.sesion && roles.includes(this.sesion.empleado.cargo)); }
+  get sesion(): AuthSession | null {
+    return this.store.sesion;
+  }
+  get token(): string | null {
+    return this.store.token;
+  }
+  estaAutenticado(): boolean {
+    return Boolean(this.token);
+  }
+  tieneRol(...roles: Rol[]): boolean {
+    return Boolean(this.sesion && roles.includes(this.sesion.empleado.cargo));
+  }
 
   login(correo: string, password: string): Observable<AuthSession> {
-    return this.http.post<AuthSession>(`${environment.API_BASE_URL}/auth/login`, { correo: correo.trim().toLowerCase(), password });
+    return this.http.post<AuthSession>(`${environment.API_BASE_URL}/auth/login`, {
+      correo: correo.trim().toLowerCase(),
+      password,
+    });
   }
 
   async loginGoogle(): Promise<AuthSession> {
@@ -42,7 +53,9 @@ export class AuthService {
     try {
       const respuesta = await firstValueFrom(this.me());
       this.guardarSesion({ token: this.token!, empleado: respuesta.empleado });
-    } catch { this.limpiarSesion(); }
+    } catch {
+      this.limpiarSesion();
+    }
   }
 
   async logout(): Promise<void> {
@@ -58,5 +71,4 @@ export class AuthService {
   esCancelacionGoogle(error: unknown): boolean {
     return this.google.esCancelacion(error);
   }
-
 }

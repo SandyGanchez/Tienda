@@ -9,16 +9,19 @@ export class AuthInterceptor implements HttpInterceptor {
   private readonly auth = inject(AuthSessionStore);
   private readonly clienteAuth = inject(ClienteSessionStore);
   intercept(req: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
-    const esFlujoCliente = req.url.includes('/auth/google/cliente') || req.url.includes('/auth/cliente/') || req.url.includes('/cliente/');
+    const esFlujoCliente =
+      req.url.includes('/auth/google/cliente') || req.url.includes('/auth/cliente/') || req.url.includes('/cliente/');
     const esInicioSesion = req.url.includes('/auth/login') || req.url.includes('/auth/google');
     const token = esInicioSesion ? null : esFlujoCliente ? this.clienteAuth.token : this.auth.token;
     const autenticada = token ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : req;
-    return next.handle(autenticada).pipe(catchError((error: unknown) => {
-      if (error instanceof HttpErrorResponse && error.status === 401 && !esInicioSesion) {
-        if (esFlujoCliente) this.clienteAuth.limpiar();
-        else this.auth.limpiar();
-      }
-      return throwError(() => error);
-    }));
+    return next.handle(autenticada).pipe(
+      catchError((error: unknown) => {
+        if (error instanceof HttpErrorResponse && error.status === 401 && !esInicioSesion) {
+          if (esFlujoCliente) this.clienteAuth.limpiar();
+          else this.auth.limpiar();
+        }
+        return throwError(() => error);
+      }),
+    );
   }
 }

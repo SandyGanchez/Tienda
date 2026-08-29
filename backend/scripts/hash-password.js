@@ -6,7 +6,8 @@ if (!password || password.length < 8) {
   process.exit(1);
 }
 
-bcrypt.hash(password, 12)
+bcrypt
+  .hash(password, 12)
   .then((hash) => process.stdout.write(`${hash}\n`))
   .catch(() => {
     console.error('No se pudo generar el hash.');

@@ -15,10 +15,7 @@ export class ScanFeedbackService {
   }
 
   async feedbackLecturaCorrecta(): Promise<void> {
-    await Promise.all([
-      this.reproducirBeep().catch(() => undefined),
-      this.vibrar().catch(() => undefined)
-    ]);
+    await Promise.all([this.reproducirBeep().catch(() => undefined), this.vibrar().catch(() => undefined)]);
   }
 
   private obtenerAudioContext(): AudioContext {

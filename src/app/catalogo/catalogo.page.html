@@ -12,7 +12,8 @@
             [(ngModel)]="busqueda"
             placeholder="Buscar productos o marcas"
             debounce="150"
-            aria-label="Buscar productos">
+            aria-label="Buscar productos"
+          >
           </ion-searchbar>
           <ion-select [(ngModel)]="marca" interface="popover" aria-label="Filtrar por marca">
             <ion-select-option value="todas">Todas las marcas</ion-select-option>
@@ -22,12 +23,15 @@
       </section>
 
       <nav class="category-strip" aria-label="Categorías de productos">
-        <button type="button" [class.active]="categoria === 'todas'" (click)="seleccionarCategoria('todas')">Todo</button>
+        <button type="button" [class.active]="categoria === 'todas'" (click)="seleccionarCategoria('todas')">
+          Todo
+        </button>
         <button
           type="button"
           *ngFor="let opcion of categorias"
           [class.active]="categoria === opcion"
-          (click)="seleccionarCategoria(opcion)">
+          (click)="seleccionarCategoria(opcion)"
+        >
           {{ opcion }}
         </button>
       </nav>
@@ -56,7 +60,11 @@
             <h2>Productos</h2>
             <p>{{ productosFiltrados.length }} {{ productosFiltrados.length === 1 ? 'resultado' : 'resultados' }}</p>
           </div>
-          <button type="button" *ngIf="busqueda || categoria !== 'todas' || marca !== 'todas'" (click)="limpiarFiltros()">
+          <button
+            type="button"
+            *ngIf="busqueda || categoria !== 'todas' || marca !== 'todas'"
+            (click)="limpiarFiltros()"
+          >
             Limpiar filtros
           </button>
         </header>
@@ -70,7 +78,11 @@
         <section class="product-grid" *ngIf="productosFiltrados.length > 0">
           <article class="product-card" *ngFor="let producto of productosFiltrados">
             <div class="product-image">
-              <img *ngIf="imagen(producto.imagenPro) as src; else imagePlaceholder" [src]="src" [alt]="producto.nombrePro">
+              <img
+                *ngIf="imagen(producto.imagenPro) as src; else imagePlaceholder"
+                [src]="src"
+                [alt]="producto.nombrePro"
+              />
               <ng-template #imagePlaceholder><ion-icon name="cube-outline"></ion-icon></ng-template>
               <span class="availability" [class.unavailable]="!disponible(producto)">
                 {{ disponible(producto) ? 'Disponible' : 'Agotado' }}
@@ -85,11 +97,7 @@
               </p>
               <div class="product-footer">
                 <strong>{{ producto.precioVentaPro | currency:'MXN':'symbol-narrow':'1.2-2' }}</strong>
-                <ion-button
-                  size="small"
-                  shape="round"
-                  [disabled]="!disponible(producto)"
-                  (click)="agregar(producto)">
+                <ion-button size="small" shape="round" [disabled]="!disponible(producto)" (click)="agregar(producto)">
                   <ion-icon slot="start" name="add-outline"></ion-icon>
                   Agregar
                 </ion-button>

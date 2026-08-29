@@ -13,7 +13,7 @@ import { EmpleadosPage } from './empleados.page';
     FormsModule,
     IonicModule,
     SharedModule,
-    RouterModule.forChild([{ path: '', component: EmpleadosPage }])
-  ]
+    RouterModule.forChild([{ path: '', component: EmpleadosPage }]),
+  ],
 })
 export class EmpleadosPageModule {}

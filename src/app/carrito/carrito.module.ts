@@ -7,6 +7,11 @@ import { CarritoPage } from './carrito.page';
 
 @NgModule({
   declarations: [CarritoPage],
-  imports: [CommonModule, IonicModule, ClienteSharedModule, RouterModule.forChild([{ path: '', component: CarritoPage }])]
+  imports: [
+    CommonModule,
+    IonicModule,
+    ClienteSharedModule,
+    RouterModule.forChild([{ path: '', component: CarritoPage }]),
+  ],
 })
 export class CarritoPageModule {}

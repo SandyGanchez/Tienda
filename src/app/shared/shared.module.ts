@@ -7,6 +7,6 @@ import { AdminShellComponent } from './admin-shell/admin-shell.component';
 @NgModule({
   declarations: [AdminShellComponent],
   imports: [CommonModule, IonicModule, RouterModule],
-  exports: [AdminShellComponent]
+  exports: [AdminShellComponent],
 })
 export class SharedModule {}

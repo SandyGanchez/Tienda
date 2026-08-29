@@ -9,9 +9,15 @@ import { PedidosOnlinePage } from './pedidos-online.page';
 
 @NgModule({
   declarations: [PedidosOnlinePage, PedidoOnlineDetallePage],
-  imports: [CommonModule, FormsModule, IonicModule, SharedModule, RouterModule.forChild([
-    { path: '', component: PedidosOnlinePage },
-    { path: ':id', component: PedidoOnlineDetallePage }
-  ])]
+  imports: [
+    CommonModule,
+    FormsModule,
+    IonicModule,
+    SharedModule,
+    RouterModule.forChild([
+      { path: '', component: PedidosOnlinePage },
+      { path: ':id', component: PedidoOnlineDetallePage },
+    ]),
+  ],
 })
 export class PedidosOnlinePageModule {}

@@ -12,7 +12,7 @@ import { SucursalService } from '../services/sucursal.service';
   selector: 'app-configuracion-tienda',
   templateUrl: './configuracion-tienda.component.html',
   styleUrls: ['./configuracion-tienda.component.scss'],
-  standalone: false
+  standalone: false,
 })
 export class ConfiguracionTiendaComponent implements OnChanges, OnInit {
   @Input() sucursales: Sucursal[] = [];
@@ -100,9 +100,12 @@ export class ConfiguracionTiendaComponent implements OnChanges, OnInit {
       }
       this.quitarPreview();
       this.sucursalGuardada.emit(guardada);
-      await this.feedback(falloLogo
-        ? 'La información se guardó, pero no pudimos subir el logo.'
-        : 'Configuración guardada correctamente.', falloLogo ? 'warning' : 'success');
+      await this.feedback(
+        falloLogo
+          ? 'La información se guardó, pero no pudimos subir el logo.'
+          : 'Configuración guardada correctamente.',
+        falloLogo ? 'warning' : 'success',
+      );
     } catch (error: unknown) {
       await this.feedback(this.mensajeError(error, 'No pudimos guardar la configuración.'), 'danger');
     } finally {
@@ -117,7 +120,10 @@ export class ConfiguracionTiendaComponent implements OnChanges, OnInit {
   async guardarTransferencia(): Promise<void> {
     if (this.guardandoTransferencia) return;
     const error = this.validarTransferencia();
-    if (error) { await this.feedback(error, 'warning'); return; }
+    if (error) {
+      await this.feedback(error, 'warning');
+      return;
+    }
     this.guardandoTransferencia = true;
     try {
       const respuesta = await firstValueFrom(this.transferenciaApi.guardar(this.transferencia));
@@ -125,37 +131,51 @@ export class ConfiguracionTiendaComponent implements OnChanges, OnInit {
       await this.feedback('Configuración de transferencias guardada.', 'success');
     } catch (error: unknown) {
       await this.feedback(this.mensajeError(error, 'No pudimos guardar la configuración de transferencias.'), 'danger');
-    } finally { this.guardandoTransferencia = false; }
+    } finally {
+      this.guardandoTransferencia = false;
+    }
   }
 
   private cargarFormulario(): void {
     const sucursal = this.sucursalActual;
-    this.form = sucursal ? {
-      nombreSuc: sucursal.nombreSuc,
-      descripcionSuc: sucursal.descripcionSuc,
-      telefonoSuc: sucursal.telefonoSuc,
-      correoSuc: sucursal.correoSuc,
-      paginaWebSuc: sucursal.paginaWebSuc,
-      redSocialSuc: sucursal.redSocialSuc
-    } : this.vacio();
+    this.form = sucursal
+      ? {
+          nombreSuc: sucursal.nombreSuc,
+          descripcionSuc: sucursal.descripcionSuc,
+          telefonoSuc: sucursal.telefonoSuc,
+          correoSuc: sucursal.correoSuc,
+          paginaWebSuc: sucursal.paginaWebSuc,
+          redSocialSuc: sucursal.redSocialSuc,
+        }
+      : this.vacio();
     this.errores = {};
     this.quitarPreview();
   }
 
   private vacio(): SucursalDto {
-    return { nombreSuc: null, descripcionSuc: null, telefonoSuc: null, correoSuc: null, paginaWebSuc: null, redSocialSuc: null };
+    return {
+      nombreSuc: null,
+      descripcionSuc: null,
+      telefonoSuc: null,
+      correoSuc: null,
+      paginaWebSuc: null,
+      redSocialSuc: null,
+    };
   }
 
   private cargarTransferencia(): void {
     this.transferenciaApi.obtener().subscribe({
-      next: respuesta => {
+      next: (respuesta) => {
         if (respuesta.configuracion) this.transferencia = this.desdeTransferencia(respuesta.configuracion);
         this.cargandoTransferencia = false;
       },
       error: async (error: unknown) => {
         this.cargandoTransferencia = false;
-        await this.feedback(this.mensajeError(error, 'No pudimos cargar la configuración de transferencias.'), 'danger');
-      }
+        await this.feedback(
+          this.mensajeError(error, 'No pudimos cargar la configuración de transferencias.'),
+          'danger',
+        );
+      },
     });
   }
 
@@ -165,9 +185,12 @@ export class ConfiguracionTiendaComponent implements OnChanges, OnInit {
 
   private desdeTransferencia(configuracion: ConfiguracionTransferenciaAdmin): ConfiguracionTransferenciaDto {
     return {
-      banco: configuracion.banco || '', titular: configuracion.titular || '', clabe: configuracion.clabe || '',
-      numeroCuenta: configuracion.numeroCuenta || '', instrucciones: configuracion.instrucciones || '',
-      activo: Boolean(configuracion.activo)
+      banco: configuracion.banco || '',
+      titular: configuracion.titular || '',
+      clabe: configuracion.clabe || '',
+      numeroCuenta: configuracion.numeroCuenta || '',
+      instrucciones: configuracion.instrucciones || '',
+      activo: Boolean(configuracion.activo),
     };
   }
 
@@ -175,11 +198,14 @@ export class ConfiguracionTiendaComponent implements OnChanges, OnInit {
     const datos = this.transferencia;
     if (datos.banco.trim().length > 100) return 'El banco no puede superar 100 caracteres.';
     if (datos.titular.trim().length > 150) return 'El titular no puede superar 150 caracteres.';
-    if (datos.clabe.trim() && !/^\d{18}$/.test(datos.clabe.trim())) return 'La CLABE debe contener exactamente 18 dígitos.';
+    if (datos.clabe.trim() && !/^\d{18}$/.test(datos.clabe.trim()))
+      return 'La CLABE debe contener exactamente 18 dígitos.';
     if (datos.numeroCuenta.trim().length > 50) return 'El número de cuenta no puede superar 50 caracteres.';
     if (datos.instrucciones.trim().length > 1000) return 'Las instrucciones no pueden superar 1000 caracteres.';
-    if (datos.activo && (!datos.banco.trim() || !datos.titular.trim())) return 'Banco y titular son obligatorios para habilitar transferencias.';
-    if (datos.activo && !datos.clabe.trim() && !datos.numeroCuenta.trim()) return 'Configura una CLABE o un número de cuenta.';
+    if (datos.activo && (!datos.banco.trim() || !datos.titular.trim()))
+      return 'Banco y titular son obligatorios para habilitar transferencias.';
+    if (datos.activo && !datos.clabe.trim() && !datos.numeroCuenta.trim())
+      return 'Configura una CLABE o un número de cuenta.';
     return null;
   }
 
@@ -188,11 +214,16 @@ export class ConfiguracionTiendaComponent implements OnChanges, OnInit {
     const correo = this.form.correoSuc?.trim();
     const web = this.form.paginaWebSuc?.trim();
     if ((this.form.nombreSuc?.length || 0) > 100) errores.nombreSuc = 'El nombre no puede superar 100 caracteres.';
-    if ((this.form.descripcionSuc?.length || 0) > 255) errores.descripcionSuc = 'La descripción no puede superar 255 caracteres.';
+    if ((this.form.descripcionSuc?.length || 0) > 255)
+      errores.descripcionSuc = 'La descripción no puede superar 255 caracteres.';
     if ((this.form.telefonoSuc?.length || 0) > 15) errores.telefonoSuc = 'El teléfono no puede superar 15 caracteres.';
     if (correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) errores.correoSuc = 'Ingresa un correo válido.';
     if (web) {
-      try { new URL(web); } catch { errores.paginaWebSuc = 'Ingresa una URL válida, incluyendo https://.'; }
+      try {
+        new URL(web);
+      } catch {
+        errores.paginaWebSuc = 'Ingresa una URL válida, incluyendo https://.';
+      }
     }
     return errores;
   }
@@ -204,10 +235,12 @@ export class ConfiguracionTiendaComponent implements OnChanges, OnInit {
       if (!preview) throw new Error('No se recibió una imagen');
       const blob = await (await fetch(preview)).blob();
       if (!['image/jpeg', 'image/png', 'image/webp'].includes(blob.type)) {
-        await this.feedback('Selecciona una imagen JPEG, PNG o WEBP.', 'warning'); return;
+        await this.feedback('Selecciona una imagen JPEG, PNG o WEBP.', 'warning');
+        return;
       }
       if (blob.size > 5 * 1024 * 1024) {
-        await this.feedback('El logo no puede superar 5 MB.', 'warning'); return;
+        await this.feedback('El logo no puede superar 5 MB.', 'warning');
+        return;
       }
       this.logoPendiente = blob;
       this.previewLogo = preview;
@@ -219,11 +252,19 @@ export class ConfiguracionTiendaComponent implements OnChanges, OnInit {
   }
 
   private async feedback(message: string, color: 'success' | 'danger' | 'warning'): Promise<void> {
-    const toast = await this.toast.create({ message, color, duration: 3200, position: 'top', cssClass: 'pastel-toast' });
+    const toast = await this.toast.create({
+      message,
+      color,
+      duration: 3200,
+      position: 'top',
+      cssClass: 'pastel-toast',
+    });
     await toast.present();
   }
 
   private mensajeError(error: unknown, fallback: string): string {
-    return error instanceof HttpErrorResponse && typeof error.error?.message === 'string' ? error.error.message : fallback;
+    return error instanceof HttpErrorResponse && typeof error.error?.message === 'string'
+      ? error.error.message
+      : fallback;
   }
 }

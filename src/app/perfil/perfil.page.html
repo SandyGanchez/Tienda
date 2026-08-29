@@ -10,7 +10,11 @@
       <section class="profile-card">
         <div class="profile-identity">
           <span class="profile-photo">
-            <img *ngIf="foto(sesion.cliente.fotoPerfil) as src; else profilePlaceholder" [src]="src" alt="Foto de perfil">
+            <img
+              *ngIf="foto(sesion.cliente.fotoPerfil) as src; else profilePlaceholder"
+              [src]="src"
+              alt="Foto de perfil"
+            />
             <ng-template #profilePlaceholder><ion-icon name="person-outline"></ion-icon></ng-template>
           </span>
           <div>
@@ -20,10 +24,22 @@
         </div>
 
         <dl>
-          <div><dt>Nombre</dt><dd>{{ sesion.cliente.nombre }}</dd></div>
-          <div><dt>Apellidos</dt><dd>{{ sesion.cliente.apellidoPat || '—' }} {{ sesion.cliente.apellidoMat || '' }}</dd></div>
-          <div><dt>Correo</dt><dd>{{ sesion.cliente.correo }}</dd></div>
-          <div><dt>Cliente desde</dt><dd>{{ sesion.cliente.fechaRegistro | date:'longDate' }}</dd></div>
+          <div>
+            <dt>Nombre</dt>
+            <dd>{{ sesion.cliente.nombre }}</dd>
+          </div>
+          <div>
+            <dt>Apellidos</dt>
+            <dd>{{ sesion.cliente.apellidoPat || '—' }} {{ sesion.cliente.apellidoMat || '' }}</dd>
+          </div>
+          <div>
+            <dt>Correo</dt>
+            <dd>{{ sesion.cliente.correo }}</dd>
+          </div>
+          <div>
+            <dt>Cliente desde</dt>
+            <dd>{{ sesion.cliente.fechaRegistro | date:'longDate' }}</dd>
+          </div>
         </dl>
 
         <div class="profile-actions">
