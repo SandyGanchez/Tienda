@@ -4,7 +4,7 @@ const { spawn } = require('child_process');
 const crypto = require('crypto');
 const fs = require('fs');
 const jwt = require('jsonwebtoken');
-const mysql = require('mysql2/promise');
+const db = require('./db');
 
 const puerto = 3200 + Math.floor(Math.random() * 500);
 const baseUrl = `http://127.0.0.1:${puerto}`;
@@ -14,7 +14,6 @@ const ventasPrueba = new Set();
 const sesionesPrueba = new Set();
 const archivosPrueba = new Set();
 let servidor;
-let db;
 let idClienteTemporal;
 let idConfiguracionTemporal;
 let idSucursalTemporal;
@@ -92,13 +91,6 @@ async function subirComprobante(idPedido, clienteToken) {
 }
 
 async function preparar() {
-  db = await mysql.createConnection({
-    host: process.env.DB_HOST || 'localhost',
-    port: Number(process.env.DB_PORT || 3306),
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-  });
   const [sucursales] = await db.query('SELECT idSuc FROM sucursal ORDER BY idSuc');
   if (sucursales.length !== 1) throw new Error('Las pruebas requieren exactamente una sucursal antes de iniciar.');
   const idSuc = Number(sucursales[0].idSuc);
