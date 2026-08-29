@@ -3,7 +3,11 @@
     <ion-toolbar>
       <div class="client-toolbar">
         <a class="client-brand" routerLink="/catalogo" aria-label="Ir al catálogo">
-          <span class="client-logo"><img *ngIf="logo() as src; else logoFallback" [src]="src" alt="Logo de la tienda"><ng-template #logoFallback><ion-icon name="storefront-outline"></ion-icon></ng-template></span>
+          <span class="client-logo"
+            ><img *ngIf="logo() as src; else logoFallback" [src]="src" alt="Logo de la tienda" /><ng-template
+              #logoFallback
+              ><ion-icon name="storefront-outline"></ion-icon></ng-template
+          ></span>
           <strong>{{ nombreTienda }}</strong>
         </a>
 
@@ -18,10 +22,24 @@
             <span class="cart-count" *ngIf="carrito.cantidadTotal$ | async as cantidad">{{ cantidad }}</span>
           </a>
           <a class="client-profile" *ngIf="clienteAuth.sesion as sesion; else loginLink" routerLink="/perfil">
-            <span><small>Hola,</small><strong>{{ sesion.cliente.nombre }}</strong></span>
-            <span class="client-avatar"><img *ngIf="avatar() as src; else avatarFallback" [src]="src" alt="Foto de perfil"><ng-template #avatarFallback><ion-icon name="person-outline"></ion-icon></ng-template></span>
+            <span
+              ><small>Hola,</small><strong>{{ sesion.cliente.nombre }}</strong></span
+            >
+            <span class="client-avatar"
+              ><img *ngIf="avatar() as src; else avatarFallback" [src]="src" alt="Foto de perfil" /><ng-template
+                #avatarFallback
+                ><ion-icon name="person-outline"></ion-icon></ng-template
+            ></span>
           </a>
-          <ion-button class="client-logout" *ngIf="clienteAuth.estaAutenticado()" fill="clear" size="small" title="Cerrar sesión" aria-label="Cerrar sesión" (click)="clienteAuth.logout()">
+          <ion-button
+            class="client-logout"
+            *ngIf="clienteAuth.estaAutenticado()"
+            fill="clear"
+            size="small"
+            title="Cerrar sesión"
+            aria-label="Cerrar sesión"
+            (click)="clienteAuth.logout()"
+          >
             <ion-icon slot="icon-only" name="log-out-outline"></ion-icon>
           </ion-button>
           <ng-template #loginLink><a class="login-link" routerLink="/login">Iniciar sesión</a></ng-template>
@@ -33,8 +51,14 @@
   <main class="client-content"><ng-content></ng-content></main>
 
   <nav class="mobile-client-nav" aria-label="Navegación inferior">
-    <a routerLink="/catalogo" routerLinkActive="active"><ion-icon name="storefront-outline"></ion-icon><span>Productos</span></a>
-    <a routerLink="/mis-pedidos" routerLinkActive="active"><ion-icon name="cube-outline"></ion-icon><span>Pedidos</span></a>
-    <a [routerLink]="clienteAuth.estaAutenticado() ? '/perfil' : '/login'" routerLinkActive="active"><ion-icon name="person-outline"></ion-icon><span>Perfil</span></a>
+    <a routerLink="/catalogo" routerLinkActive="active"
+      ><ion-icon name="storefront-outline"></ion-icon><span>Productos</span></a
+    >
+    <a routerLink="/mis-pedidos" routerLinkActive="active"
+      ><ion-icon name="cube-outline"></ion-icon><span>Pedidos</span></a
+    >
+    <a [routerLink]="clienteAuth.estaAutenticado() ? '/perfil' : '/login'" routerLinkActive="active"
+      ><ion-icon name="person-outline"></ion-icon><span>Perfil</span></a
+    >
   </nav>
 </div>

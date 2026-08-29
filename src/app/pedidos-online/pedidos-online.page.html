@@ -1,16 +1,102 @@
 <app-admin-shell menuId="admin-online-orders-menu" contentId="online-orders-main" activeSection="pedidos-online">
-  <ion-header class="ion-no-border"><ion-toolbar><ion-buttons slot="start"><ion-menu-button menu="admin-online-orders-menu"></ion-menu-button></ion-buttons><ion-title>Pedidos online</ion-title></ion-toolbar></ion-header>
-  <ion-content class="orders-page"><ion-refresher slot="fixed" (ionRefresh)="cargar($event)"><ion-refresher-content></ion-refresher-content></ion-refresher>
+  <ion-header class="ion-no-border"
+    ><ion-toolbar
+      ><ion-buttons slot="start"><ion-menu-button menu="admin-online-orders-menu"></ion-menu-button></ion-buttons
+      ><ion-title>Pedidos online</ion-title></ion-toolbar
+    ></ion-header
+  >
+  <ion-content class="orders-page"
+    ><ion-refresher slot="fixed" (ionRefresh)="cargar($event)"
+      ><ion-refresher-content></ion-refresher-content
+    ></ion-refresher>
     <main class="orders-shell">
-      <header class="page-heading"><div><span>Operación</span><h1>Pedidos online</h1><p>Revisa las compras realizadas por los clientes y valida sus transferencias.</p></div><ion-button fill="outline" (click)="cargar()"><ion-icon slot="start" name="refresh-outline"></ion-icon>Actualizar</ion-button></header>
+      <header class="page-heading">
+        <div>
+          <span>Operación</span>
+          <h1>Pedidos online</h1>
+          <p>Revisa las compras realizadas por los clientes y valida sus transferencias.</p>
+        </div>
+        <ion-button fill="outline" (click)="cargar()"
+          ><ion-icon slot="start" name="refresh-outline"></ion-icon>Actualizar</ion-button
+        >
+      </header>
       <section class="stats" aria-label="Resumen de pedidos">
-        <article><small>Todos</small><strong>{{contar()}}</strong></article><article><small>En revisión</small><strong>{{contar('EN_REVISION')}}</strong></article><article><small>Pagados</small><strong>{{contar('PAGADO')}}</strong></article><article><small>Listos</small><strong>{{contar('LISTO')}}</strong></article><article><small>Entregados</small><strong>{{contar('ENTREGADO')}}</strong></article><article><small>Rechazados</small><strong>{{contar('RECHAZADO')}}</strong></article>
+        <article><small>Todos</small><strong>{{contar()}}</strong></article>
+        <article><small>En revisión</small><strong>{{contar('EN_REVISION')}}</strong></article>
+        <article><small>Pagados</small><strong>{{contar('PAGADO')}}</strong></article>
+        <article><small>Listos</small><strong>{{contar('LISTO')}}</strong></article>
+        <article><small>Entregados</small><strong>{{contar('ENTREGADO')}}</strong></article>
+        <article><small>Rechazados</small><strong>{{contar('RECHAZADO')}}</strong></article>
       </section>
-      <section class="filters"><ion-searchbar [(ngModel)]="busqueda" placeholder="Buscar pedido o cliente…" debounce="180"></ion-searchbar><ion-select [(ngModel)]="estado" interface="popover" label="Estado" labelPlacement="stacked"><ion-select-option value="">Todos los estados</ion-select-option><ion-select-option value="EN_REVISION">Pago en revisión</ion-select-option><ion-select-option value="PAGADO">Pago aprobado</ion-select-option><ion-select-option value="LISTO">Listo para recoger</ion-select-option><ion-select-option value="ENTREGADO">Entregado</ion-select-option><ion-select-option value="RECHAZADO">Pago rechazado</ion-select-option><ion-select-option value="PENDIENTE_PAGO">Pendiente de pago</ion-select-option><ion-select-option value="CANCELADO">Cancelado</ion-select-option><ion-select-option value="EXPIRADO">Reserva expirada</ion-select-option></ion-select></section>
-      <section class="loading" *ngIf="cargando"><ion-spinner></ion-spinner><p>Cargando pedidos…</p></section>
-      <section class="empty" *ngIf="!cargando&&!filtrados.length"><ion-icon name="bag-handle-outline"></ion-icon><h2>No hay pedidos para mostrar</h2><p>Ajusta los filtros o vuelve a consultar más tarde.</p></section>
-      <div class="desktop-table" *ngIf="!cargando&&filtrados.length"><table><thead><tr><th>Pedido</th><th>Cliente</th><th>Fecha</th><th>Total</th><th>Estado</th><th></th></tr></thead><tbody><tr *ngFor="let p of filtrados"><td><strong>{{p.folio}}</strong><small *ngIf="p.fechaComprobante">Comprobante {{p.fechaComprobante|date:'short'}}</small></td><td><strong>{{p.cliente.nombre}}</strong><small>{{p.cliente.correo}}</small></td><td>{{p.fechaPedido|date:'mediumDate'}}</td><td class="amount">{{p.total|currency:'MXN':'symbol-narrow':'1.2-2'}}</td><td><span class="status" [attr.data-status]="p.estado">{{etiqueta(p.estado)}}</span></td><td><a [routerLink]="['/pedidos-online',p.idPedido]">Ver pedido <ion-icon name="arrow-forward-outline"></ion-icon></a></td></tr></tbody></table></div>
-      <section class="mobile-cards" *ngIf="!cargando&&filtrados.length"><article *ngFor="let p of filtrados"><div class="card-top"><strong>{{p.folio}}</strong><span class="status" [attr.data-status]="p.estado">{{etiqueta(p.estado)}}</span></div><div class="customer"><b>{{p.cliente.nombre}}</b><small>{{p.cliente.correo}}</small></div><div class="card-meta"><span>{{p.fechaPedido|date:'mediumDate'}}</span><strong>{{p.total|currency:'MXN':'symbol-narrow':'1.2-2'}}</strong></div><ion-button expand="block" fill="outline" [routerLink]="['/pedidos-online',p.idPedido]">Ver pedido</ion-button></article></section>
+      <section class="filters">
+        <ion-searchbar [(ngModel)]="busqueda" placeholder="Buscar pedido o cliente…" debounce="180"></ion-searchbar
+        ><ion-select [(ngModel)]="estado" interface="popover" label="Estado" labelPlacement="stacked"
+          ><ion-select-option value="">Todos los estados</ion-select-option
+          ><ion-select-option value="EN_REVISION">Pago en revisión</ion-select-option
+          ><ion-select-option value="PAGADO">Pago aprobado</ion-select-option
+          ><ion-select-option value="LISTO">Listo para recoger</ion-select-option
+          ><ion-select-option value="ENTREGADO">Entregado</ion-select-option
+          ><ion-select-option value="RECHAZADO">Pago rechazado</ion-select-option
+          ><ion-select-option value="PENDIENTE_PAGO">Pendiente de pago</ion-select-option
+          ><ion-select-option value="CANCELADO">Cancelado</ion-select-option
+          ><ion-select-option value="EXPIRADO">Reserva expirada</ion-select-option></ion-select
+        >
+      </section>
+      <section class="loading" *ngIf="cargando">
+        <ion-spinner></ion-spinner>
+        <p>Cargando pedidos…</p>
+      </section>
+      <section class="empty" *ngIf="!cargando&&!filtrados.length">
+        <ion-icon name="bag-handle-outline"></ion-icon>
+        <h2>No hay pedidos para mostrar</h2>
+        <p>Ajusta los filtros o vuelve a consultar más tarde.</p>
+      </section>
+      <div class="desktop-table" *ngIf="!cargando&&filtrados.length">
+        <table>
+          <thead>
+            <tr>
+              <th>Pedido</th>
+              <th>Cliente</th>
+              <th>Fecha</th>
+              <th>Total</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let p of filtrados">
+              <td>
+                <strong>{{p.folio}}</strong
+                ><small *ngIf="p.fechaComprobante">Comprobante {{p.fechaComprobante|date:'short'}}</small>
+              </td>
+              <td><strong>{{p.cliente.nombre}}</strong><small>{{p.cliente.correo}}</small></td>
+              <td>{{p.fechaPedido|date:'mediumDate'}}</td>
+              <td class="amount">{{p.total|currency:'MXN':'symbol-narrow':'1.2-2'}}</td>
+              <td><span class="status" [attr.data-status]="p.estado">{{etiqueta(p.estado)}}</span></td>
+              <td>
+                <a [routerLink]="['/pedidos-online',p.idPedido]"
+                  >Ver pedido <ion-icon name="arrow-forward-outline"></ion-icon
+                ></a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <section class="mobile-cards" *ngIf="!cargando&&filtrados.length">
+        <article *ngFor="let p of filtrados">
+          <div class="card-top">
+            <strong>{{p.folio}}</strong><span class="status" [attr.data-status]="p.estado">{{etiqueta(p.estado)}}</span>
+          </div>
+          <div class="customer"><b>{{p.cliente.nombre}}</b><small>{{p.cliente.correo}}</small></div>
+          <div class="card-meta">
+            <span>{{p.fechaPedido|date:'mediumDate'}}</span
+            ><strong>{{p.total|currency:'MXN':'symbol-narrow':'1.2-2'}}</strong>
+          </div>
+          <ion-button expand="block" fill="outline" [routerLink]="['/pedidos-online',p.idPedido]"
+            >Ver pedido</ion-button
+          >
+        </article>
+      </section>
     </main>
   </ion-content>
 </app-admin-shell>

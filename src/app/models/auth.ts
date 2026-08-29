@@ -17,4 +17,7 @@ export interface EmpleadoSesion {
   estadoEmp: boolean;
 }
 
-export interface AuthSession { token: string; empleado: EmpleadoSesion; }
+export interface AuthSession {
+  token: string;
+  empleado: EmpleadoSesion;
+}

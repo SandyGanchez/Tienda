@@ -17,7 +17,7 @@ interface ProductoPublico extends ProductoParaCarrito {
   selector: 'app-catalogo',
   templateUrl: './catalogo.page.html',
   styleUrls: ['./catalogo.page.scss'],
-  standalone: false
+  standalone: false,
 })
 export class CatalogoPage implements OnInit {
   productos: ProductoPublico[] = [];
@@ -38,18 +38,21 @@ export class CatalogoPage implements OnInit {
   }
 
   get categorias(): string[] {
-    return this.valoresUnicos(this.productos.map(producto => producto.nombreCat));
+    return this.valoresUnicos(this.productos.map((producto) => producto.nombreCat));
   }
 
   get marcas(): string[] {
-    return this.valoresUnicos(this.productos.map(producto => producto.nombreMarca));
+    return this.valoresUnicos(this.productos.map((producto) => producto.nombreMarca));
   }
 
   get productosFiltrados(): ProductoPublico[] {
     const termino = this.busqueda.trim().toLocaleLowerCase('es-MX');
-    return this.productos.filter(producto => {
-      const coincideTexto = !termino || [producto.nombrePro, producto.nombreMarca, producto.nombreCat]
-        .some(valor => valor?.toLocaleLowerCase('es-MX').includes(termino));
+    return this.productos.filter((producto) => {
+      const coincideTexto =
+        !termino ||
+        [producto.nombrePro, producto.nombreMarca, producto.nombreCat].some((valor) =>
+          valor?.toLocaleLowerCase('es-MX').includes(termino),
+        );
       const coincideCategoria = this.categoria === 'todas' || producto.nombreCat === this.categoria;
       const coincideMarca = this.marca === 'todas' || producto.nombreMarca === this.marca;
       return coincideTexto && coincideCategoria && coincideMarca;
@@ -64,7 +67,7 @@ export class CatalogoPage implements OnInit {
     this.cargando = true;
     this.errorCarga = false;
     this.http.get<ProductoPublico[]>(`${environment.API_BASE_URL}/public/productos`).subscribe({
-      next: productos => {
+      next: (productos) => {
         this.productos = Array.isArray(productos) ? productos : [];
         this.cargando = false;
       },
@@ -72,7 +75,7 @@ export class CatalogoPage implements OnInit {
         this.productos = [];
         this.errorCarga = true;
         this.cargando = false;
-      }
+      },
     });
   }
 
@@ -102,12 +105,14 @@ export class CatalogoPage implements OnInit {
         : 'No hay más existencia disponible para agregar.',
       duration: 1800,
       position: 'bottom',
-      color: agregado ? 'success' : 'warning'
+      color: agregado ? 'success' : 'warning',
     });
     await toast.present();
   }
 
   private valoresUnicos(valores: Array<string | null>): string[] {
-    return [...new Set(valores.filter((valor): valor is string => Boolean(valor)))].sort((a, b) => a.localeCompare(b, 'es'));
+    return [...new Set(valores.filter((valor): valor is string => Boolean(valor)))].sort((a, b) =>
+      a.localeCompare(b, 'es'),
+    );
   }
 }

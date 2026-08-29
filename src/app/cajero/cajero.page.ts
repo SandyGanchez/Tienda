@@ -1,36 +1,15 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import {
-  Component,
-  inject,
-  OnInit,
-  ViewChild
-} from '@angular/core';
+import { Component, inject, OnInit, ViewChild } from '@angular/core';
 
-import {
-  BarcodeFormat,
-  BarcodeScanner
-} from '@capacitor-mlkit/barcode-scanning';
+import { BarcodeFormat, BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
 
-import {
-  AlertController,
-  IonSearchbar,
-  ToastController
-} from '@ionic/angular';
+import { AlertController, IonSearchbar, ToastController } from '@ionic/angular';
 
 import { firstValueFrom } from 'rxjs';
 
-import {
-  Caja,
-  MovimientoCaja,
-  TipoMovimiento
-} from '../models/caja';
+import { Caja, MovimientoCaja, TipoMovimiento } from '../models/caja';
 
-import {
-  ItemVenta,
-  MetodoPago,
-  ProductoPos,
-  VentaRegistrada
-} from '../models/venta';
+import { ItemVenta, MetodoPago, ProductoPos, VentaRegistrada } from '../models/venta';
 
 import { AuthService } from '../services/auth.service';
 import { CajaService } from '../services/caja.service';
@@ -40,22 +19,19 @@ import { ScanFeedbackService } from '../services/scan-feedback.service';
 import { SyncService } from '../services/sync.service';
 import { VentaService } from '../services/venta.service';
 
-
 @Component({
   selector: 'app-cajero',
   templateUrl: './cajero.page.html',
   styleUrls: ['./cajero.page.scss'],
-  standalone: false
+  standalone: false,
 })
 export class CajeroPage implements OnInit {
-
   /* =========================================
      REFERENCIAS
   ========================================= */
 
   @ViewChild('lector')
   lector?: IonSearchbar;
-
 
   /* =========================================
      SERVICIOS
@@ -71,7 +47,6 @@ export class CajeroPage implements OnInit {
   private readonly scanFeedback = inject(ScanFeedbackService);
   private readonly toast = inject(ToastController);
   private readonly alert = inject(AlertController);
-
 
   /* =========================================
      DATOS GENERALES
@@ -89,7 +64,6 @@ export class CajeroPage implements OnInit {
 
   montoRecibido: number | null = null;
 
-
   /* =========================================
      ESTADOS DEL POS
   ========================================= */
@@ -99,7 +73,6 @@ export class CajeroPage implements OnInit {
   leyendoCodigo = false;
 
   procesandoVenta = false;
-
 
   /* =========================================
      CAJA
@@ -112,7 +85,6 @@ export class CajeroPage implements OnInit {
   abriendo = false;
 
   ultimaCaja: Caja | null = null;
-
 
   /* =========================================
      MOVIMIENTOS
@@ -128,7 +100,6 @@ export class CajeroPage implements OnInit {
 
   movimientos: MovimientoCaja[] = [];
 
-
   /* =========================================
      CORTE
   ========================================= */
@@ -143,7 +114,6 @@ export class CajeroPage implements OnInit {
 
   cerrando = false;
 
-
   /* =========================================
      FORMATOS DE ESCÁNER
   ========================================= */
@@ -154,9 +124,8 @@ export class CajeroPage implements OnInit {
     BarcodeFormat.UpcA,
     BarcodeFormat.UpcE,
     BarcodeFormat.Code128,
-    BarcodeFormat.QrCode
+    BarcodeFormat.QrCode,
   ];
-
 
   /* =========================================
      INICIO
@@ -166,65 +135,36 @@ export class CajeroPage implements OnInit {
     void this.iniciar();
   }
 
-
   private async iniciar(): Promise<void> {
-
     this.cargando = true;
 
     try {
-
-      const respuesta =
-        await firstValueFrom(
-          this.cajas.actual()
-        );
+      const respuesta = await firstValueFrom(this.cajas.actual());
 
       this.caja = respuesta.caja;
-
 
       /*
        * Si la caja existe en servidor,
        * guardamos/actualizamos la copia local.
        */
-      if (
-        this.caja &&
-        this.sqlite.disponible
-      ) {
-
-        await this.sqlite.guardarCajaLocal(
-          this.caja,
-          'SINCRONIZADA'
-        );
+      if (this.caja && this.sqlite.disponible) {
+        await this.sqlite.guardarCajaLocal(this.caja, 'SINCRONIZADA');
       }
-
     } catch {
-
       /*
        * Si no existe conexión,
        * intentamos recuperar la caja local.
        */
 
-      const idEmpleado =
-        this.auth.sesion?.empleado.idEmp;
+      const idEmpleado = this.auth.sesion?.empleado.idEmp;
 
-      if (
-        idEmpleado &&
-        this.sqlite.disponible
-      ) {
-
-        this.caja =
-          await this.sqlite.cajaLocalAbierta(
-            idEmpleado
-          ) as unknown as Caja | null;
+      if (idEmpleado && this.sqlite.disponible) {
+        this.caja = (await this.sqlite.cajaLocalAbierta(idEmpleado)) as unknown as Caja | null;
       }
     }
 
-
     if (this.caja) {
-
-      await Promise.all([
-        this.cargarProductos(),
-        this.cargarMovimientos()
-      ]);
+      await Promise.all([this.cargarProductos(), this.cargarMovimientos()]);
 
       this.enfocar();
     }
@@ -232,207 +172,113 @@ export class CajeroPage implements OnInit {
     this.cargando = false;
   }
 
-
   /* =========================================
      PRODUCTOS FILTRADOS
   ========================================= */
 
   get resultados(): ProductoPos[] {
+    const termino = this.normalizar(this.busqueda);
 
-    const termino =
-      this.normalizar(this.busqueda);
-
-
-    const productosFiltrados =
-      termino
-        ? this.productos.filter(
-            producto =>
-              [
-                producto.nombrePro,
-                producto.codigoQR,
-                producto.skuPro
-              ].some(
-                valor =>
-                  this.normalizar(valor)
-                    .includes(termino)
-              )
-          )
-        : this.productos;
-
+    const productosFiltrados = termino
+      ? this.productos.filter((producto) =>
+          [producto.nombrePro, producto.codigoQR, producto.skuPro].some((valor) =>
+            this.normalizar(valor).includes(termino),
+          ),
+        )
+      : this.productos;
 
     return productosFiltrados.slice(0, 40);
   }
-
 
   /* =========================================
      CANTIDAD DE ARTÍCULOS
   ========================================= */
 
   get cantidadArticulos(): number {
-
-    return this.carrito.reduce(
-      (total, item) =>
-        total + Number(item.cantidad),
-      0
-    );
+    return this.carrito.reduce((total, item) => total + Number(item.cantidad), 0);
   }
-
 
   /* =========================================
      TOTAL
   ========================================= */
 
   get total(): number {
-
-    return this.carrito.reduce(
-      (suma, item) =>
-        suma + Number(item.subtotal),
-      0
-    );
+    return this.carrito.reduce((suma, item) => suma + Number(item.subtotal), 0);
   }
-
 
   /* =========================================
      CAMBIO
   ========================================= */
 
   get cambio(): number {
-
-    if (
-      this.metodoPago !== 'EFECTIVO'
-    ) {
+    if (this.metodoPago !== 'EFECTIVO') {
       return 0;
     }
 
-
-    return Math.max(
-      0,
-      Number(this.montoRecibido || 0) -
-        this.total
-    );
+    return Math.max(0, Number(this.montoRecibido || 0) - this.total);
   }
-
 
   /* =========================================
      VALIDACIÓN PARA COBRAR
   ========================================= */
 
   get puedeCobrar(): boolean {
-
     return Boolean(
-
       this.caja &&
-
       this.carrito.length > 0 &&
-
       !this.procesandoVenta &&
-
-      (
-        this.metodoPago !== 'EFECTIVO' ||
-
-        (
-          this.montoRecibido !== null &&
-          Number(this.montoRecibido) >=
-            this.total
-        )
-      )
+      (this.metodoPago !== 'EFECTIVO' || (this.montoRecibido !== null && Number(this.montoRecibido) >= this.total)),
     );
   }
-
 
   /* =========================================
      DIFERENCIA DE CORTE
   ========================================= */
 
   get diferenciaInformativa(): number {
-
-    return (
-      Number(
-        this.efectivoContado || 0
-      ) -
-      Number(
-        this.resumen?.efectivoEsperado || 0
-      )
-    );
+    return Number(this.efectivoContado || 0) - Number(this.resumen?.efectivoEsperado || 0);
   }
-
 
   /* =========================================
      ABRIR CAJA
   ========================================= */
 
   async abrirCaja(): Promise<void> {
-
-    if (
-      this.abriendo ||
-      this.fondoInicial === null ||
-      this.fondoInicial < 0
-    ) {
+    if (this.abriendo || this.fondoInicial === null || this.fondoInicial < 0) {
       return;
     }
 
-
     this.abriendo = true;
 
-    const uuidSesionCaja =
-      crypto.randomUUID();
+    const uuidSesionCaja = crypto.randomUUID();
 
-    const empleado =
-      this.auth.sesion?.empleado;
-
+    const empleado = this.auth.sesion?.empleado;
 
     try {
-
-      this.caja =
-        await firstValueFrom(
-          this.cajas.abrir(
-            uuidSesionCaja,
-            Number(this.fondoInicial)
-          )
-        );
-
+      this.caja = await firstValueFrom(this.cajas.abrir(uuidSesionCaja, Number(this.fondoInicial)));
 
       if (this.sqlite.disponible) {
-
-        await this.sqlite.guardarCajaLocal(
-          this.caja,
-          'SINCRONIZADA'
-        );
+        await this.sqlite.guardarCajaLocal(this.caja, 'SINCRONIZADA');
       }
-
     } catch (error) {
-
       /*
        * Si NO es un error de conexión,
        * mostramos el error del backend.
        */
 
-      if (
-        !(
-          error instanceof HttpErrorResponse &&
-          error.status === 0 &&
-          this.sqlite.disponible &&
-          empleado
-        )
-      ) {
-
-        await this.error(
-          error,
-          'No fue posible abrir la caja.'
-        );
+      if (!(error instanceof HttpErrorResponse && error.status === 0 && this.sqlite.disponible && empleado)) {
+        await this.error(error, 'No fue posible abrir la caja.');
 
         this.abriendo = false;
 
         return;
       }
 
-
       /*
        * APERTURA OFFLINE
        */
 
       this.caja = {
-
         idSesionCaja: 0,
 
         uuidSesionCaja,
@@ -441,11 +287,9 @@ export class CajeroPage implements OnInit {
 
         idSuc: empleado.idSuc,
 
-        fechaHoraApertura:
-          new Date().toISOString(),
+        fechaHoraApertura: new Date().toISOString(),
 
-        fondoInicial:
-          Number(this.fondoInicial),
+        fondoInicial: Number(this.fondoInicial),
 
         fechaHoraCierre: null,
 
@@ -461,8 +305,7 @@ export class CajeroPage implements OnInit {
 
         totalRetiros: 0,
 
-        efectivoEsperado:
-          Number(this.fondoInicial),
+        efectivoEsperado: Number(this.fondoInicial),
 
         efectivoContado: null,
 
@@ -476,152 +319,98 @@ export class CajeroPage implements OnInit {
 
         empleado: empleado.nombre,
 
-        nombreSuc:
-          empleado.nombreSuc || ''
+        nombreSuc: empleado.nombreSuc || '',
       };
 
-
-      await this.sqlite.guardarCajaLocal(
-        this.caja,
-        'PENDIENTE'
-      );
-
+      await this.sqlite.guardarCajaLocal(this.caja, 'PENDIENTE');
 
       await this.sqlite.encolar(
-
         'APERTURA',
 
         uuidSesionCaja,
 
         {
           uuidSesionCaja,
-          fondoInicial:
-            Number(this.fondoInicial)
+          fondoInicial: Number(this.fondoInicial),
         },
 
-        10
+        10,
       );
 
-
-      await this.feedback(
-        'Caja abierta sin conexión. Pendiente de sincronizar.',
-        'warning'
-      );
+      await this.feedback('Caja abierta sin conexión. Pendiente de sincronizar.', 'warning');
     }
 
-
-    await Promise.all([
-      this.cargarProductos(),
-      this.cargarMovimientos()
-    ]);
-
+    await Promise.all([this.cargarProductos(), this.cargarMovimientos()]);
 
     this.enfocar();
 
     this.abriendo = false;
   }
 
-
   /* =========================================
      CARGAR PRODUCTOS
   ========================================= */
 
-async cargarProductos(): Promise<void> {
-  try {
-    const productos = await firstValueFrom(
-      this.ventas.productos()
-    );
+  async cargarProductos(): Promise<void> {
+    try {
+      const productos = await firstValueFrom(this.ventas.productos());
 
-    this.productos = productos.map(producto => ({
-      ...producto,
-      precioVentaPro: Number(producto.precioVentaPro),
-      existenciaPro: Number(producto.existenciaPro) || 0
-    }));
+      this.productos = productos.map((producto) => ({
+        ...producto,
+        precioVentaPro: Number(producto.precioVentaPro),
+        existenciaPro: Number(producto.existenciaPro) || 0,
+      }));
 
-    if (this.sqlite.disponible) {
-      for (const producto of this.productos) {
-        await this.sqlite.guardarProductoPos(producto);
+      if (this.sqlite.disponible) {
+        for (const producto of this.productos) {
+          await this.sqlite.guardarProductoPos(producto);
+        }
+      }
+    } catch {
+      if (this.sqlite.disponible) {
+        const productosLocales = await this.sqlite.getProductosLocales();
+
+        this.productos = productosLocales as ProductoPos[];
+      }
+
+      if (!this.productos.length) {
+        await this.feedback('No hay catálogo local disponible.', 'danger');
       }
     }
-
-  } catch {
-    if (this.sqlite.disponible) {
-      const productosLocales =
-        await this.sqlite.getProductosLocales();
-
-      this.productos =
-        productosLocales as ProductoPos[];
-    }
-
-    if (!this.productos.length) {
-      await this.feedback(
-        'No hay catálogo local disponible.',
-        'danger'
-      );
-    }
   }
-}
 
   /* =========================================
      CARGAR MOVIMIENTOS
   ========================================= */
 
   async cargarMovimientos(): Promise<void> {
-
     try {
-
-      this.movimientos =
-        await firstValueFrom(
-          this.cajas.movimientos()
-        );
-
+      this.movimientos = await firstValueFrom(this.cajas.movimientos());
     } catch {
-
       this.movimientos = [];
     }
   }
-
 
   /* =========================================
      AGREGAR PRODUCTO
   ========================================= */
 
-  agregar(
-    producto: ProductoPos
-  ): void {
-
-    if (
-      producto.existenciaPro <= 0
-    ) {
-
-      void this.feedback(
-        'Este producto no tiene existencias.',
-        'warning'
-      );
+  agregar(producto: ProductoPos): void {
+    if (producto.existenciaPro <= 0) {
+      void this.feedback('Este producto no tiene existencias.', 'warning');
 
       return;
     }
 
-
-    const itemExistente =
-      this.carrito.find(
-        item =>
-          item.idPro === producto.idPro
-      );
-
+    const itemExistente = this.carrito.find((item) => item.idPro === producto.idPro);
 
     if (itemExistente) {
-
-      this.incrementar(
-        itemExistente
-      );
+      this.incrementar(itemExistente);
 
       return;
     }
 
-
     this.carrito = [
-
       ...this.carrito,
 
       {
@@ -629,155 +418,87 @@ async cargarProductos(): Promise<void> {
 
         nombre: producto.nombrePro,
 
-        precioUnitario:
-          Number(
-            producto.precioVentaPro
-          ),
+        precioUnitario: Number(producto.precioVentaPro),
 
         cantidad: 1,
 
-        existenciaDisponible:
-          producto.existenciaPro,
+        existenciaDisponible: producto.existenciaPro,
 
-        subtotal:
-          Number(
-            producto.precioVentaPro
-          ),
+        subtotal: Number(producto.precioVentaPro),
 
-        imagen:
-          producto.imagenPro
-      }
+        imagen: producto.imagenPro,
+      },
     ];
   }
-
 
   /* =========================================
      AUMENTAR CANTIDAD
   ========================================= */
 
-  incrementar(
-    item: ItemVenta
-  ): void {
-
-    if (
-      item.cantidad >=
-      item.existenciaDisponible
-    ) {
-
-      void this.feedback(
-        `Solo hay ${item.existenciaDisponible} unidades disponibles.`,
-        'warning'
-      );
+  incrementar(item: ItemVenta): void {
+    if (item.cantidad >= item.existenciaDisponible) {
+      void this.feedback(`Solo hay ${item.existenciaDisponible} unidades disponibles.`, 'warning');
 
       return;
     }
 
-
     item.cantidad++;
 
+    item.subtotal = item.precioUnitario * item.cantidad;
 
-    item.subtotal =
-      item.precioUnitario *
-      item.cantidad;
-
-
-    this.carrito = [
-      ...this.carrito
-    ];
+    this.carrito = [...this.carrito];
   }
-
 
   /* =========================================
      DISMINUIR CANTIDAD
   ========================================= */
 
-  decrementar(
-    item: ItemVenta
-  ): void {
-
+  decrementar(item: ItemVenta): void {
     if (item.cantidad <= 1) {
-
       this.eliminar(item);
 
       return;
     }
 
-
     item.cantidad--;
 
+    item.subtotal = item.precioUnitario * item.cantidad;
 
-    item.subtotal =
-      item.precioUnitario *
-      item.cantidad;
-
-
-    this.carrito = [
-      ...this.carrito
-    ];
+    this.carrito = [...this.carrito];
   }
-
 
   /* =========================================
      ELIMINAR DEL CARRITO
   ========================================= */
 
-  eliminar(
-    item: ItemVenta
-  ): void {
-
-    this.carrito =
-      this.carrito.filter(
-        producto =>
-          producto.idPro !== item.idPro
-      );
+  eliminar(item: ItemVenta): void {
+    this.carrito = this.carrito.filter((producto) => producto.idPro !== item.idPro);
   }
-
 
   /* =========================================
      CÓDIGO / LECTOR HID
   ========================================= */
 
   agregarDesdeEntrada(): void {
-
-    const codigo =
-      this.busqueda.trim();
-
+    const codigo = this.busqueda.trim();
 
     if (!codigo) {
       return;
     }
 
-
-    const producto =
-      this.productos.find(
-
-        item =>
-
-          item.codigoQR?.trim() ===
-            codigo ||
-
-          item.skuPro
-            ?.trim()
-            .toLowerCase() ===
-            codigo.toLowerCase()
-      );
-
+    const producto = this.productos.find(
+      (item) => item.codigoQR?.trim() === codigo || item.skuPro?.trim().toLowerCase() === codigo.toLowerCase(),
+    );
 
     if (!producto) {
-
-      void this.feedback(
-        'Producto no registrado. Verifica el código o búscalo por nombre.',
-        'warning'
-      );
+      void this.feedback('Producto no registrado. Verifica el código o búscalo por nombre.', 'warning');
 
       this.enfocar();
 
       return;
     }
 
-
     this.agregar(producto);
-
 
     /*
      * Después de un escaneo HID,
@@ -789,282 +510,167 @@ async cargarProductos(): Promise<void> {
     this.enfocar();
   }
 
-
   /* =========================================
      ESCÁNER DE CÁMARA
   ========================================= */
 
   async escanear(): Promise<void> {
-
     if (this.leyendoCodigo) {
       return;
     }
-
 
     this.leyendoCodigo = true;
 
     await this.scanFeedback.preparar();
 
-
     try {
-
-      const soporte =
-        await BarcodeScanner.isSupported();
-
+      const soporte = await BarcodeScanner.isSupported();
 
       if (!soporte.supported) {
         throw new Error();
       }
 
+      const permisos = await BarcodeScanner.checkPermissions();
 
-      const permisos =
-        await BarcodeScanner.checkPermissions();
+      const estado = permisos.camera === 'granted' ? permisos : await BarcodeScanner.requestPermissions();
 
-
-      const estado =
-        permisos.camera === 'granted'
-          ? permisos
-          : await BarcodeScanner
-              .requestPermissions();
-
-
-      if (
-        estado.camera !== 'granted'
-      ) {
-
-        await this.feedback(
-          'Necesitas permitir acceso a la cámara.',
-          'warning'
-        );
+      if (estado.camera !== 'granted') {
+        await this.feedback('Necesitas permitir acceso a la cámara.', 'warning');
 
         return;
       }
 
+      const lectura = await BarcodeScanner.scan({
+        formats: this.formatos,
 
-      const lectura =
-        await BarcodeScanner.scan({
+        autoZoom: true,
+      });
 
-          formats:
-            this.formatos,
-
-          autoZoom: true
-        });
-
-
-      const codigo =
-        lectura.barcodes[0]
-          ?.rawValue
-          ?.trim();
-
+      const codigo = lectura.barcodes[0]?.rawValue?.trim();
 
       if (codigo) {
-
         await this.scanFeedback.feedbackLecturaCorrecta();
 
-        this.busqueda =
-          codigo;
+        this.busqueda = codigo;
 
         this.agregarDesdeEntrada();
       }
-
     } catch {
-
-      await this.feedback(
-        'No se pudo usar la cámara. Puedes escribir el código.',
-        'danger'
-      );
-
+      await this.feedback('No se pudo usar la cámara. Puedes escribir el código.', 'danger');
     } finally {
-
       this.leyendoCodigo = false;
 
       this.enfocar();
     }
   }
 
-
   /* =========================================
      CAMBIAR MÉTODO DE PAGO
   ========================================= */
 
   cambiarMetodo(): void {
-
-    if (
-      this.metodoPago !== 'EFECTIVO'
-    ) {
-
+    if (this.metodoPago !== 'EFECTIVO') {
       this.montoRecibido = null;
     }
   }
-
 
   /* =========================================
      COBRAR
   ========================================= */
 
   async cobrar(): Promise<void> {
-
-    if (
-      !this.puedeCobrar ||
-      !this.caja
-    ) {
+    if (!this.puedeCobrar || !this.caja) {
       return;
     }
 
-
     this.procesandoVenta = true;
 
-
-    const uuidVenta =
-      crypto.randomUUID();
-
+    const uuidVenta = crypto.randomUUID();
 
     const dto = {
-
       uuidVenta,
 
-      items:
-        this.carrito.map(
-          item => ({
+      items: this.carrito.map((item) => ({
+        idPro: item.idPro,
 
-            idPro:
-              item.idPro,
+        cantidad: item.cantidad,
+      })),
 
-            cantidad:
-              item.cantidad
-          })
-        ),
+      metodoPago: this.metodoPago,
 
-      metodoPago:
-        this.metodoPago,
-
-      montoRecibido:
-        this.metodoPago ===
-        'EFECTIVO'
-          ? Number(
-              this.montoRecibido
-            )
-          : null
+      montoRecibido: this.metodoPago === 'EFECTIVO' ? Number(this.montoRecibido) : null,
     };
 
-
     try {
-
       /*
        * ONLINE:
        * el backend registra venta,
        * detalle y descuenta inventario.
        */
 
-      const venta =
-        await firstValueFrom(
-          this.ventas.cobrar(dto)
-        );
+      const venta = await firstValueFrom(this.ventas.cobrar(dto));
 
-
-      await this.confirmarVenta(
-        venta
-      );
-
+      await this.confirmarVenta(venta);
     } catch (error) {
-
-      const empleado =
-        this.auth.sesion?.empleado;
-
+      const empleado = this.auth.sesion?.empleado;
 
       /*
        * Si no fue una pérdida de red,
        * no creamos venta offline.
        */
 
-      if (
-        !(
-          error instanceof HttpErrorResponse &&
-          error.status === 0 &&
-          this.sqlite.disponible &&
-          empleado
-        )
-      ) {
-
-        await this.error(
-          error,
-          'No fue posible registrar la venta.'
-        );
+      if (!(error instanceof HttpErrorResponse && error.status === 0 && this.sqlite.disponible && empleado)) {
+        await this.error(error, 'No fue posible registrar la venta.');
 
         this.procesandoVenta = false;
 
         return;
       }
 
-
       /*
        * VENTA OFFLINE
        */
 
-      await this.sqlite
-        .guardarVentaOffline({
+      await this.sqlite.guardarVentaOffline({
+        uuidVenta,
 
-          uuidVenta,
+        uuidSesionCaja: this.caja.uuidSesionCaja,
 
-          uuidSesionCaja:
-            this.caja.uuidSesionCaja,
+        idEmp: empleado.idEmp,
 
-          idEmp:
-            empleado.idEmp,
+        idSuc: empleado.idSuc,
 
-          idSuc:
-            empleado.idSuc,
+        total: this.total,
 
-          total:
-            this.total,
+        metodoPago: this.metodoPago,
 
-          metodoPago:
-            this.metodoPago,
+        montoRecibido: dto.montoRecibido,
 
-          montoRecibido:
-            dto.montoRecibido,
+        items: this.carrito.map((item) => ({
+          idPro: item.idPro,
 
-          items:
-            this.carrito.map(
-              item => ({
+          nombre: item.nombre,
 
-                idPro:
-                  item.idPro,
+          cantidad: item.cantidad,
 
-                nombre:
-                  item.nombre,
+          precioUnitario: item.precioUnitario,
 
-                cantidad:
-                  item.cantidad,
-
-                precioUnitario:
-                  item.precioUnitario,
-
-                subtotal:
-                  item.subtotal
-              })
-            )
-        });
-
+          subtotal: item.subtotal,
+        })),
+      });
 
       await this.sqlite.encolar(
-
         'VENTA',
 
         uuidVenta,
 
         dto,
 
-        Date.now()
+        Date.now(),
       );
 
-
-      await this.feedback(
-        'Venta guardada sin conexión. Pendiente de sincronizar.',
-        'warning'
-      );
+      await this.feedback('Venta guardada sin conexión. Pendiente de sincronizar.', 'warning');
     }
-
 
     /*
      * Limpiar venta.
@@ -1075,7 +681,6 @@ async cargarProductos(): Promise<void> {
     this.montoRecibido = null;
 
     this.metodoPago = 'EFECTIVO';
-
 
     /*
      * Refrescar catálogo.
@@ -1089,132 +694,79 @@ async cargarProductos(): Promise<void> {
 
     await this.cargarProductos();
 
-
     this.enfocar();
 
     this.procesandoVenta = false;
   }
-
 
   /* =========================================
      MOVIMIENTO DE CAJA
   ========================================= */
 
   async registrarMovimiento(): Promise<void> {
-
-    if (
-      !this.caja ||
-      !this.montoMovimiento ||
-      this.montoMovimiento <= 0 ||
-      !this.conceptoMovimiento.trim()
-    ) {
+    if (!this.caja || !this.montoMovimiento || this.montoMovimiento <= 0 || !this.conceptoMovimiento.trim()) {
       return;
     }
 
-
-    const uuidMovimientoCaja =
-      crypto.randomUUID();
-
+    const uuidMovimientoCaja = crypto.randomUUID();
 
     const payload = {
-
       uuidMovimientoCaja,
 
-      tipoMovimiento:
-        this.tipoMovimiento,
+      tipoMovimiento: this.tipoMovimiento,
 
-      monto:
-        Number(
-          this.montoMovimiento
-        ),
+      monto: Number(this.montoMovimiento),
 
-      concepto:
-        this.conceptoMovimiento
-          .trim()
+      concepto: this.conceptoMovimiento.trim(),
     };
 
-
     try {
-
       await firstValueFrom(
-
         this.cajas.registrarMovimiento(
-
           uuidMovimientoCaja,
 
           payload.tipoMovimiento,
 
           payload.monto,
 
-          payload.concepto
-        )
+          payload.concepto,
+        ),
       );
 
-
-      await this.feedback(
-        'Movimiento registrado.',
-        'success'
-      );
-
+      await this.feedback('Movimiento registrado.', 'success');
     } catch (error) {
+      const empleado = this.auth.sesion?.empleado;
 
-      const empleado =
-        this.auth.sesion?.empleado;
-
-
-      if (
-        !(
-          error instanceof HttpErrorResponse &&
-          error.status === 0 &&
-          this.sqlite.disponible &&
-          empleado
-        )
-      ) {
-
-        await this.error(
-          error,
-          'No fue posible registrar el movimiento.'
-        );
+      if (!(error instanceof HttpErrorResponse && error.status === 0 && this.sqlite.disponible && empleado)) {
+        await this.error(error, 'No fue posible registrar el movimiento.');
 
         return;
       }
-
 
       /*
        * MOVIMIENTO OFFLINE
        */
 
-      await this.sqlite
-        .guardarMovimientoOffline({
+      await this.sqlite.guardarMovimientoOffline({
+        ...payload,
 
-          ...payload,
+        uuidSesionCaja: this.caja.uuidSesionCaja,
 
-          uuidSesionCaja:
-            this.caja.uuidSesionCaja,
-
-          idEmp:
-            empleado.idEmp
-        });
-
+        idEmp: empleado.idEmp,
+      });
 
       await this.sqlite.encolar(
-
         'MOVIMIENTO',
 
         uuidMovimientoCaja,
 
         payload,
 
-        Date.now()
+        Date.now(),
       );
 
-
-      await this.feedback(
-        'Movimiento guardado sin conexión. Pendiente de sincronizar.',
-        'warning'
-      );
+      await this.feedback('Movimiento guardado sin conexión. Pendiente de sincronizar.', 'warning');
     }
-
 
     this.mostrarMovimiento = false;
 
@@ -1222,85 +774,45 @@ async cargarProductos(): Promise<void> {
 
     this.conceptoMovimiento = '';
 
-
     await this.cargarMovimientos();
   }
-
 
   /* =========================================
      ABRIR CORTE
   ========================================= */
 
   async abrirCorte(): Promise<void> {
-
     if (!this.caja) {
       return;
     }
 
-
     try {
-
-      this.resumen =
-        await firstValueFrom(
-          this.cajas.resumen()
-        );
-
+      this.resumen = await firstValueFrom(this.cajas.resumen());
     } catch (error) {
-
-      if (
-        !(
-          error instanceof HttpErrorResponse &&
-          error.status === 0 &&
-          this.sqlite.disponible
-        )
-      ) {
-
-        await this.error(
-          error,
-          'No fue posible calcular el corte.'
-        );
+      if (!(error instanceof HttpErrorResponse && error.status === 0 && this.sqlite.disponible)) {
+        await this.error(error, 'No fue posible calcular el corte.');
 
         return;
       }
-
 
       /*
        * RESUMEN OFFLINE
        */
 
-      const resumenLocal =
-        await this.sqlite
-          .resumenCajaLocal(
-            this.caja.uuidSesionCaja
-          );
-
+      const resumenLocal = await this.sqlite.resumenCajaLocal(this.caja.uuidSesionCaja);
 
       this.resumen = {
-
         ...this.caja,
 
         ...resumenLocal,
 
         efectivoEsperado:
-
-          Number(
-            this.caja.fondoInicial
-          ) +
-
-          Number(
-            resumenLocal.totalEfectivo
-          ) +
-
-          Number(
-            resumenLocal.totalIngresos
-          ) -
-
-          Number(
-            resumenLocal.totalRetiros
-          )
+          Number(this.caja.fondoInicial) +
+          Number(resumenLocal.totalEfectivo) +
+          Number(resumenLocal.totalIngresos) -
+          Number(resumenLocal.totalRetiros),
       };
     }
-
 
     this.efectivoContado = null;
 
@@ -1309,106 +821,67 @@ async cargarProductos(): Promise<void> {
     this.mostrarCorte = true;
   }
 
-
   /* =========================================
      CERRAR CAJA
   ========================================= */
 
   async cerrarCaja(): Promise<void> {
-
-    if (
-      !this.caja ||
-      this.efectivoContado === null ||
-      this.efectivoContado < 0 ||
-      this.cerrando
-    ) {
+    if (!this.caja || this.efectivoContado === null || this.efectivoContado < 0 || this.cerrando) {
       return;
     }
 
+    const confirmacion = await this.alert.create({
+      header: 'Cerrar caja',
 
-    const confirmacion =
-      await this.alert.create({
+      message: 'Una caja cerrada no puede modificarse. ¿Continuar?',
 
-        header:
-          'Cerrar caja',
+      buttons: [
+        {
+          text: 'Cancelar',
 
-        message:
-          'Una caja cerrada no puede modificarse. ¿Continuar?',
+          role: 'cancel',
+        },
 
-        buttons: [
+        {
+          text: 'Cerrar caja',
 
-          {
-            text:
-              'Cancelar',
-
-            role:
-              'cancel'
-          },
-
-          {
-            text:
-              'Cerrar caja',
-
-            role:
-              'confirm'
-          }
-        ]
-      });
-
+          role: 'confirm',
+        },
+      ],
+    });
 
     await confirmacion.present();
 
+    const resultado = await confirmacion.onDidDismiss();
 
-    const resultado =
-      await confirmacion
-        .onDidDismiss();
-
-
-    if (
-      resultado.role !== 'confirm'
-    ) {
+    if (resultado.role !== 'confirm') {
       return;
     }
 
-
     this.cerrando = true;
 
-
-    const uuidSesionCaja =
-      this.caja.uuidSesionCaja;
-
+    const uuidSesionCaja = this.caja.uuidSesionCaja;
 
     const payload = {
-
       uuidSesionCaja,
 
-      efectivoContado:
-        Number(
-          this.efectivoContado
-        ),
+      efectivoContado: Number(this.efectivoContado),
 
-      observaciones:
-        this.observaciones.trim()
+      observaciones: this.observaciones.trim(),
     };
 
-
     try {
-
       /*
        * CIERRE ONLINE
        */
 
-      this.ultimaCaja =
-        await firstValueFrom(
+      this.ultimaCaja = await firstValueFrom(
+        this.cajas.cerrar(
+          payload.efectivoContado,
 
-          this.cajas.cerrar(
-
-            payload.efectivoContado,
-
-            payload.observaciones
-          )
-        );
-
+          payload.observaciones,
+        ),
+      );
 
       /*
        * MUY IMPORTANTE:
@@ -1416,53 +889,34 @@ async cargarProductos(): Promise<void> {
        */
 
       if (this.sqlite.disponible) {
+        await this.sqlite.marcarCajaCerrada(
+          uuidSesionCaja,
 
-        await this.sqlite
-          .marcarCajaCerrada(
+          'SINCRONIZADA',
 
-            uuidSesionCaja,
-
-            'SINCRONIZADA',
-
-            this.ultimaCaja
-          );
-      }
-
-    } catch (error) {
-
-      if (
-        !(
-          error instanceof HttpErrorResponse &&
-          error.status === 0 &&
-          this.sqlite.disponible
-        )
-      ) {
-
-        await this.error(
-          error,
-          'No fue posible cerrar la caja.'
+          this.ultimaCaja,
         );
+      }
+    } catch (error) {
+      if (!(error instanceof HttpErrorResponse && error.status === 0 && this.sqlite.disponible)) {
+        await this.error(error, 'No fue posible cerrar la caja.');
 
         this.cerrando = false;
 
         return;
       }
 
-
       /*
        * CIERRE OFFLINE
        */
 
-      await this.sqlite
-        .cerrarCajaOffline(
+      await this.sqlite.cerrarCajaOffline(
+        uuidSesionCaja,
 
-          uuidSesionCaja,
+        payload.efectivoContado,
 
-          payload.efectivoContado,
-
-          payload.observaciones
-        );
-
+        payload.observaciones,
+      );
 
       /*
        * El cierre queda después
@@ -1470,48 +924,34 @@ async cargarProductos(): Promise<void> {
        */
 
       await this.sqlite.encolar(
-
         'CIERRE',
 
         `${uuidSesionCaja}-cierre`,
 
         payload,
 
-        Number.MAX_SAFE_INTEGER
+        Number.MAX_SAFE_INTEGER,
       );
 
-
       this.ultimaCaja = {
-
         ...this.resumen!,
 
-        efectivoContado:
-          payload.efectivoContado,
+        efectivoContado: payload.efectivoContado,
 
-        diferencia:
-          payload.efectivoContado -
-          Number(
-            this.resumen
-              ?.efectivoEsperado || 0
-          ),
+        diferencia: payload.efectivoContado - Number(this.resumen?.efectivoEsperado || 0),
 
-        estado:
-          'CERRADA',
+        estado: 'CERRADA',
 
-        fechaHoraCierre:
-          new Date().toISOString(),
+        fechaHoraCierre: new Date().toISOString(),
 
-        observaciones:
-          payload.observaciones
+        observaciones: payload.observaciones,
       };
-
 
       await this.feedback(
         'Cierre guardado sin conexión. Se completará al sincronizar operaciones pendientes.',
-        'warning'
+        'warning',
       );
     }
-
 
     this.caja = null;
 
@@ -1522,222 +962,134 @@ async cargarProductos(): Promise<void> {
     this.cerrando = false;
   }
 
-
   /* =========================================
      IMÁGENES
   ========================================= */
 
-  imagen(
-    ruta: string | null
-  ): string | null {
-
-    return this.imagenes.resolver(
-      ruta
-    );
+  imagen(ruta: string | null): string | null {
+    return this.imagenes.resolver(ruta);
   }
 
-
-  mostrarImagen(
-    evento: Event
-  ): void {
-
-    const imagen =
-      evento.target as HTMLImageElement;
+  mostrarImagen(evento: Event): void {
+    const imagen = evento.target as HTMLImageElement;
 
     imagen.style.display = '';
   }
 
-
-  ocultarImagen(
-    evento: Event
-  ): void {
-
-    const imagen =
-      evento.target as HTMLImageElement;
+  ocultarImagen(evento: Event): void {
+    const imagen = evento.target as HTMLImageElement;
 
     imagen.style.display = 'none';
   }
-
 
   /* =========================================
      BARRA MÓVIL
   ========================================= */
 
   irAlResumen(): void {
+    document.getElementById('resumenVenta')?.scrollIntoView({
+      behavior: 'smooth',
 
-    document
-      .getElementById(
-        'resumenVenta'
-      )
-      ?.scrollIntoView({
-
-        behavior: 'smooth',
-
-        block: 'start'
-      });
+      block: 'start',
+    });
   }
-
 
   /* =========================================
      FOCO DEL LECTOR HID
   ========================================= */
 
   private enfocar(): void {
-
     setTimeout(
+      () => void this.lector?.setFocus(),
 
-      () =>
-        void this.lector?.setFocus(),
-
-      80
+      80,
     );
   }
-
 
   /* =========================================
      NORMALIZAR BÚSQUEDA
   ========================================= */
 
-  private normalizar(
-    valor: unknown
-  ): string {
-
-    return String(
-      valor ?? ''
-    )
+  private normalizar(valor: unknown): string {
+    return String(valor ?? '')
       .normalize('NFD')
-      .replace(
-        /[\u0300-\u036f]/g,
-        ''
-      )
+      .replace(/[\u0300-\u036f]/g, '')
       .trim()
       .toLowerCase();
   }
-
 
   /* =========================================
      MOSTRAR ERROR
   ========================================= */
 
-  private async error(
-    error: unknown,
-    mensajeFallback: string
-  ): Promise<void> {
+  private async error(error: unknown, mensajeFallback: string): Promise<void> {
+    const mensaje = error instanceof HttpErrorResponse && error.error?.message ? error.error.message : mensajeFallback;
 
-    const mensaje =
-
-      error instanceof HttpErrorResponse &&
-      error.error?.message
-
-        ? error.error.message
-
-        : mensajeFallback;
-
-
-    await this.feedback(
-      mensaje,
-      'danger'
-    );
+    await this.feedback(mensaje, 'danger');
   }
-
 
   /* =========================================
      TOAST
   ========================================= */
 
-  private async feedback(
-    message: string,
-    color:
-      | 'success'
-      | 'danger'
-      | 'warning'
-  ): Promise<void> {
+  private async feedback(message: string, color: 'success' | 'danger' | 'warning'): Promise<void> {
+    const toast = await this.toast.create({
+      message,
 
-    const toast =
-      await this.toast.create({
+      color,
 
-        message,
+      duration: 3000,
 
-        color,
-
-        duration: 3000,
-
-        position: 'top'
-      });
-
+      position: 'top',
+    });
 
     await toast.present();
   }
-
 
   /* =========================================
      VENTA REALIZADA
   ========================================= */
 
-  private async confirmarVenta(
-    venta: VentaRegistrada
-  ): Promise<void> {
+  private async confirmarVenta(venta: VentaRegistrada): Promise<void> {
+    const alerta = await this.alert.create({
+      header: 'Venta realizada',
 
-    const alerta =
-      await this.alert.create({
+      subHeader: `Folio ${venta.idVenta}`,
 
-        header:
-          'Venta realizada',
-
-        subHeader:
-          `Folio ${venta.idVenta}`,
-
-        message:
-          `
+      message: `
             Total: ${this.moneda(venta.total)}
             <br>
             Cambio: ${this.moneda(venta.cambio)}
           `,
 
-        buttons: [
+      buttons: [
+        {
+          text: 'Ver comprobante',
 
-          {
-            text:
-              'Ver comprobante',
-
-            handler: () => {
-
-              location.assign(
-                `/ventas/${venta.idVenta}`
-              );
-            }
+          handler: () => {
+            location.assign(`/ventas/${venta.idVenta}`);
           },
+        },
 
-          {
-            text:
-              'Nueva venta'
-          }
-        ]
-      });
-
+        {
+          text: 'Nueva venta',
+        },
+      ],
+    });
 
     await alerta.present();
 
     await alerta.onDidDismiss();
   }
 
-
   /* =========================================
      FORMATO MONEDA
   ========================================= */
 
-  private moneda(
-    valor: number
-  ): string {
-
-    return new Intl.NumberFormat(
-      'es-MX',
-      {
-        style: 'currency',
-        currency: 'MXN'
-      }
-    ).format(
-      Number(valor)
-    );
+  private moneda(valor: number): string {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN',
+    }).format(Number(valor));
   }
 }

@@ -1,12 +1,5 @@
 export type EstadoPedidoCliente =
-  | 'PENDIENTE_PAGO'
-  | 'EN_REVISION'
-  | 'PAGADO'
-  | 'RECHAZADO'
-  | 'CANCELADO'
-  | 'EXPIRADO'
-  | 'LISTO'
-  | 'ENTREGADO';
+  'PENDIENTE_PAGO' | 'EN_REVISION' | 'PAGADO' | 'RECHAZADO' | 'CANCELADO' | 'EXPIRADO' | 'LISTO' | 'ENTREGADO';
 
 export interface ConfiguracionTransferencia {
   banco: string;

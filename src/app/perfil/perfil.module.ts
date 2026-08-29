@@ -7,6 +7,11 @@ import { PerfilPage } from './perfil.page';
 
 @NgModule({
   declarations: [PerfilPage],
-  imports: [CommonModule, IonicModule, ClienteSharedModule, RouterModule.forChild([{ path: '', component: PerfilPage }])]
+  imports: [
+    CommonModule,
+    IonicModule,
+    ClienteSharedModule,
+    RouterModule.forChild([{ path: '', component: PerfilPage }]),
+  ],
 })
 export class PerfilPageModule {}

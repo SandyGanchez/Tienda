@@ -1,0 +1,11 @@
+node_modules
+dist
+www
+.angular
+android
+backend/node_modules
+backend/uploads
+backend/dist
+coverage
+package-lock.json
+backend/package-lock.json

@@ -18,10 +18,9 @@ export interface ProductoPublico {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class ProductosService {
-
   private readonly apiUrl = `${environment.API_BASE_URL}/productos`;
   private readonly http = inject(HttpClient);
   private readonly imagenes = inject(ImagenesService);

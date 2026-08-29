@@ -9,9 +9,18 @@ import { CarritoService } from '../services/carrito.service';
 import { ImagenesService } from '../services/imagenes.service';
 import { PedidosClienteService } from '../services/pedidos-cliente.service';
 
-interface ProductoPublicoStock { idPro: number; existenciaPro: number | null; precioVentaPro: number; }
+interface ProductoPublicoStock {
+  idPro: number;
+  existenciaPro: number | null;
+  precioVentaPro: number;
+}
 
-@Component({ selector: 'app-checkout', templateUrl: './checkout.page.html', styleUrls: ['./checkout.page.scss'], standalone: false })
+@Component({
+  selector: 'app-checkout',
+  templateUrl: './checkout.page.html',
+  styleUrls: ['./checkout.page.scss'],
+  standalone: false,
+})
 export class CheckoutPage implements OnInit {
   readonly carrito = inject(CarritoService);
   pedido: PedidoCliente | null = null;
@@ -32,40 +41,63 @@ export class CheckoutPage implements OnInit {
     this.pedidos.obtenerConfiguracionTransferencia().subscribe({
       error: (error: unknown) => {
         this.transferenciaDisponible = false;
-        this.mensajeTransferencia = this.mensajeError(error, 'Los pagos por transferencia no están disponibles en este momento.');
-      }
+        this.mensajeTransferencia = this.mensajeError(
+          error,
+          'Los pagos por transferencia no están disponibles en este momento.',
+        );
+      },
     });
   }
 
-  imagen(ruta: string | null): string | null { return this.imagenes.resolver(ruta); }
+  imagen(ruta: string | null): string | null {
+    return this.imagenes.resolver(ruta);
+  }
 
   async generarPedido(): Promise<void> {
     if (this.procesando || !this.carrito.items.length || !this.transferenciaDisponible) return;
     this.procesando = true;
     try {
-      const pedido = await firstValueFrom(this.pedidos.crearPedido({
-        uuidPedido: this.uuidIntento(),
-        items: this.carrito.items.map(item => ({ idPro: item.idPro, cantidad: item.cantidad }))
-      }));
+      const pedido = await firstValueFrom(
+        this.pedidos.crearPedido({
+          uuidPedido: this.uuidIntento(),
+          items: this.carrito.items.map((item) => ({ idPro: item.idPro, cantidad: item.cantidad })),
+        }),
+      );
       this.pedido = pedido;
       this.carrito.vaciar();
       sessionStorage.removeItem(this.claveIntento);
       await this.feedback('Pedido reservado correctamente.', 'success');
     } catch (error: unknown) {
-      if (error instanceof HttpErrorResponse && error.status === 409 && /stock|disponib/i.test(this.mensajeError(error, ''))) {
+      if (
+        error instanceof HttpErrorResponse &&
+        error.status === 409 &&
+        /stock|disponib/i.test(this.mensajeError(error, ''))
+      ) {
         await this.actualizarCarrito();
-        await this.feedback('Ya no hay suficiente existencia de uno de los productos. Actualizamos la disponibilidad para que puedas revisar tu carrito.', 'warning');
+        await this.feedback(
+          'Ya no hay suficiente existencia de uno de los productos. Actualizamos la disponibilidad para que puedas revisar tu carrito.',
+          'warning',
+        );
         await this.router.navigateByUrl('/carrito');
       } else {
-        await this.feedback(this.mensajeError(error, 'No pudimos generar el pedido. Tu carrito se conservó.'), 'danger');
+        await this.feedback(
+          this.mensajeError(error, 'No pudimos generar el pedido. Tu carrito se conservó.'),
+          'danger',
+        );
       }
-    } finally { this.procesando = false; }
+    } finally {
+      this.procesando = false;
+    }
   }
 
   seleccionarArchivo(event: Event): void {
     const input = event.target as HTMLInputElement;
     const archivo = input.files?.[0] || null;
-    if (!archivo || !['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(archivo.type) || archivo.size > 5 * 1024 * 1024) {
+    if (
+      !archivo ||
+      !['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(archivo.type) ||
+      archivo.size > 5 * 1024 * 1024
+    ) {
       this.archivo = null;
       input.value = '';
       void this.feedback('Selecciona una imagen JPG, PNG, WEBP o un PDF de máximo 5 MB.', 'warning');
@@ -84,7 +116,9 @@ export class CheckoutPage implements OnInit {
       await this.router.navigateByUrl(`/mis-pedidos/${this.pedido.idPedido}`);
     } catch (error: unknown) {
       await this.feedback(this.mensajeError(error, 'No pudimos subir el comprobante.'), 'danger');
-    } finally { this.subiendo = false; }
+    } finally {
+      this.subiendo = false;
+    }
   }
 
   async copiarClabe(): Promise<void> {
@@ -101,18 +135,30 @@ export class CheckoutPage implements OnInit {
 
   private copiarTextoAlternativo(valor: string): boolean {
     const campo = document.createElement('textarea');
-    campo.value = valor; campo.style.position = 'fixed'; campo.style.opacity = '0';
-    document.body.appendChild(campo); campo.select();
+    campo.value = valor;
+    campo.style.position = 'fixed';
+    campo.style.opacity = '0';
+    document.body.appendChild(campo);
+    campo.select();
     const copiado = document.execCommand('copy');
-    campo.remove(); return copiado;
+    campo.remove();
+    return copiado;
   }
 
   private uuidIntento(): string {
-    const firma = this.carrito.items.map(item => `${item.idPro}:${item.cantidad}`).sort().join('|');
+    const firma = this.carrito.items
+      .map((item) => `${item.idPro}:${item.cantidad}`)
+      .sort()
+      .join('|');
     try {
-      const guardado = JSON.parse(sessionStorage.getItem(this.claveIntento) || 'null') as { firma?: string; uuid?: string } | null;
+      const guardado = JSON.parse(sessionStorage.getItem(this.claveIntento) || 'null') as {
+        firma?: string;
+        uuid?: string;
+      } | null;
       if (guardado?.firma === firma && guardado.uuid && /^[0-9a-f-]{36}$/i.test(guardado.uuid)) return guardado.uuid;
-    } catch { sessionStorage.removeItem(this.claveIntento); }
+    } catch {
+      sessionStorage.removeItem(this.claveIntento);
+    }
     const uuid = crypto.randomUUID();
     sessionStorage.setItem(this.claveIntento, JSON.stringify({ firma, uuid }));
     return uuid;
@@ -120,17 +166,29 @@ export class CheckoutPage implements OnInit {
 
   private async actualizarCarrito(): Promise<void> {
     try {
-      const productos = await firstValueFrom(this.http.get<ProductoPublicoStock[]>(`${environment.API_BASE_URL}/public/productos`));
+      const productos = await firstValueFrom(
+        this.http.get<ProductoPublicoStock[]>(`${environment.API_BASE_URL}/public/productos`),
+      );
       this.carrito.actualizarDisponibilidad(productos);
-    } catch { /* El mensaje principal conserva el carrito si no es posible refrescarlo. */ }
+    } catch {
+      /* El mensaje principal conserva el carrito si no es posible refrescarlo. */
+    }
   }
 
   private mensajeError(error: unknown, fallback: string): string {
-    return error instanceof HttpErrorResponse && typeof error.error?.message === 'string' ? error.error.message : fallback;
+    return error instanceof HttpErrorResponse && typeof error.error?.message === 'string'
+      ? error.error.message
+      : fallback;
   }
 
   private async feedback(message: string, color: 'success' | 'warning' | 'danger'): Promise<void> {
-    const toast = await this.toast.create({ message, color, duration: 3200, position: 'top', cssClass: 'pastel-toast' });
+    const toast = await this.toast.create({
+      message,
+      color,
+      duration: 3200,
+      position: 'top',
+      cssClass: 'pastel-toast',
+    });
     await toast.present();
   }
 }

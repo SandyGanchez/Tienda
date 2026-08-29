@@ -1,829 +1,447 @@
 <app-admin-shell menuId="admin-sale-detail-menu" contentId="sale-detail-main" activeSection="ventas">
-<ion-header class="sales-header">
+  <ion-header class="sales-header">
+    <ion-toolbar>
+      <ion-buttons slot="start">
+        <ion-menu-button class="mobile-menu-button" menu="admin-sale-detail-menu"></ion-menu-button>
+        <ion-back-button defaultHref="/ventas"></ion-back-button>
+      </ion-buttons>
 
-  <ion-toolbar>
+      <ion-title> Detalle de venta </ion-title>
 
-    <ion-buttons slot="start">
-      <ion-menu-button class="mobile-menu-button" menu="admin-sale-detail-menu"></ion-menu-button>
-      <ion-back-button
-        defaultHref="/ventas"
-      ></ion-back-button>
-    </ion-buttons>
+      <ion-buttons slot="end">
+        <ion-button routerLink="/cajero">
+          <ion-icon slot="start" name="cart-outline"></ion-icon>
 
-    <ion-title>
-      Detalle de venta
-    </ion-title>
+          <span class="desktop-action"> Punto de venta </span>
+        </ion-button>
+      </ion-buttons>
+    </ion-toolbar>
+  </ion-header>
 
-    <ion-buttons slot="end">
-
-      <ion-button routerLink="/cajero">
-
-        <ion-icon
-          slot="start"
-          name="cart-outline"
-        ></ion-icon>
-
-        <span class="desktop-action">
-          Punto de venta
-        </span>
-
-      </ion-button>
-
-    </ion-buttons>
-
-  </ion-toolbar>
-
-</ion-header>
-
-
-<ion-content class="sales-content">
-
-  <main class="sales-shell">
-
-    <!-- =========================================
+  <ion-content class="sales-content">
+    <main class="sales-shell">
+      <!-- =========================================
          CARGANDO
     ========================================== -->
 
-    <div
-      class="sales-loading"
-      *ngIf="cargando"
-    >
-      <ion-spinner></ion-spinner>
-      <p>Cargando venta...</p>
-    </div>
+      <div class="sales-loading" *ngIf="cargando">
+        <ion-spinner></ion-spinner>
+        <p>Cargando venta...</p>
+      </div>
 
-
-    <ng-container *ngIf="venta as v">
-
-      <!-- =========================================
+      <ng-container *ngIf="venta as v">
+        <!-- =========================================
            CABECERA
       ========================================== -->
 
-      <header class="detail-heading">
-
-        <div>
-
-          <span
-            class="detail-status-label"
-            [class.cancelled]="
+        <header class="detail-heading">
+          <div>
+            <span
+              class="detail-status-label"
+              [class.cancelled]="
               v.estadoVenta === 'CANCELADA'
             "
-          >
+            >
+              <span class="state-dot"></span>
 
-            <span class="state-dot"></span>
-
-            {{
-              v.estadoVenta === 'CANCELADA'
-                ? 'Venta cancelada'
-                : 'Venta completada'
-            }}
-
-          </span>
-
-
-          <h1>
-            Folio #{{ v.idVenta }}
-          </h1>
-
-
-          <div class="detail-subtitle">
-
-            <span>
-              <ion-icon name="calendar-outline"></ion-icon>
-              {{ v.fechaVenta }}
+              {{ v.estadoVenta === 'CANCELADA' ? 'Venta cancelada' : 'Venta completada' }}
             </span>
 
-            <span>
-              <ion-icon name="time-outline"></ion-icon>
-              {{ v.horaVenta }}
-            </span>
+            <h1>Folio #{{ v.idVenta }}</h1>
 
-            <span>
-              <ion-icon name="person-outline"></ion-icon>
-              {{ v.cajero }}
-            </span>
+            <div class="detail-subtitle">
+              <span>
+                <ion-icon name="calendar-outline"></ion-icon>
+                {{ v.fechaVenta }}
+              </span>
 
+              <span>
+                <ion-icon name="time-outline"></ion-icon>
+                {{ v.horaVenta }}
+              </span>
+
+              <span>
+                <ion-icon name="person-outline"></ion-icon>
+                {{ v.cajero }}
+              </span>
+            </div>
           </div>
 
-        </div>
+          <div class="detail-heading-total">
+            <small>Total de la venta</small>
 
+            <strong> {{ v.total | currency:'MXN' }} </strong>
+          </div>
+        </header>
 
-        <div class="detail-heading-total">
-
-          <small>Total de la venta</small>
-
-          <strong>
-            {{ v.total | currency:'MXN' }}
-          </strong>
-
-        </div>
-
-      </header>
-
-
-      <section class="sale-detail">
-
-        <!-- =========================================
+        <section class="sale-detail">
+          <!-- =========================================
              DATOS PRINCIPALES
         ========================================== -->
 
-        <div class="detail-meta">
+          <div class="detail-meta">
+            <article>
+              <div class="meta-icon">
+                <ion-icon [name]="v.origenVenta==='ONLINE'?'bag-check-outline':'storefront-outline'"></ion-icon>
+              </div>
+              <div>
+                <small>Origen</small><strong>{{v.origenVenta==='ONLINE'?'Venta online':'Punto de venta'}}</strong
+                ><small *ngIf="v.folioPedido">{{v.folioPedido}}</small>
+              </div>
+            </article>
 
-          <article>
-            <div class="meta-icon"><ion-icon [name]="v.origenVenta==='ONLINE'?'bag-check-outline':'storefront-outline'"></ion-icon></div>
-            <div><small>Origen</small><strong>{{v.origenVenta==='ONLINE'?'Venta online':'Punto de venta'}}</strong><small *ngIf="v.folioPedido">{{v.folioPedido}}</small></div>
-          </article>
-
-          <article>
-
-            <div class="meta-icon">
-              <ion-icon
-                [name]="
+            <article>
+              <div class="meta-icon">
+                <ion-icon
+                  [name]="
                   v.metodoPago === 'EFECTIVO'
                     ? 'cash-outline'
                     : v.metodoPago === 'TARJETA'
                     ? 'card-outline'
                     : 'phone-portrait-outline'
                 "
-              ></ion-icon>
-            </div>
+                ></ion-icon>
+              </div>
 
-            <div>
-              <small>Método de pago</small>
-              <strong>
-                {{ v.metodoPago }}
-              </strong>
-            </div>
+              <div>
+                <small>Método de pago</small>
+                <strong> {{ v.metodoPago }} </strong>
+              </div>
+            </article>
 
-          </article>
-
-
-          <article>
-
-            <div class="meta-icon">
-              <ion-icon
-                [name]="
+            <article>
+              <div class="meta-icon">
+                <ion-icon
+                  [name]="
                   v.estadoVenta === 'CANCELADA'
                     ? 'close-circle-outline'
                     : 'checkmark-circle-outline'
                 "
-              ></ion-icon>
-            </div>
+                ></ion-icon>
+              </div>
 
-            <div>
+              <div>
+                <small>Estado</small>
 
-              <small>Estado</small>
+                <strong> {{ v.estadoVenta === 'CANCELADA' ? 'Cancelada' : 'Completada' }} </strong>
+              </div>
+            </article>
 
-              <strong>
-                {{
-                  v.estadoVenta === 'CANCELADA'
-                    ? 'Cancelada'
-                    : 'Completada'
-                }}
-              </strong>
+            <article>
+              <div class="meta-icon">
+                <ion-icon name="wallet-outline"></ion-icon>
+              </div>
 
-            </div>
+              <div>
+                <small>Monto recibido</small>
 
-          </article>
+                <strong> {{ v.montoRecibido === null ? 'No aplica' : (v.montoRecibido | currency:'MXN') }} </strong>
+              </div>
+            </article>
 
+            <article>
+              <div class="meta-icon">
+                <ion-icon name="return-down-back-outline"></ion-icon>
+              </div>
 
-          <article>
+              <div>
+                <small>Cambio</small>
 
-            <div class="meta-icon">
-              <ion-icon name="wallet-outline"></ion-icon>
-            </div>
+                <strong> {{ v.cambio | currency:'MXN' }} </strong>
+              </div>
+            </article>
+          </div>
 
-            <div>
-
-              <small>Monto recibido</small>
-
-              <strong>
-                {{
-                  v.montoRecibido === null
-                    ? 'No aplica'
-                    : (v.montoRecibido | currency:'MXN')
-                }}
-              </strong>
-
-            </div>
-
-          </article>
-
-
-          <article>
-
-            <div class="meta-icon">
-              <ion-icon name="return-down-back-outline"></ion-icon>
-            </div>
-
-            <div>
-
-              <small>Cambio</small>
-
-              <strong>
-                {{ v.cambio | currency:'MXN' }}
-              </strong>
-
-            </div>
-
-          </article>
-
-        </div>
-
-
-        <!-- =========================================
+          <!-- =========================================
              CANCELACIÓN
         ========================================== -->
 
-        <section
-          class="cancellation-info"
-          *ngIf="
+          <section
+            class="cancellation-info"
+            *ngIf="
             v.estadoVenta === 'CANCELADA'
           "
-        >
-
-          <div class="cancellation-icon">
-            <ion-icon name="warning-outline"></ion-icon>
-          </div>
-
-
-          <div class="cancellation-copy">
-
-            <span class="sales-eyebrow">
-              Cancelación
-            </span>
-
-            <h2>
-              Esta venta fue cancelada
-            </h2>
-
-            <p>
-              Los productos fueron devueltos al inventario.
-            </p>
-
-
-            <div class="cancellation-grid">
-
-              <div>
-                <small>Fecha de cancelación</small>
-
-                <strong>
-                  {{
-                    v.fechaCancelacion ||
-                    'No disponible'
-                  }}
-                </strong>
-              </div>
-
-
-              <div>
-                <small>Administrador</small>
-
-                <strong>
-                  {{
-                    v.nombreEmpleadoCancela ||
-                    'No disponible'
-                  }}
-                </strong>
-              </div>
-
-
-              <div class="reason-row">
-                <small>Motivo</small>
-
-                <strong>
-                  {{
-                    v.motivoCancelacion ||
-                    'Sin motivo disponible'
-                  }}
-                </strong>
-              </div>
-
+          >
+            <div class="cancellation-icon">
+              <ion-icon name="warning-outline"></ion-icon>
             </div>
 
-          </div>
+            <div class="cancellation-copy">
+              <span class="sales-eyebrow"> Cancelación </span>
 
-        </section>
+              <h2>Esta venta fue cancelada</h2>
 
+              <p>Los productos fueron devueltos al inventario.</p>
 
-        <!-- =========================================
+              <div class="cancellation-grid">
+                <div>
+                  <small>Fecha de cancelación</small>
+
+                  <strong> {{ v.fechaCancelacion || 'No disponible' }} </strong>
+                </div>
+
+                <div>
+                  <small>Administrador</small>
+
+                  <strong> {{ v.nombreEmpleadoCancela || 'No disponible' }} </strong>
+                </div>
+
+                <div class="reason-row">
+                  <small>Motivo</small>
+
+                  <strong> {{ v.motivoCancelacion || 'Sin motivo disponible' }} </strong>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- =========================================
              PRODUCTOS
         ========================================== -->
 
-        <section class="products-detail">
+          <section class="products-detail">
+            <div class="section-heading">
+              <div>
+                <span class="sales-eyebrow"> Productos </span>
 
-          <div class="section-heading">
-
-            <div>
-              <span class="sales-eyebrow">
-                Productos
-              </span>
-
-              <h2>
-                Artículos vendidos
-              </h2>
-            </div>
-
-
-            <span class="items-count">
-              {{ v.items.length }}
-              {{
-                v.items.length === 1
-                  ? 'producto'
-                  : 'productos'
-              }}
-            </span>
-
-          </div>
-
-
-          <div class="detail-items">
-
-            <article
-              *ngFor="let item of v.items"
-            >
-
-              <div class="detail-item-main">
-
-                <div class="item-icon">
-                  <ion-icon name="cube-outline"></ion-icon>
-                </div>
-
-
-                <div>
-
-                  <strong>
-                    {{ item.nombre }}
-                  </strong>
-
-                  <small>
-                    {{ item.cantidad }}
-                    ×
-                    {{
-                      item.precioUnitario |
-                      currency:'MXN'
-                    }}
-                    c/u
-                  </small>
-
-                </div>
-
+                <h2>Artículos vendidos</h2>
               </div>
 
-
-              <strong class="item-subtotal">
-                {{
-                  item.subtotal |
-                  currency:'MXN'
-                }}
-              </strong>
-
-            </article>
-
-          </div>
-
-
-          <div class="detail-total">
-
-            <div>
-              <small>
-                Importe final
-              </small>
-
-              <span>Total</span>
+              <span class="items-count">
+                {{ v.items.length }} {{ v.items.length === 1 ? 'producto' : 'productos' }}
+              </span>
             </div>
 
-            <strong>
-              {{ v.total | currency:'MXN' }}
-            </strong>
+            <div class="detail-items">
+              <article *ngFor="let item of v.items">
+                <div class="detail-item-main">
+                  <div class="item-icon">
+                    <ion-icon name="cube-outline"></ion-icon>
+                  </div>
 
-          </div>
+                  <div>
+                    <strong> {{ item.nombre }} </strong>
 
-        </section>
+                    <small> {{ item.cantidad }} × {{ item.precioUnitario | currency:'MXN' }} c/u </small>
+                  </div>
+                </div>
 
+                <strong class="item-subtotal"> {{ item.subtotal | currency:'MXN' }} </strong>
+              </article>
+            </div>
 
-        <!-- =========================================
+            <div class="detail-total">
+              <div>
+                <small> Importe final </small>
+
+                <span>Total</span>
+              </div>
+
+              <strong> {{ v.total | currency:'MXN' }} </strong>
+            </div>
+          </section>
+
+          <!-- =========================================
              COMPROBANTE
         ========================================== -->
 
-        <section class="receipt-actions-section">
+          <section class="receipt-actions-section">
+            <div>
+              <span class="sales-eyebrow"> Comprobante </span>
 
-          <div>
+              <h2>Ticket de compra</h2>
 
-            <span class="sales-eyebrow">
-              Comprobante
-            </span>
+              <p>Puedes imprimir, compartir o descargar el comprobante de esta venta.</p>
+            </div>
 
-            <h2>
-              Ticket de compra
-            </h2>
+            <div class="ticket-actions">
+              <ion-button (click)="ticket.imprimir()">
+                <ion-icon slot="start" name="print-outline"></ion-icon>
 
-            <p>
-              Puedes imprimir, compartir o descargar
-              el comprobante de esta venta.
-            </p>
+                Ver / imprimir
+              </ion-button>
 
-          </div>
+              <ion-button fill="outline" (click)="compartir()">
+                <ion-icon slot="start" name="share-social-outline"></ion-icon>
 
+                Compartir
+              </ion-button>
 
-          <div class="ticket-actions">
+              <ion-button fill="outline" (click)="descargar()">
+                <ion-icon slot="start" name="download-outline"></ion-icon>
 
-            <ion-button
-              (click)="ticket.imprimir()"
-            >
+                Descargar PDF
+              </ion-button>
+            </div>
+          </section>
 
-              <ion-icon
-                slot="start"
-                name="print-outline"
-              ></ion-icon>
-
-              Ver / imprimir
-
-            </ion-button>
-
-
-            <ion-button
-              fill="outline"
-              (click)="compartir()"
-            >
-
-              <ion-icon
-                slot="start"
-                name="share-social-outline"
-              ></ion-icon>
-
-              Compartir
-
-            </ion-button>
-
-
-            <ion-button
-              fill="outline"
-              (click)="descargar()"
-            >
-
-              <ion-icon
-                slot="start"
-                name="download-outline"
-              ></ion-icon>
-
-              Descargar PDF
-
-            </ion-button>
-
-          </div>
-
-        </section>
-
-
-        <!-- =========================================
+          <!-- =========================================
              CANCELAR
         ========================================== -->
 
-        <section
-          class="admin-danger-zone"
-          *ngIf="
+          <section
+            class="admin-danger-zone"
+            *ngIf="
             auth.tieneRol('ADMINISTRADOR') &&
             v.estadoVenta === 'COMPLETADA' &&
             v.origenVenta !== 'ONLINE'
           "
-        >
-
-          <div>
-
-            <span>
-              Administración
-            </span>
-
-            <strong>
-              Cancelar esta venta
-            </strong>
-
-            <p>
-              La cancelación devolverá las existencias
-              de los productos al inventario.
-            </p>
-
-          </div>
-
-
-          <ion-button
-            class="cancel-sale"
-            color="danger"
-            fill="outline"
-            (click)="abrirCancelacion()"
           >
+            <div>
+              <span> Administración </span>
 
-            <ion-icon
-              slot="start"
-              name="close-circle-outline"
-            ></ion-icon>
+              <strong> Cancelar esta venta </strong>
 
-            Cancelar venta
+              <p>La cancelación devolverá las existencias de los productos al inventario.</p>
+            </div>
 
-          </ion-button>
+            <ion-button class="cancel-sale" color="danger" fill="outline" (click)="abrirCancelacion()">
+              <ion-icon slot="start" name="close-circle-outline"></ion-icon>
 
-        </section>
+              Cancelar venta
+            </ion-button>
+          </section>
 
-
-        <!-- =========================================
+          <!-- =========================================
              TICKET PARA IMPRESIÓN
         ========================================== -->
 
-        <section class="print-ticket">
+          <section class="print-ticket">
+            <img *ngIf="imagen(v.logoSuc) as logo" [src]="logo" alt="Logo de la tienda" />
 
-          <img
-            *ngIf="imagen(v.logoSuc) as logo"
-            [src]="logo"
-            alt="Logo de la tienda"
-          >
+            <h2>{{ v.nombreSuc || 'Tienda de abarrotes' }}</h2>
 
+            <p *ngIf="v.descripcionSuc">{{ v.descripcionSuc }}</p>
 
-          <h2>
-            {{
-              v.nombreSuc ||
-              'Tienda de abarrotes'
-            }}
-          </h2>
+            <p *ngIf="v.telefonoSuc">Tel. {{ v.telefonoSuc }}</p>
 
+            <p *ngIf="v.correoSuc">{{ v.correoSuc }}</p>
 
-          <p *ngIf="v.descripcionSuc">
-            {{ v.descripcionSuc }}
-          </p>
+            <div class="ticket-divider"></div>
 
+            <strong> COMPROBANTE DE COMPRA </strong>
 
-          <p *ngIf="v.telefonoSuc">
-            Tel. {{ v.telefonoSuc }}
-          </p>
-
-
-          <p *ngIf="v.correoSuc">
-            {{ v.correoSuc }}
-          </p>
-
-
-          <div class="ticket-divider"></div>
-
-
-          <strong>
-            COMPROBANTE DE COMPRA
-          </strong>
-
-
-          <h3
-            class="ticket-cancelled"
-            *ngIf="
+            <h3
+              class="ticket-cancelled"
+              *ngIf="
               v.estadoVenta === 'CANCELADA'
             "
-          >
-            VENTA CANCELADA
-          </h3>
+            >
+              VENTA CANCELADA
+            </h3>
 
+            <p>Folio #{{ v.idVenta }}</p>
 
-          <p>
-            Folio #{{ v.idVenta }}
-          </p>
+            <p>{{ v.fechaVenta }} · {{ v.horaVenta }}</p>
 
+            <p>Cajero: {{ v.cajero }}</p>
 
-          <p>
-            {{ v.fechaVenta }}
-            ·
-            {{ v.horaVenta }}
-          </p>
+            <div class="ticket-divider"></div>
 
+            <div class="ticket-item" *ngFor="let item of v.items">
+              <span>
+                {{ item.cantidad }} × {{ item.nombre }}
+                <small> {{ item.precioUnitario | currency:'MXN' }} c/u </small>
+              </span>
 
-          <p>
-            Cajero: {{ v.cajero }}
-          </p>
+              <b> {{ item.subtotal | currency:'MXN' }} </b>
+            </div>
 
+            <div class="ticket-divider"></div>
 
-          <div class="ticket-divider"></div>
+            <div class="ticket-total">
+              <span>TOTAL</span>
 
+              <strong> {{ v.total | currency:'MXN' }} </strong>
+            </div>
 
-          <div
-            class="ticket-item"
-            *ngFor="let item of v.items"
-          >
+            <p>Pago: {{ v.metodoPago }}</p>
 
-            <span>
-              {{ item.cantidad }}
-              ×
-              {{ item.nombre }}
-              <small>
-                {{
-                  item.precioUnitario |
-                  currency:'MXN'
-                }}
-                c/u
-              </small>
-            </span>
-
-
-            <b>
-              {{
-                item.subtotal |
-                currency:'MXN'
-              }}
-            </b>
-
-          </div>
-
-
-          <div class="ticket-divider"></div>
-
-
-          <div class="ticket-total">
-
-            <span>TOTAL</span>
-
-            <strong>
-              {{ v.total | currency:'MXN' }}
-            </strong>
-
-          </div>
-
-
-          <p>
-            Pago: {{ v.metodoPago }}
-          </p>
-
-
-          <ng-container
-            *ngIf="
+            <ng-container
+              *ngIf="
               v.metodoPago === 'EFECTIVO'
             "
-          >
+            >
+              <p>Recibido: {{ v.montoRecibido | currency:'MXN' }}</p>
 
-            <p>
-              Recibido:
-              {{
-                v.montoRecibido |
-                currency:'MXN'
-              }}
-            </p>
+              <p>Cambio: {{ v.cambio | currency:'MXN' }}</p>
+            </ng-container>
 
-            <p>
-              Cambio:
-              {{
-                v.cambio |
-                currency:'MXN'
-              }}
-            </p>
+            <div class="ticket-divider"></div>
 
-          </ng-container>
+            <p class="thanks">Gracias por su compra</p>
 
-
-          <div class="ticket-divider"></div>
-
-
-          <p class="thanks">
-            Gracias por su compra
-          </p>
-
-          <small>
-            Comprobante no fiscal
-          </small>
-
+            <small> Comprobante no fiscal </small>
+          </section>
         </section>
+      </ng-container>
+    </main>
+  </ion-content>
 
-      </section>
-
-    </ng-container>
-
-  </main>
-
-</ion-content>
-
-
-<!-- =============================================
+  <!-- =============================================
      MODAL CANCELAR VENTA
 ============================================== -->
 
-<ion-modal
-  cssClass="cancel-sale-modal"
-  [isOpen]="mostrarCancelacion"
-  (didDismiss)="mostrarCancelacion = false"
->
+  <ion-modal cssClass="cancel-sale-modal" [isOpen]="mostrarCancelacion" (didDismiss)="mostrarCancelacion = false">
+    <ng-template>
+      <ion-header>
+        <ion-toolbar>
+          <ion-title> Cancelar venta #{{ venta?.idVenta }} </ion-title>
 
-  <ng-template>
+          <ion-buttons slot="end">
+            <ion-button [disabled]="cancelandoVenta" (click)="mostrarCancelacion = false"> Volver </ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
 
-    <ion-header>
+      <ion-content class="ion-padding">
+        <div class="cancel-dialog">
+          <div class="cancel-warning-icon">
+            <ion-icon name="warning-outline"></ion-icon>
+          </div>
 
-      <ion-toolbar>
+          <span class="sales-eyebrow"> Acción administrativa </span>
 
-        <ion-title>
-          Cancelar venta #{{ venta?.idVenta }}
-        </ion-title>
+          <h2>¿Cancelar esta venta?</h2>
 
-        <ion-buttons slot="end">
+          <p>La venta conservará su historial, pero sus productos volverán al inventario.</p>
+
+          <div class="cancel-warning">
+            <ion-icon name="information-circle-outline"></ion-icon>
+
+            <span> Esta acción no elimina la venta. La marcará como CANCELADA. </span>
+          </div>
+
+          <ion-textarea
+            fill="outline"
+            label="Motivo de cancelación"
+            labelPlacement="stacked"
+            placeholder="Explica brevemente por qué se cancela la venta"
+            [maxlength]="255"
+            [autoGrow]="true"
+            [(ngModel)]="motivoCancelacion"
+          ></ion-textarea>
+
+          <small class="character-count"> {{ motivoCancelacion.trim().length }} / 255 caracteres </small>
 
           <ion-button
-            [disabled]="cancelandoVenta"
-            (click)="mostrarCancelacion = false"
-          >
-            Volver
-          </ion-button>
-
-        </ion-buttons>
-
-      </ion-toolbar>
-
-    </ion-header>
-
-
-    <ion-content class="ion-padding">
-
-      <div class="cancel-dialog">
-
-        <div class="cancel-warning-icon">
-          <ion-icon name="warning-outline"></ion-icon>
-        </div>
-
-
-        <span class="sales-eyebrow">
-          Acción administrativa
-        </span>
-
-
-        <h2>
-          ¿Cancelar esta venta?
-        </h2>
-
-
-        <p>
-          La venta conservará su historial, pero sus
-          productos volverán al inventario.
-        </p>
-
-
-        <div class="cancel-warning">
-
-          <ion-icon name="information-circle-outline"></ion-icon>
-
-          <span>
-            Esta acción no elimina la venta.
-            La marcará como CANCELADA.
-          </span>
-
-        </div>
-
-
-        <ion-textarea
-          fill="outline"
-          label="Motivo de cancelación"
-          labelPlacement="stacked"
-          placeholder="Explica brevemente por qué se cancela la venta"
-          [maxlength]="255"
-          [autoGrow]="true"
-          [(ngModel)]="motivoCancelacion"
-        ></ion-textarea>
-
-
-        <small class="character-count">
-          {{ motivoCancelacion.trim().length }}
-          / 255 caracteres
-        </small>
-
-
-        <ion-button
-          class="confirm-cancellation"
-          color="danger"
-          expand="block"
-          [disabled]="
+            class="confirm-cancellation"
+            color="danger"
+            expand="block"
+            [disabled]="
             cancelandoVenta ||
             motivoCancelacion.trim().length < 3
           "
-          (click)="cancelar()"
-        >
+            (click)="cancelar()"
+          >
+            <ion-spinner *ngIf="cancelandoVenta" name="crescent"></ion-spinner>
 
-          <ion-spinner
-            *ngIf="cancelandoVenta"
-            name="crescent"
-          ></ion-spinner>
+            <ion-icon *ngIf="!cancelandoVenta" slot="start" name="close-circle-outline"></ion-icon>
 
-
-          <ion-icon
-            *ngIf="!cancelandoVenta"
-            slot="start"
-            name="close-circle-outline"
-          ></ion-icon>
-
-
-          <span>
-            {{
-              cancelandoVenta
-                ? 'Cancelando...'
-                : 'Confirmar cancelación'
-            }}
-          </span>
-
-        </ion-button>
-
-      </div>
-
-    </ion-content>
-
-  </ng-template>
-
-</ion-modal>
+            <span> {{ cancelandoVenta ? 'Cancelando...' : 'Confirmar cancelación' }} </span>
+          </ion-button>
+        </div>
+      </ion-content>
+    </ng-template>
+  </ion-modal>
 </app-admin-shell>

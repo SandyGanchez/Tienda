@@ -2,7 +2,6 @@
   display: block;
 }
 
-
 /* =========================================
    MENÚ
 ========================================= */
@@ -113,7 +112,6 @@ ion-menu {
   color: var(--pastel-purple);
 }
 
-
 /* =========================================
    USUARIO DEL MENÚ
 ========================================= */
@@ -177,7 +175,6 @@ ion-menu {
   font-size: 9px;
 }
 
-
 /* =========================================
    CONTENIDO
 ========================================= */
@@ -192,7 +189,6 @@ ion-menu {
 
   padding: clamp(18px, 4vw, 42px);
 }
-
 
 /* =========================================
    CABECERA
@@ -222,8 +218,7 @@ ion-menu {
 
   color: var(--text-primary);
 
-  font-size:
-    clamp(30px, 5vw, 43px);
+  font-size: clamp(30px, 5vw, 43px);
 }
 
 .employees-heading p {
@@ -246,7 +241,6 @@ ion-menu {
   font-weight: 750;
 }
 
-
 /* =========================================
    ESTADÍSTICAS
 ========================================= */
@@ -255,8 +249,7 @@ ion-menu {
   margin-bottom: 26px;
 
   display: grid;
-  grid-template-columns:
-    repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 
   gap: 11px;
 }
@@ -269,17 +262,13 @@ ion-menu {
   align-items: center;
   gap: 11px;
 
-  border:
-    1px solid
-    rgba(128, 119, 138, 0.1);
+  border: 1px solid rgba(128, 119, 138, 0.1);
 
   border-radius: 18px;
 
   background: var(--surface);
 
-  box-shadow:
-    0 7px 22px
-    rgba(71, 61, 78, 0.04);
+  box-shadow: 0 7px 22px rgba(71, 61, 78, 0.04);
 }
 
 .stat-icon {
@@ -330,7 +319,6 @@ ion-menu {
   font-size: 20px;
 }
 
-
 /* =========================================
    LOADING
 ========================================= */
@@ -346,7 +334,6 @@ ion-menu {
   color: var(--text-secondary);
 }
 
-
 /* =========================================
    PANEL
 ========================================= */
@@ -354,17 +341,13 @@ ion-menu {
 .employees-panel {
   padding: 20px;
 
-  border:
-    1px solid
-    rgba(128, 119, 138, 0.1);
+  border: 1px solid rgba(128, 119, 138, 0.1);
 
   border-radius: 24px;
 
   background: var(--surface);
 
-  box-shadow:
-    0 10px 30px
-    rgba(71, 61, 78, 0.05);
+  box-shadow: 0 10px 30px rgba(71, 61, 78, 0.05);
 }
 
 .panel-heading {
@@ -395,7 +378,6 @@ ion-menu {
   font-weight: 750;
 }
 
-
 /* =========================================
    EMPLEADOS
 ========================================= */
@@ -418,9 +400,7 @@ ion-menu {
   align-items: center;
   gap: 14px;
 
-  border:
-    1px solid
-    rgba(128, 119, 138, 0.1);
+  border: 1px solid rgba(128, 119, 138, 0.1);
 
   border-radius: 18px;
 
@@ -435,8 +415,7 @@ ion-menu {
 .employee-card:hover {
   transform: translateY(-1px);
 
-  border-color:
-    rgba(128, 119, 138, 0.22);
+  border-color: rgba(128, 119, 138, 0.22);
 }
 
 .employee-card.inactive-employee {
@@ -523,16 +502,11 @@ ion-menu {
 .employee-status.inactive {
   color: var(--ion-color-danger);
 
-  background:
-    rgba(
-      var(--ion-color-danger-rgb),
-      0.08
-    );
+  background: rgba(var(--ion-color-danger-rgb), 0.08);
 }
 
 .employee-status.inactive > span {
-  background:
-    var(--ion-color-danger);
+  background: var(--ion-color-danger);
 }
 
 .employee-role {
@@ -598,7 +572,6 @@ ion-menu {
   font-size: 11px;
 }
 
-
 /* =========================================
    VACÍO
 ========================================= */
@@ -645,7 +618,6 @@ ion-menu {
 
   line-height: 1.5;
 }
-
 
 /* =========================================
    FORMULARIO
@@ -701,8 +673,7 @@ ion-menu {
 
 .form-grid {
   display: grid;
-  grid-template-columns:
-    repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 
   gap: 12px;
 }
@@ -759,21 +730,17 @@ ion-menu {
   margin-right: 8px;
 }
 
-
 /* =========================================
    TABLET
 ========================================= */
 
 @media (max-width: 900px) {
-
   .employee-stats {
-    grid-template-columns:
-      repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .employee-card {
-    grid-template-columns:
-      55px minmax(0, 1fr);
+    grid-template-columns: 55px minmax(0, 1fr);
   }
 
   .employee-actions {
@@ -783,20 +750,15 @@ ion-menu {
 
     justify-content: flex-end;
 
-    border-top:
-      1px solid
-      rgba(128, 119, 138, 0.08);
+    border-top: 1px solid rgba(128, 119, 138, 0.08);
   }
-
 }
-
 
 /* =========================================
    MÓVIL
 ========================================= */
 
 @media (max-width: 650px) {
-
   .desktop-label {
     display: none;
   }
@@ -817,8 +779,7 @@ ion-menu {
   }
 
   .employee-stats {
-    grid-template-columns:
-      repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 
     gap: 8px;
   }
@@ -847,8 +808,7 @@ ion-menu {
   .employee-card {
     padding: 12px;
 
-    grid-template-columns:
-      48px minmax(0, 1fr);
+    grid-template-columns: 48px minmax(0, 1fr);
 
     align-items: flex-start;
 
@@ -882,16 +842,13 @@ ion-menu {
   .form-grid {
     grid-template-columns: 1fr;
   }
-
 }
-
 
 /* =========================================
    TELÉFONO PEQUEÑO
 ========================================= */
 
 @media (max-width: 390px) {
-
   .employee-stats {
     grid-template-columns: 1fr;
   }
@@ -904,7 +861,6 @@ ion-menu {
     align-items: flex-start;
     flex-direction: column;
   }
-
 }
 
 /* =========================================
@@ -917,13 +873,11 @@ ion-split-pane {
   --border: 1px solid rgba(128, 119, 138, 0.1);
 }
 
-
 /* Ancho del menú */
 
 ion-menu {
   --width: 275px;
 }
-
 
 /* =========================================
    ESCRITORIO
@@ -931,13 +885,10 @@ ion-menu {
 ========================================= */
 
 @media (min-width: 992px) {
-
   .mobile-menu-button {
     display: none;
   }
-
 }
-
 
 /* =========================================
    TABLET Y CELULAR
@@ -945,13 +896,10 @@ ion-menu {
 ========================================= */
 
 @media (max-width: 991px) {
-
   .mobile-menu-button {
     display: inline-flex;
   }
-
 }
-
 
 /* =========================================
    CONTENIDO INTERNO DEL MENÚ
@@ -964,16 +912,12 @@ ion-menu {
   min-height: 100%;
 }
 
-
 /* =========================================
    USUARIO AL FINAL DEL MENÚ
 ========================================= */
 
 .admin-user {
-  margin:
-    auto
-    12px
-    calc(14px + env(safe-area-inset-bottom));
+  margin: auto 12px calc(14px + env(safe-area-inset-bottom));
 
   min-height: 62px;
 
@@ -992,6 +936,5 @@ ion-menu {
 
   border-radius: 16px;
 
-  background:
-    var(--pastel-cream);
+  background: var(--pastel-cream);
 }

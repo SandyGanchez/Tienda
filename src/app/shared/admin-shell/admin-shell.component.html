@@ -4,10 +4,13 @@
       <ion-toolbar>
         <div class="store-brand">
           <div class="brand-logo">
-            <img *ngIf="resolverLogo() as logo; else logoFallback" [src]="logo" alt="Logo de la tienda">
+            <img *ngIf="resolverLogo() as logo; else logoFallback" [src]="logo" alt="Logo de la tienda" />
             <ng-template #logoFallback><ion-icon name="storefront-outline"></ion-icon></ng-template>
           </div>
-          <div class="brand-copy"><strong>{{ nombreTienda }}</strong><small>Administración</small></div>
+          <div class="brand-copy">
+            <strong>{{ nombreTienda }}</strong
+            ><small>Administración</small>
+          </div>
         </div>
       </ion-toolbar>
     </ion-header>
@@ -17,18 +20,42 @@
         <ion-menu-toggle [autoHide]="false">
           <ng-container *ngIf="esAdministrador">
             <div class="menu-section-label">Inicio</div>
-            <ion-item button detail="false" routerLink="/home" [queryParams]="{ seccion: 'inicio' }" [class.menu-active]="activeSection === 'inicio'">
+            <ion-item
+              button
+              detail="false"
+              routerLink="/home"
+              [queryParams]="{ seccion: 'inicio' }"
+              [class.menu-active]="activeSection === 'inicio'"
+            >
               <ion-icon slot="start" name="home-outline"></ion-icon><ion-label>Inicio</ion-label>
             </ion-item>
 
             <div class="menu-section-label">Gestión</div>
-            <ion-item button detail="false" routerLink="/home" [queryParams]="{ seccion: 'productos' }" [class.menu-active]="activeSection === 'productos'">
+            <ion-item
+              button
+              detail="false"
+              routerLink="/home"
+              [queryParams]="{ seccion: 'productos' }"
+              [class.menu-active]="activeSection === 'productos'"
+            >
               <ion-icon slot="start" name="cube-outline"></ion-icon><ion-label>Productos</ion-label>
             </ion-item>
-            <ion-item button detail="false" routerLink="/home" [queryParams]="{ seccion: 'categorias' }" [class.menu-active]="activeSection === 'categorias'">
+            <ion-item
+              button
+              detail="false"
+              routerLink="/home"
+              [queryParams]="{ seccion: 'categorias' }"
+              [class.menu-active]="activeSection === 'categorias'"
+            >
               <ion-icon slot="start" name="grid-outline"></ion-icon><ion-label>Categorías</ion-label>
             </ion-item>
-            <ion-item button detail="false" routerLink="/home" [queryParams]="{ seccion: 'marcas' }" [class.menu-active]="activeSection === 'marcas'">
+            <ion-item
+              button
+              detail="false"
+              routerLink="/home"
+              [queryParams]="{ seccion: 'marcas' }"
+              [class.menu-active]="activeSection === 'marcas'"
+            >
               <ion-icon slot="start" name="pricetag-outline"></ion-icon><ion-label>Marcas</ion-label>
             </ion-item>
 
@@ -45,13 +72,25 @@
           <ion-item button detail="false" routerLink="/ventas" [class.menu-active]="activeSection === 'ventas'">
             <ion-icon slot="start" name="receipt-outline"></ion-icon><ion-label>Ventas</ion-label>
           </ion-item>
-          <ion-item *ngIf="esAdministrador" button detail="false" routerLink="/pedidos-online" [class.menu-active]="activeSection === 'pedidos-online'">
+          <ion-item
+            *ngIf="esAdministrador"
+            button
+            detail="false"
+            routerLink="/pedidos-online"
+            [class.menu-active]="activeSection === 'pedidos-online'"
+          >
             <ion-icon slot="start" name="bag-check-outline"></ion-icon><ion-label>Pedidos online</ion-label>
           </ion-item>
 
           <ng-container *ngIf="esAdministrador">
             <div class="menu-section-label">Sistema</div>
-            <ion-item button detail="false" routerLink="/home" [queryParams]="{ seccion: 'configuracion' }" [class.menu-active]="activeSection === 'configuracion'">
+            <ion-item
+              button
+              detail="false"
+              routerLink="/home"
+              [queryParams]="{ seccion: 'configuracion' }"
+              [class.menu-active]="activeSection === 'configuracion'"
+            >
               <ion-icon slot="start" name="settings-outline"></ion-icon><ion-label>Configuración</ion-label>
             </ion-item>
           </ng-container>
@@ -60,7 +99,7 @@
 
       <div class="admin-user">
         <div class="admin-avatar">
-          <img *ngIf="resolverAvatar() as avatar; else avatarFallback" [src]="avatar" alt="Foto del empleado">
+          <img *ngIf="resolverAvatar() as avatar; else avatarFallback" [src]="avatar" alt="Foto del empleado" />
           <ng-template #avatarFallback><ion-icon name="person-outline"></ion-icon></ng-template>
         </div>
         <div class="admin-user-copy">

@@ -6,7 +6,7 @@ import { ImagenesService } from '../services/imagenes.service';
   selector: 'app-perfil',
   templateUrl: './perfil.page.html',
   styleUrls: ['./perfil.page.scss'],
-  standalone: false
+  standalone: false,
 })
 export class PerfilPage {
   readonly clienteAuth = inject(ClienteAuthService);

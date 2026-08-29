@@ -17,10 +17,7 @@ export class AppComponent implements OnInit {
   private readonly syncService = inject(SyncService);
 
   async ngOnInit(): Promise<void> {
-    await Promise.all([
-      this.authService.restaurarSesion(),
-      this.clienteAuthService.restaurarSesion()
-    ]);
+    await Promise.all([this.authService.restaurarSesion(), this.clienteAuthService.restaurarSesion()]);
     void this.syncService.reintentar();
     try {
       await this.sqliteService.initDB();

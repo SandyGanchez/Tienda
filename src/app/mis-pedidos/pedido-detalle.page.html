@@ -1,15 +1,115 @@
-<app-cliente-shell><ion-content class="detail-page"><main class="detail-container">
-  <section class="loading" *ngIf="cargando"><ion-spinner></ion-spinner><p>Cargando pedido…</p></section>
-  <ng-container *ngIf="!cargando && pedido as actual">
-    <header><a routerLink="/mis-pedidos"><ion-icon name="arrow-back-outline"></ion-icon> Mis pedidos</a><div><span>Pedido</span><h1>{{actual.folio}}</h1><p>{{actual.fechaPedido|date:'medium'}}</p></div><strong class="status" [attr.data-status]="actual.estado">{{etiqueta(actual.estado)}}</strong></header>
-    <div class="detail-layout"><section class="items-card"><h2>Productos</h2><article *ngFor="let item of actual.items"><span class="product-image"><img *ngIf="imagen(item.imagen) as src;else noImage" [src]="src" [alt]="item.nombre"><ng-template #noImage><ion-icon name="cube-outline"></ion-icon></ng-template></span><div><strong>{{item.nombre}}</strong><small>{{item.presentacion}}</small><p>{{item.cantidad}} × {{item.precioUnitario|currency:'MXN':'symbol-narrow':'1.2-2'}}</p></div><b>{{item.subtotal|currency:'MXN':'symbol-narrow':'1.2-2'}}</b></article></section>
-      <aside class="summary-card"><span>Total</span><strong>{{actual.total|currency:'MXN':'symbol-narrow':'1.2-2'}}</strong><div><small>Fecha límite</small><b>{{actual.fechaLimitePago|date:'medium'}}</b></div></aside></div>
-    <section class="payment-card" *ngIf="actual.estado==='PENDIENTE_PAGO' && actual.configuracionTransferencia as banco"><div><span>Transferencia bancaria</span><h2>Realiza tu pago</h2><p>Usa {{actual.folio}} como concepto.</p></div><dl><div><dt>Banco</dt><dd>{{banco.banco}}</dd></div><div><dt>Titular</dt><dd>{{banco.titular}}</dd></div><div *ngIf="banco.clabe"><dt>CLABE</dt><dd>{{banco.clabe}} <button (click)="copiarClabe()">Copiar</button></dd></div><div *ngIf="banco.numeroCuenta"><dt>Cuenta</dt><dd>{{banco.numeroCuenta}}</dd></div></dl><p class="instructions" *ngIf="banco.instrucciones">{{banco.instrucciones}}</p><div class="proof-actions"><label><input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" (change)="seleccionarArchivo($event)"><ion-icon name="cloud-upload-outline"></ion-icon>{{archivo?.name||'Seleccionar comprobante'}}</label><ion-button [disabled]="!archivo||procesando" (click)="subir()">{{procesando?'Subiendo…':'Enviar a revisión'}}</ion-button><ion-button fill="clear" color="danger" [disabled]="procesando" (click)="confirmarCancelar()">Cancelar pedido</ion-button></div></section>
-    <section class="review-card" *ngIf="actual.estado==='EN_REVISION'"><ion-icon name="time-outline"></ion-icon><div><h2>Estamos verificando tu transferencia</h2><p>Tu comprobante fue recibido. El pedido aún no está marcado como pagado.</p></div><ion-button fill="outline" *ngIf="actual.tieneComprobante" (click)="verComprobante()">Ver comprobante</ion-button></section>
-    <section class="notice-card success" *ngIf="actual.estado==='PAGADO'"><h2>Tu pago fue aprobado</h2><p>Estamos preparando tu pedido.</p></section>
-    <section class="notice-card ready" *ngIf="actual.estado==='LISTO'"><h2>Tu pedido está listo para recoger</h2><p>Preséntate en la tienda con el folio {{actual.folio}}.</p></section>
-    <section class="notice-card success" *ngIf="actual.estado==='ENTREGADO'"><h2>Pedido entregado</h2><p>Gracias por comprar con nosotros.</p></section>
-    <section class="notice-card rejected" *ngIf="actual.estado==='RECHAZADO'"><h2>Tu pago fue rechazado</h2><p *ngIf="actual.motivoRechazo"><strong>Motivo:</strong> {{actual.motivoRechazo}}</p><p>Si deseas comprar nuevamente, crea un pedido nuevo.</p></section>
-    <section class="notice-card" *ngIf="actual.estado==='EXPIRADO'"><h2>Tu reserva expiró</h2><p>Los productos volvieron al inventario.</p></section>
-  </ng-container>
-</main></ion-content></app-cliente-shell>
+<app-cliente-shell
+  ><ion-content class="detail-page"
+    ><main class="detail-container">
+      <section class="loading" *ngIf="cargando">
+        <ion-spinner></ion-spinner>
+        <p>Cargando pedido…</p>
+      </section>
+      <ng-container *ngIf="!cargando && pedido as actual">
+        <header>
+          <a routerLink="/mis-pedidos"><ion-icon name="arrow-back-outline"></ion-icon> Mis pedidos</a>
+          <div>
+            <span>Pedido</span>
+            <h1>{{actual.folio}}</h1>
+            <p>{{actual.fechaPedido|date:'medium'}}</p>
+          </div>
+          <strong class="status" [attr.data-status]="actual.estado">{{etiqueta(actual.estado)}}</strong>
+        </header>
+        <div class="detail-layout">
+          <section class="items-card">
+            <h2>Productos</h2>
+            <article *ngFor="let item of actual.items">
+              <span class="product-image"
+                ><img *ngIf="imagen(item.imagen) as src;else noImage" [src]="src" [alt]="item.nombre" /><ng-template
+                  #noImage
+                  ><ion-icon name="cube-outline"></ion-icon></ng-template
+              ></span>
+              <div>
+                <strong>{{item.nombre}}</strong><small>{{item.presentacion}}</small>
+                <p>{{item.cantidad}} × {{item.precioUnitario|currency:'MXN':'symbol-narrow':'1.2-2'}}</p>
+              </div>
+              <b>{{item.subtotal|currency:'MXN':'symbol-narrow':'1.2-2'}}</b>
+            </article>
+          </section>
+          <aside class="summary-card">
+            <span>Total</span><strong>{{actual.total|currency:'MXN':'symbol-narrow':'1.2-2'}}</strong>
+            <div><small>Fecha límite</small><b>{{actual.fechaLimitePago|date:'medium'}}</b></div>
+          </aside>
+        </div>
+        <section
+          class="payment-card"
+          *ngIf="actual.estado==='PENDIENTE_PAGO' && actual.configuracionTransferencia as banco"
+        >
+          <div>
+            <span>Transferencia bancaria</span>
+            <h2>Realiza tu pago</h2>
+            <p>Usa {{actual.folio}} como concepto.</p>
+          </div>
+          <dl>
+            <div>
+              <dt>Banco</dt>
+              <dd>{{banco.banco}}</dd>
+            </div>
+            <div>
+              <dt>Titular</dt>
+              <dd>{{banco.titular}}</dd>
+            </div>
+            <div *ngIf="banco.clabe">
+              <dt>CLABE</dt>
+              <dd>{{banco.clabe}} <button (click)="copiarClabe()">Copiar</button></dd>
+            </div>
+            <div *ngIf="banco.numeroCuenta">
+              <dt>Cuenta</dt>
+              <dd>{{banco.numeroCuenta}}</dd>
+            </div>
+          </dl>
+          <p class="instructions" *ngIf="banco.instrucciones">{{banco.instrucciones}}</p>
+          <div class="proof-actions">
+            <label
+              ><input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,application/pdf"
+                (change)="seleccionarArchivo($event)"
+              /><ion-icon name="cloud-upload-outline"></ion-icon>{{archivo?.name||'Seleccionar comprobante'}}</label
+            ><ion-button [disabled]="!archivo||procesando" (click)="subir()"
+              >{{procesando?'Subiendo…':'Enviar a revisión'}}</ion-button
+            ><ion-button fill="clear" color="danger" [disabled]="procesando" (click)="confirmarCancelar()"
+              >Cancelar pedido</ion-button
+            >
+          </div>
+        </section>
+        <section class="review-card" *ngIf="actual.estado==='EN_REVISION'">
+          <ion-icon name="time-outline"></ion-icon>
+          <div>
+            <h2>Estamos verificando tu transferencia</h2>
+            <p>Tu comprobante fue recibido. El pedido aún no está marcado como pagado.</p>
+          </div>
+          <ion-button fill="outline" *ngIf="actual.tieneComprobante" (click)="verComprobante()"
+            >Ver comprobante</ion-button
+          >
+        </section>
+        <section class="notice-card success" *ngIf="actual.estado==='PAGADO'">
+          <h2>Tu pago fue aprobado</h2>
+          <p>Estamos preparando tu pedido.</p>
+        </section>
+        <section class="notice-card ready" *ngIf="actual.estado==='LISTO'">
+          <h2>Tu pedido está listo para recoger</h2>
+          <p>Preséntate en la tienda con el folio {{actual.folio}}.</p>
+        </section>
+        <section class="notice-card success" *ngIf="actual.estado==='ENTREGADO'">
+          <h2>Pedido entregado</h2>
+          <p>Gracias por comprar con nosotros.</p>
+        </section>
+        <section class="notice-card rejected" *ngIf="actual.estado==='RECHAZADO'">
+          <h2>Tu pago fue rechazado</h2>
+          <p *ngIf="actual.motivoRechazo"><strong>Motivo:</strong> {{actual.motivoRechazo}}</p>
+          <p>Si deseas comprar nuevamente, crea un pedido nuevo.</p>
+        </section>
+        <section class="notice-card" *ngIf="actual.estado==='EXPIRADO'">
+          <h2>Tu reserva expiró</h2>
+          <p>Los productos volvieron al inventario.</p>
+        </section>
+      </ng-container>
+    </main></ion-content
+  ></app-cliente-shell
+>

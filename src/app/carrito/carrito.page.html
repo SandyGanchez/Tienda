@@ -21,7 +21,7 @@
         <section class="cart-items" aria-label="Productos del carrito">
           <article class="cart-item" *ngFor="let item of carrito.items">
             <div class="item-image">
-              <img *ngIf="imagen(item.imagen) as src; else itemPlaceholder" [src]="src" [alt]="item.nombre">
+              <img *ngIf="imagen(item.imagen) as src; else itemPlaceholder" [src]="src" [alt]="item.nombre" />
               <ng-template #itemPlaceholder><ion-icon name="cube-outline"></ion-icon></ng-template>
             </div>
             <div class="item-detail">
@@ -31,11 +31,21 @@
             </div>
             <div class="item-controls">
               <div class="quantity" aria-label="Cantidad">
-                <button type="button" [disabled]="item.cantidad <= 1" (click)="carrito.decrementar(item.idPro)" [attr.aria-label]="'Reducir ' + item.nombre">
+                <button
+                  type="button"
+                  [disabled]="item.cantidad <= 1"
+                  (click)="carrito.decrementar(item.idPro)"
+                  [attr.aria-label]="'Reducir ' + item.nombre"
+                >
                   <ion-icon name="remove-outline"></ion-icon>
                 </button>
                 <span>{{ item.cantidad }}</span>
-                <button type="button" [disabled]="item.cantidad >= item.stockConocido" (click)="incrementar(item)" [attr.aria-label]="'Aumentar ' + item.nombre">
+                <button
+                  type="button"
+                  [disabled]="item.cantidad >= item.stockConocido"
+                  (click)="incrementar(item)"
+                  [attr.aria-label]="'Aumentar ' + item.nombre"
+                >
                   <ion-icon name="add-outline"></ion-icon>
                 </button>
               </div>
@@ -49,7 +59,10 @@
           <span>Resumen</span>
           <h2>Tu compra</h2>
           <div><span>Productos</span><strong>{{ carrito.cantidadTotal }}</strong></div>
-          <div class="summary-total"><span>Total mostrado</span><strong>{{ carrito.totalMostrado | currency:'MXN':'symbol-narrow':'1.2-2' }}</strong></div>
+          <div class="summary-total">
+            <span>Total mostrado</span
+            ><strong>{{ carrito.totalMostrado | currency:'MXN':'symbol-narrow':'1.2-2' }}</strong>
+          </div>
           <p>Los precios y la disponibilidad se confirmarán al realizar el pedido.</p>
           <ion-button expand="block" (click)="continuarCompra()">Continuar con la compra</ion-button>
           <a routerLink="/catalogo">Continuar viendo productos</a>

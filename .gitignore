@@ -88,3 +88,20 @@ Thumbs.db
 # Credenciales de firma
 *.jks
 *.keystore
+
+# Terraform
+/terraform/
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars
+!*.tfvars.example
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+.terraform.lock.hcl

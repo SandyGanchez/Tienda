@@ -15,19 +15,29 @@ export class ClienteAuthService {
   private readonly google = inject(GoogleIdentityService);
   readonly sesion$ = this.store.sesion$;
 
-  get sesion(): ClienteAuthSession | null { return this.store.sesion; }
-  get token(): string | null { return this.store.token; }
-  estaAutenticado(): boolean { return Boolean(this.token); }
+  get sesion(): ClienteAuthSession | null {
+    return this.store.sesion;
+  }
+  get token(): string | null {
+    return this.store.token;
+  }
+  estaAutenticado(): boolean {
+    return Boolean(this.token);
+  }
 
   async loginGoogle(): Promise<ClienteAuthSession> {
     const idToken = await this.google.obtenerIdToken();
-    return firstValueFrom(this.http.post<ClienteAuthSession>(
-      `${environment.API_BASE_URL}/auth/google/cliente`, { idToken }
-    ));
+    return firstValueFrom(
+      this.http.post<ClienteAuthSession>(`${environment.API_BASE_URL}/auth/google/cliente`, { idToken }),
+    );
   }
 
-  guardarSesion(sesion: ClienteAuthSession): void { this.store.guardar(sesion); }
-  limpiarSesion(): void { this.store.limpiar(); }
+  guardarSesion(sesion: ClienteAuthSession): void {
+    this.store.guardar(sesion);
+  }
+  limpiarSesion(): void {
+    this.store.limpiar();
+  }
   me(): Observable<{ cliente: ClienteSesion }> {
     return this.http.get<{ cliente: ClienteSesion }>(`${environment.API_BASE_URL}/auth/cliente/me`);
   }
@@ -37,7 +47,9 @@ export class ClienteAuthService {
     try {
       const respuesta = await firstValueFrom(this.me());
       this.guardarSesion({ token: this.token!, cliente: respuesta.cliente });
-    } catch { this.limpiarSesion(); }
+    } catch {
+      this.limpiarSesion();
+    }
   }
 
   async logout(): Promise<void> {
@@ -46,5 +58,7 @@ export class ClienteAuthService {
     await this.router.navigateByUrl('/login', { replaceUrl: true });
   }
 
-  esCancelacionGoogle(error: unknown): boolean { return this.google.esCancelacion(error); }
+  esCancelacionGoogle(error: unknown): boolean {
+    return this.google.esCancelacion(error);
+  }
 }

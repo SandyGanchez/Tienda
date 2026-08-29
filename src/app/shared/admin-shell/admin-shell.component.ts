@@ -4,7 +4,16 @@ import { environment } from '../../../environments/environment';
 import { AuthService } from '../../services/auth.service';
 import { ImagenesService } from '../../services/imagenes.service';
 
-export type AdminSection = 'inicio' | 'productos' | 'categorias' | 'marcas' | 'empleados' | 'cajero' | 'ventas' | 'pedidos-online' | 'configuracion';
+export type AdminSection =
+  | 'inicio'
+  | 'productos'
+  | 'categorias'
+  | 'marcas'
+  | 'empleados'
+  | 'cajero'
+  | 'ventas'
+  | 'pedidos-online'
+  | 'configuracion';
 
 interface TiendaMenu {
   nombreSuc: string | null;
@@ -15,7 +24,7 @@ interface TiendaMenu {
   selector: 'app-admin-shell',
   templateUrl: './admin-shell.component.html',
   styleUrls: ['./admin-shell.component.scss'],
-  standalone: false
+  standalone: false,
 })
 export class AdminShellComponent implements OnInit {
   @Input({ required: true }) menuId = '';
@@ -29,8 +38,8 @@ export class AdminShellComponent implements OnInit {
 
   ngOnInit(): void {
     this.http.get<TiendaMenu[]>(`${environment.API_BASE_URL}/public/tienda`).subscribe({
-      next: tiendas => this.tienda = tiendas.length === 1 ? tiendas[0] : null,
-      error: () => undefined
+      next: (tiendas) => (this.tienda = tiendas.length === 1 ? tiendas[0] : null),
+      error: () => undefined,
     });
   }
 
@@ -38,7 +47,13 @@ export class AdminShellComponent implements OnInit {
     return this.tienda?.nombreSuc?.trim() || this.auth.sesion?.empleado.nombreSuc?.trim() || 'Mi tienda';
   }
 
-  get esAdministrador(): boolean { return this.auth.tieneRol('ADMINISTRADOR'); }
-  resolverLogo(): string | null { return this.imagenes.resolver(this.tienda?.logoSuc); }
-  resolverAvatar(): string | null { return this.imagenes.resolver(this.auth.sesion?.empleado.fotoPerfil); }
+  get esAdministrador(): boolean {
+    return this.auth.tieneRol('ADMINISTRADOR');
+  }
+  resolverLogo(): string | null {
+    return this.imagenes.resolver(this.tienda?.logoSuc);
+  }
+  resolverAvatar(): string | null {
+    return this.imagenes.resolver(this.auth.sesion?.empleado.fotoPerfil);
+  }
 }
