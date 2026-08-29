@@ -15,7 +15,8 @@ log.txt
 
 /.sourcemaps
 /.versions
-/coverage
+coverage/
+**/coverage/
 
 # Ionic
 /.ionic
@@ -24,7 +25,8 @@ log.txt
 /plugins
 
 # Compiled output
-/dist
+dist/
+**/dist/
 /tmp
 /out-tsc
 /bazel-out
