@@ -7,8 +7,8 @@ if (!process.env.JWT_SECRET?.trim()) {
 }
 
 const express = require('express');
-const mysql = require('mysql2');
 const cors = require('cors');
+const db = require('./db');
 const multer = require('multer');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -194,18 +194,6 @@ async function generarPresignedDownload(key, filename, mimeType) {
   });
   return await getSignedUrl(s3Client, command, { expiresIn: 900 });
 }
-
-const db = mysql
-  .createPool({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    port: Number(process.env.DB_PORT || 3306),
-    waitForConnections: true,
-    connectionLimit: 10,
-  })
-  .promise();
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false });
@@ -537,7 +525,7 @@ function valoresProducto(producto) {
 
 function errorServidor(res, error) {
   console.error(error);
-  if (error && error.code === 'ER_ROW_IS_REFERENCED_2') {
+  if (error && (error.code === 'ER_ROW_IS_REFERENCED_2' || error.code === '23503')) {
     return res.status(409).json({ message: 'No se puede eliminar porque el registro está en uso' });
   }
   return res.status(500).json({ message: 'Ocurrió un error interno en el servidor' });
@@ -761,7 +749,8 @@ async function resolverClienteGoogle(perfil, intento = 0) {
     return rows[0];
   } catch (error) {
     if (connection) await connection.rollback().catch(() => undefined);
-    if (error.code === 'ER_DUP_ENTRY' && intento === 0) return resolverClienteGoogle(perfil, 1);
+    if ((error.code === 'ER_DUP_ENTRY' || error.code === '23505') && intento === 0)
+      return resolverClienteGoogle(perfil, 1);
     throw error;
   } finally {
     connection?.release();
@@ -1565,9 +1554,15 @@ app.put('/configuracion/transferencia', autenticar, autorizarRoles('ADMINISTRADO
       `INSERT INTO configuracion_transferencia
       (idSuc, banco, titular, clabe, numeroCuenta, instrucciones, activo)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-      ON DUPLICATE KEY UPDATE banco=VALUES(banco), titular=VALUES(titular), clabe=VALUES(clabe),
-        numeroCuenta=VALUES(numeroCuenta), instrucciones=VALUES(instrucciones), activo=VALUES(activo)`,
-      [idSuc, datos.banco, datos.titular, datos.clabe, datos.numeroCuenta, datos.instrucciones, datos.activo ? 1 : 0],
+      ON CONFLICT (idSuc) DO UPDATE SET
+        banco = EXCLUDED.banco,
+        titular = EXCLUDED.titular,
+        clabe = EXCLUDED.clabe,
+        numeroCuenta = EXCLUDED.numeroCuenta,
+        instrucciones = EXCLUDED.instrucciones,
+        activo = EXCLUDED.activo,
+        fechaActualizacion = CURRENT_TIMESTAMP`,
+      [idSuc, datos.banco, datos.titular, datos.clabe, datos.numeroCuenta, datos.instrucciones, datos.activo],
     );
     const [rows] = await db.query('SELECT * FROM configuracion_transferencia WHERE idSuc = ?', [idSuc]);
     res.json({ configuracion: normalizarConfiguracionTransferencia(rows[0], true) });
@@ -1696,7 +1691,7 @@ app.post('/cliente/pedidos', autenticarCliente, async (req, res) => {
     return res.status(201).json(pedido);
   } catch (error) {
     if (connection) await connection.rollback().catch(() => undefined);
-    if (error.code === 'ER_DUP_ENTRY') {
+    if (error.code === 'ER_DUP_ENTRY' || error.code === '23505') {
       try {
         const [rows] = await db.query('SELECT idPedido, idCliente FROM pedido_cliente WHERE uuidPedido = ?', [
           uuidPedido,
@@ -3024,7 +3019,8 @@ app.post('/empleados', autenticar, autorizarRoles('ADMINISTRADOR'), async (req, 
     const [rows] = await db.query(`${empleadoSesionSelect} WHERE e.idEmp = ?`, [result.insertId]);
     res.status(201).json(empleadoSeguro(rows[0]));
   } catch (error) {
-    if (error.code === 'ER_DUP_ENTRY') return res.status(409).json({ message: 'El correo ya está registrado' });
+    if (error.code === 'ER_DUP_ENTRY' || error.code === '23505')
+      return res.status(409).json({ message: 'El correo ya está registrado' });
     errorServidor(res, error);
   }
 });
@@ -3067,7 +3063,8 @@ app.put('/empleados/:id', autenticar, autorizarRoles('ADMINISTRADOR'), async (re
     const [rows] = await db.query(`${empleadoSesionSelect} WHERE e.idEmp = ?`, [idEmp]);
     res.json(empleadoSeguro(rows[0]));
   } catch (error) {
-    if (error.code === 'ER_DUP_ENTRY') return res.status(409).json({ message: 'El correo ya está registrado' });
+    if (error.code === 'ER_DUP_ENTRY' || error.code === '23505')
+      return res.status(409).json({ message: 'El correo ya está registrado' });
     errorServidor(res, error);
   }
 });

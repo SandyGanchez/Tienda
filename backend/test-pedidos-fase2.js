@@ -4,13 +4,7 @@ const { spawn } = require('child_process');
 const crypto = require('crypto');
 const fs = require('fs');
 const jwt = require('jsonwebtoken');
-const mysql = require('mysql2/promise');
-
-const baseUrl = `http://127.0.0.1:${Number(process.env.PORT) || 3000}`;
-const resultados = [];
-const pedidosPrueba = new Set();
-let servidor;
-let db;
+const db = require('./db');
 let idClienteTemporal = null;
 let idConfiguracionTemporal = null;
 let producto;
@@ -70,13 +64,6 @@ async function cancelar(idPedido, clienteToken) {
 }
 
 async function preparar() {
-  db = await mysql.createConnection({
-    host: process.env.DB_HOST,
-    port: Number(process.env.DB_PORT || 3306),
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-  });
   const [sucursales] = await db.query('SELECT idSuc FROM sucursal ORDER BY idSuc');
   if (sucursales.length !== 1) throw new Error('Las pruebas requieren exactamente una sucursal.');
   const idSuc = Number(sucursales[0].idSuc);
