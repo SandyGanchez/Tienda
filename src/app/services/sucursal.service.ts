@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, switchMap } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Sucursal, SucursalDto } from '../models/sucursal';
 import { ImagenesService } from './imagenes.service';
@@ -24,9 +24,28 @@ export class SucursalService {
   }
 
   subirLogo(idSuc: number, imagen: Blob, nombre: string): Observable<Sucursal> {
-    const formData = new FormData();
-    formData.append('logo', imagen, nombre);
-    return this.http.post<Sucursal>(`${this.apiUrl}/${idSuc}/logo`, formData);
+    const mimeType = imagen.type || 'image/jpeg';
+    return this.http
+      .post<{ uploadUrl: string; key: string; publicUrl: string }>(`${this.apiUrl}/${idSuc}/presign-logo`, {
+        mimeType,
+        filename: nombre,
+      })
+      .pipe(
+        switchMap(({ uploadUrl, publicUrl, key }) =>
+          this.http
+            .put(uploadUrl, imagen, {
+              headers: { 'Content-Type': mimeType },
+            })
+            .pipe(
+              switchMap(() =>
+                this.http.post<Sucursal>(`${this.apiUrl}/${idSuc}/confirmar-logo`, {
+                  logoUrl: publicUrl,
+                  key,
+                }),
+              ),
+            ),
+        ),
+      );
   }
 
   quitarLogo(idSuc: number): Observable<Sucursal> {
