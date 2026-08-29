@@ -469,9 +469,7 @@ export class SqliteService {
       ],
     );
   }
-  async resumenCajaLocal(
-    uuidSesionCaja: string,
-  ): Promise<{
+  async resumenCajaLocal(uuidSesionCaja: string): Promise<{
     totalVentas: number;
     totalEfectivo: number;
     totalTarjeta: number;
