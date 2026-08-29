@@ -97,7 +97,7 @@ export class SyncService {
   private async refrescarCatalogo(): Promise<void> {
     try {
       const productos = await firstValueFrom(this.ventas.productos());
-      for (const p of productos) await this.sqlite.guardarProductoPos(p);
+      await this.sqlite.sincronizarCatalogo(productos);
     } catch {
       /* Se conserva el catálogo local. */
     }

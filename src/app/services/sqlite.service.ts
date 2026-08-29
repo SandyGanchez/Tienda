@@ -267,6 +267,84 @@ export class SqliteService {
       [idPro],
     );
   }
+  async sincronizarCatalogo(productos: any[]): Promise<void> {
+    if (!this.disponible || !Array.isArray(productos)) return;
+    const db = await this.getDB();
+
+    const idsValidos: number[] = [];
+
+    for (const item of productos) {
+      const idPro = Number(item.idPro);
+      if (!Number.isInteger(idPro) || idPro <= 0) continue;
+      idsValidos.push(idPro);
+
+      const qr = item.codigoQR ? String(item.codigoQR).trim() : null;
+
+      if (qr) {
+        await db.run('DELETE FROM productos WHERE codigoQR = ? AND idPro != ?', [qr, idPro]);
+      }
+
+      await db.run(
+        `INSERT INTO productos (
+          idPro,
+          nombrePro,
+          precioVentaPro,
+          costoPro,
+          existenciaPro,
+          stockMinimoPro,
+          tamanoPro,
+          presentacionPro,
+          tipoPro,
+          codigoQR,
+          skuPro,
+          imagenPro,
+          idMarca,
+          idCat,
+          pendienteSync
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        ON CONFLICT(idPro) DO UPDATE SET
+          nombrePro = excluded.nombrePro,
+          precioVentaPro = excluded.precioVentaPro,
+          costoPro = CASE WHEN excluded.costoPro IS NOT NULL THEN excluded.costoPro ELSE productos.costoPro END,
+          existenciaPro = excluded.existenciaPro,
+          stockMinimoPro = CASE WHEN excluded.stockMinimoPro IS NOT NULL THEN excluded.stockMinimoPro ELSE productos.stockMinimoPro END,
+          tamanoPro = excluded.tamanoPro,
+          presentacionPro = excluded.presentacionPro,
+          tipoPro = CASE WHEN excluded.tipoPro IS NOT NULL THEN excluded.tipoPro ELSE productos.tipoPro END,
+          codigoQR = excluded.codigoQR,
+          skuPro = excluded.skuPro,
+          imagenPro = excluded.imagenPro,
+          idMarca = CASE WHEN excluded.idMarca IS NOT NULL THEN excluded.idMarca ELSE productos.idMarca END,
+          idCat = CASE WHEN excluded.idCat IS NOT NULL THEN excluded.idCat ELSE productos.idCat END,
+          pendienteSync = 0`,
+        [
+          idPro,
+          item.nombrePro || '',
+          item.precioVentaPro !== undefined && item.precioVentaPro !== null ? Number(item.precioVentaPro) : 0,
+          item.costoPro !== undefined && item.costoPro !== null ? Number(item.costoPro) : null,
+          Number(item.existenciaPro) || 0,
+          item.stockMinimoPro !== undefined && item.stockMinimoPro !== null ? Number(item.stockMinimoPro) : null,
+          item.tamanoPro || null,
+          item.presentacionPro || null,
+          item.tipoPro || null,
+          qr,
+          item.skuPro || null,
+          item.imagenPro || null,
+          item.idMarca ? Number(item.idMarca) : null,
+          item.idCat ? Number(item.idCat) : null,
+        ],
+      );
+    }
+
+    if (idsValidos.length > 0) {
+      const placeholders = idsValidos.map(() => '?').join(',');
+      await db.run(`DELETE FROM productos WHERE idPro NOT IN (${placeholders}) AND pendienteSync = 0`, idsValidos);
+    } else {
+      await db.run(`DELETE FROM productos WHERE pendienteSync = 0`);
+    }
+  }
+
   async guardarProductoPos(producto: ProductoPos): Promise<void> {
     if (!this.disponible) return;
     const db = await this.getDB();
@@ -289,7 +367,7 @@ export class SqliteService {
   async eliminarProductoLocal(idPro: number): Promise<void> {
     if (!this.disponible) return;
     const db = await this.getDB();
-    await db.run('DELETE FROM productos WHERE idPro = ?', [idPro]);
+    await db.run('DELETE FROM productos WHERE idPro = ?', [Number(idPro)]);
   }
 
   async encolar(tipo: string, uuid: string, payload: unknown, orden: number): Promise<void> {

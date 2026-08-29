@@ -332,7 +332,8 @@ INSERT INTO cargo (idCargo, nombreCargo, descripcionCargo, idSuc) VALUES
 -- 4.4 Empleados (Contraseñas con hash bcrypt)
 INSERT INTO empleados (idEmp, nombreEmp, apellidoPatEmp, apellidoMatEmp, edadPer, generoPer, fechaIngreso, fechaEntrada, fechaSalida, correoEmp, contrasenaHash, estadoEmp, googleSub, telefono, fotoPerfil, idDir, idCargo) VALUES
 (1, 'Administrador', 'Tienda', 'Principal', 35, 'Masculino', '2026-08-27', NULL, NULL, 'admin@gmail.com', '$2b$12$LrHug.oGSGD1HyV/DjAmweZMkuOpyaGAmLf7LVBvSBcSO7Gg.j4xu', TRUE, NULL, '7221234567', NULL, 1, 1),
-(2, 'Diana Elena', 'Sanchez', 'Garcia', 28, 'Femenino', '2026-08-27', NULL, NULL, 'diana@gmail.com', '$2b$12$bxT2KK0A1pXZeMNdSlv6jeCAqy9cjqgGpPYCsWbnvWeZDcSQQ4KHa', TRUE, NULL, '7298456578', NULL, 2, 2);
+(2, 'Diana Elena', 'Sanchez', 'Garcia', 28, 'Femenino', '2026-08-27', NULL, NULL, 'diana@gmail.com', '$2b$12$bxT2KK0A1pXZeMNdSlv6jeCAqy9cjqgGpPYCsWbnvWeZDcSQQ4KHa', TRUE, NULL, '7298456578', NULL, 2, 2),
+(3, 'Dumb', 'User', 'Test', 25, 'Otro', '2026-08-29', NULL, NULL, 'dumb@user.com', '$2b$12$mcSBVhI4MURCB3ZqM.9tQuD9C7w3CZoMFDK01IM0.2TMqUAzkYlOK', TRUE, NULL, '7220000000', NULL, 1, 2);
 
 -- 4.5 Clientes
 INSERT INTO cliente (idCliente, nombreCliente, apellidoPatCliente, apellidoMatCliente, correoCliente, googleSub, fotoPerfil, estadoCliente, fechaRegistro, ultimoAcceso) VALUES
