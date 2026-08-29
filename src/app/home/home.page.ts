@@ -243,12 +243,29 @@ export class HomePage implements OnInit {
   cargarProductos(): void {
     this.cargandoProductos = true;
     this.api.getProductos().subscribe({
-      next: (productos) => {
+      next: async (productos) => {
         this.productos = this.productosUnicos(productos);
         this.cargandoProductos = false;
+        if (this.sqlite.disponible) {
+          try {
+            await this.sqlite.sincronizarCatalogo(this.productos);
+          } catch (error) {
+            console.error('Error al sincronizar catálogo con SQLite:', error);
+          }
+        }
       },
-      error: (error: unknown) => {
-        console.error('No se pudieron cargar los productos', error);
+      error: async (error: unknown) => {
+        console.error('No se pudieron cargar los productos del servidor, intentando SQLite...', error);
+        if (this.sqlite.disponible) {
+          try {
+            const locales = await this.sqlite.getProductosLocales();
+            if (locales && locales.length > 0) {
+              this.productos = this.productosUnicos(locales as Producto[]);
+            }
+          } catch (localError) {
+            console.error('Error al leer productos locales:', localError);
+          }
+        }
         this.cargandoProductos = false;
       },
     });
@@ -395,7 +412,7 @@ export class HomePage implements OnInit {
         await this.sqlite.guardarProducto(productoFinal);
       } catch (error: unknown) {
         copiaLocalFallo = true;
-        console.error('Producto guardado en MySQL, pero falló SQLite', error);
+        console.error('Producto guardado en servidor, pero falló SQLite', error);
       }
 
       if (agregarOtro && this.modoProducto === 'crear') {
@@ -596,10 +613,12 @@ export class HomePage implements OnInit {
     try {
       const respuesta = await firstValueFrom(this.api.deleteProducto(producto.idPro));
       this.productos = this.productos.filter((item) => item.idPro !== producto.idPro);
-      try {
-        await this.sqlite.eliminarProductoLocal(producto.idPro);
-      } catch (error: unknown) {
-        console.error('Producto eliminado en MySQL, pero no en SQLite', error);
+      if (this.sqlite.disponible) {
+        try {
+          await this.sqlite.eliminarProductoLocal(producto.idPro);
+        } catch (error: unknown) {
+          console.error('Producto eliminado en servidor, pero falló SQLite', error);
+        }
       }
       await this.mostrarFeedback(respuesta.message, 'success');
     } catch (error: unknown) {

@@ -60,6 +60,10 @@ export class EmpleadosPage implements OnInit {
     void this.cargarDatos();
   }
 
+  ionViewWillEnter(): void {
+    void this.cargarDatos();
+  }
+
   private async cargarDatos(): Promise<void> {
     this.cargando = true;
 

@@ -1,4 +1,5 @@
 const { Pool } = require('pg');
+const prisma = require('./prisma/client');
 
 const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRESQL_URL;
 
@@ -135,6 +136,7 @@ const db = {
   },
 
   pool,
+  prisma,
 };
 
 module.exports = db;

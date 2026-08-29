@@ -362,9 +362,7 @@ export class CajeroPage implements OnInit {
       }));
 
       if (this.sqlite.disponible) {
-        for (const producto of this.productos) {
-          await this.sqlite.guardarProductoPos(producto);
-        }
+        await this.sqlite.sincronizarCatalogo(this.productos);
       }
     } catch {
       if (this.sqlite.disponible) {
@@ -1050,26 +1048,34 @@ export class CajeroPage implements OnInit {
      VENTA REALIZADA
   ========================================= */
 
-  private async confirmarVenta(venta: VentaRegistrada): Promise<void> {
+  private async confirmarVenta(venta?: VentaRegistrada | null): Promise<void> {
+    const total = venta?.total ?? this.total;
+    const cambio = venta?.cambio ?? this.cambio;
+    const folio = venta?.idVenta ? `Folio ${venta.idVenta}` : 'Venta realizada';
+
     const alerta = await this.alert.create({
       header: 'Venta realizada',
 
-      subHeader: `Folio ${venta.idVenta}`,
+      subHeader: folio,
 
       message: `
-            Total: ${this.moneda(venta.total)}
+            Total: ${this.moneda(total)}
             <br>
-            Cambio: ${this.moneda(venta.cambio)}
+            Cambio: ${this.moneda(cambio)}
           `,
 
       buttons: [
-        {
-          text: 'Ver comprobante',
+        ...(venta?.idVenta
+          ? [
+              {
+                text: 'Ver comprobante',
 
-          handler: () => {
-            location.assign(`/ventas/${venta.idVenta}`);
-          },
-        },
+                handler: () => {
+                  location.assign(`/ventas/${venta.idVenta}`);
+                },
+              },
+            ]
+          : []),
 
         {
           text: 'Nueva venta',

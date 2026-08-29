@@ -8,7 +8,7 @@ if (!process.env.JWT_SECRET?.trim()) {
 
 const express = require('express');
 const cors = require('cors');
-const db = require('./db');
+const prisma = require('./prisma/client');
 const multer = require('multer');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -291,11 +291,6 @@ async function autenticar(req, res, next) {
       issuer: 'tienda-api',
     });
 
-    /*
-     * Un token CLIENTE nunca puede utilizar
-     * las rutas administrativas / POS.
-     */
-
     if (payload.tipo && payload.tipo !== 'EMPLEADO') {
       return res.status(401).json({
         message: 'Sesión no válida',
@@ -303,11 +298,38 @@ async function autenticar(req, res, next) {
     }
 
     const idEmp = idValido(payload.sub);
-    const [rows] = await db.query(`${empleadoSesionSelect} WHERE e.idEmp = ?`, [idEmp]);
-    const empleado = rows[0];
-    if (!empleado || !empleado.estadoEmp || !empleado.cargo)
+    if (!idEmp) return res.status(401).json({ message: 'Sesión no válida' });
+
+    const empleado = await prisma.empleado.findUnique({
+      where: { idEmp },
+      include: {
+        cargo: {
+          include: { sucursal: true },
+        },
+      },
+    });
+
+    if (!empleado || !empleado.estadoEmp || !empleado.cargo) {
       return res.status(401).json({ message: 'Sesión no válida' });
-    req.empleado = empleado;
+    }
+
+    req.empleado = {
+      idEmp: empleado.idEmp,
+      nombreEmp: empleado.nombreEmp,
+      apellidoPatEmp: empleado.apellidoPatEmp,
+      apellidoMatEmp: empleado.apellidoMatEmp,
+      correoEmp: empleado.correoEmp,
+      contrasenaHash: empleado.contrasenaHash,
+      estadoEmp: empleado.estadoEmp,
+      googleSub: empleado.googleSub,
+      telefono: empleado.telefono,
+      fotoPerfil: empleado.fotoPerfil,
+      fechaIngreso: empleado.fechaIngreso,
+      idCargo: empleado.idCargo,
+      cargo: empleado.cargo?.nombreCargo,
+      idSuc: empleado.cargo?.idSuc,
+      nombreSuc: empleado.cargo?.sucursal?.nombreSuc,
+    };
     next();
   } catch {
     return res.status(401).json({ message: 'Sesión no válida' });
@@ -324,15 +346,9 @@ async function autenticarCliente(req, res, next) {
   }
 
   try {
-    const payload = jwt.verify(
-      token,
-
-      process.env.JWT_SECRET,
-
-      {
-        issuer: 'tienda-api',
-      },
-    );
+    const payload = jwt.verify(token, process.env.JWT_SECRET, {
+      issuer: 'tienda-api',
+    });
 
     if (payload.tipo !== 'CLIENTE') {
       return res.status(401).json({
@@ -341,16 +357,15 @@ async function autenticarCliente(req, res, next) {
     }
 
     const idCliente = idValido(payload.sub);
-
     if (!idCliente) {
       return res.status(401).json({
         message: 'Sesión no válida',
       });
     }
 
-    const [rows] = await db.query(`${clienteSesionSelect} WHERE idCliente = ?`, [idCliente]);
-
-    const cliente = rows[0];
+    const cliente = await prisma.cliente.findUnique({
+      where: { idCliente },
+    });
 
     if (!cliente || !cliente.estadoCliente) {
       return res.status(401).json({
@@ -359,7 +374,6 @@ async function autenticarCliente(req, res, next) {
     }
 
     req.cliente = cliente;
-
     next();
   } catch {
     return res.status(401).json({
@@ -447,8 +461,30 @@ const sucursalSelect = `
 `;
 
 async function obtenerSucursal(idSuc) {
-  const [rows] = await db.query(`${sucursalSelect} WHERE s.idSuc = ?`, [idSuc]);
-  return rows[0] || null;
+  const s = await prisma.sucursal.findUnique({
+    where: { idSuc: Number(idSuc) },
+    include: { direccion: true },
+  });
+  if (!s) return null;
+  const d = s.direccion;
+  const direccionStr = d
+    ? [d.calle, [d.noExt, d.noInt].filter(Boolean).join(' '), d.colonia, d.municipio, d.estado, d.codPostal, d.pais]
+        .filter(Boolean)
+        .join(', ') || null
+    : null;
+
+  return {
+    idSuc: s.idSuc,
+    nombreSuc: s.nombreSuc,
+    descripcionSuc: s.descripcionSuc,
+    telefonoSuc: s.telefonoSuc,
+    correoSuc: s.correoSuc,
+    paginaWebSuc: s.paginaWebSuc,
+    redSocialSuc: s.redSocialSuc,
+    logoSuc: s.logoSuc,
+    idDir: s.idDir,
+    direccion: direccionStr,
+  };
 }
 
 function valoresSucursal(sucursal) {
@@ -531,26 +567,57 @@ function errorServidor(res, error) {
   return res.status(500).json({ message: 'Ocurrió un error interno en el servidor' });
 }
 
-async function obtenerProducto(idPro, executor = db) {
-  const [rows] = await executor.query(`${productoSelect} WHERE p.idPro = ?`, [idPro]);
-  return rows[0] || null;
+async function obtenerProducto(idPro) {
+  const p = await prisma.producto.findUnique({
+    where: { idPro: Number(idPro) },
+    include: {
+      marca: true,
+      categoria: true,
+    },
+  });
+  if (!p) return null;
+  return {
+    idPro: p.idPro,
+    nombrePro: p.nombrePro,
+    precioVentaPro: Number(p.precioVentaPro),
+    costoPro: p.costoPro !== null && p.costoPro !== undefined ? Number(p.costoPro) : null,
+    existenciaPro: p.existenciaPro,
+    stockMinimoPro: p.stockMinimoPro,
+    tamanoPro: p.tamanoPro,
+    presentacionPro: p.presentacionPro,
+    tipoPro: p.tipoPro,
+    codigoQR: p.codigoQR,
+    skuPro: p.skuPro,
+    imagenPro: p.imagenPro,
+    idMarca: p.idMarca,
+    idCat: p.idCat,
+    nombreMarca: p.marca?.nombreMarca || null,
+    nombreCat: p.categoria?.nombreCat || null,
+    activoPro: p.activoPro,
+  };
 }
 
 async function validarCatalogosProducto(producto) {
-  const [[marcas], [categorias]] = await Promise.all([
-    db.query('SELECT idMarca FROM marca WHERE idMarca = ?', [producto.idMarca]),
-    db.query('SELECT idCat FROM categoria WHERE idCat = ?', [producto.idCat]),
+  const [marca, categoria] = await Promise.all([
+    producto.idMarca ? prisma.marca.findUnique({ where: { idMarca: Number(producto.idMarca) } }) : null,
+    producto.idCat ? prisma.categoria.findUnique({ where: { idCat: Number(producto.idCat) } }) : null,
   ]);
-  if (marcas.length === 0) return 'La marca seleccionada no existe';
-  if (categorias.length === 0) return 'La categoría seleccionada no existe';
+  if (producto.idMarca && !marca) return 'La marca seleccionada no existe';
+  if (producto.idCat && !categoria) return 'La categoría seleccionada no existe';
   return null;
 }
 
 async function codigoEnUso(codigoQR, idPro = 0) {
   const codigo = texto(codigoQR);
   if (!codigo) return false;
-  const [rows] = await db.query('SELECT idPro FROM productos WHERE codigoQR = ? AND idPro <> ?', [codigo, idPro]);
-  return rows.length > 0;
+  const existente = await prisma.producto.findFirst({
+    where: {
+      codigoQR: codigo,
+      NOT: { idPro: Number(idPro) },
+    },
+    select: { idPro: true },
+  });
+  return Boolean(existente);
 }
 
 app.post('/uploads/presign', async (req, res) => {
@@ -619,8 +686,16 @@ app.post('/uploads/presign', async (req, res) => {
 
 app.get('/public/tienda', async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT idSuc, nombreSuc, descripcionSuc, logoSuc FROM sucursal ORDER BY idSuc');
-    res.json(rows);
+    const sucursales = await prisma.sucursal.findMany({
+      orderBy: { idSuc: 'asc' },
+      select: {
+        idSuc: true,
+        nombreSuc: true,
+        descripcionSuc: true,
+        logoSuc: true,
+      },
+    });
+    res.json(sucursales);
   } catch (error) {
     errorServidor(res, error);
   }
@@ -628,15 +703,27 @@ app.get('/public/tienda', async (req, res) => {
 
 app.get('/public/productos', async (req, res) => {
   try {
-    const [rows] = await db.query(`
-      SELECT p.idPro, p.nombrePro, p.precioVentaPro, p.existenciaPro, p.tamanoPro,
-        p.presentacionPro, p.tipoPro, p.imagenPro, m.nombreMarca, c.nombreCat
-      FROM productos p
-      LEFT JOIN marca m ON m.idMarca = p.idMarca
-      LEFT JOIN categoria c ON c.idCat = p.idCat
-      ORDER BY p.nombrePro
-    `);
-    res.json(rows);
+    const productos = await prisma.producto.findMany({
+      orderBy: { nombrePro: 'asc' },
+      include: {
+        marca: true,
+        categoria: true,
+      },
+    });
+    res.json(
+      productos.map((p) => ({
+        idPro: p.idPro,
+        nombrePro: p.nombrePro,
+        precioVentaPro: Number(p.precioVentaPro),
+        existenciaPro: p.existenciaPro,
+        tamanoPro: p.tamanoPro,
+        presentacionPro: p.presentacionPro,
+        tipoPro: p.tipoPro,
+        imagenPro: p.imagenPro,
+        nombreMarca: p.marca?.nombreMarca || null,
+        nombreCat: p.categoria?.nombreCat || null,
+      })),
+    );
   } catch (error) {
     errorServidor(res, error);
   }
@@ -647,16 +734,28 @@ app.post('/auth/login', loginLimiter, async (req, res) => {
   const password = typeof req.body.password === 'string' ? req.body.password : '';
   if (!correo || !password) return res.status(400).json({ message: 'Correo y contraseña son obligatorios' });
   try {
-    const [rows] = await db.query(`${empleadoSesionSelect} WHERE LOWER(e.correoEmp) = ?`, [correo]);
-    const empleado = rows[0];
+    const empleado = await prisma.empleado.findFirst({
+      where: { correoEmp: { equals: correo, mode: 'insensitive' } },
+      include: {
+        cargo: {
+          include: { sucursal: true },
+        },
+      },
+    });
     if (!empleado?.contrasenaHash || !(await bcrypt.compare(password, empleado.contrasenaHash))) {
       return res.status(401).json({ message: 'Correo o contraseña incorrectos' });
     }
     if (!empleado.estadoEmp) return res.status(403).json({ message: 'Tu cuenta está desactivada' });
-    if (!['ADMINISTRADOR', 'CAJERO'].includes(empleado.cargo)) {
+    if (!['ADMINISTRADOR', 'CAJERO'].includes(empleado.cargo?.nombreCargo)) {
       return res.status(403).json({ message: 'Tu cuenta no tiene un cargo autorizado' });
     }
-    res.json({ token: emitirSesion(empleado), empleado: empleadoSeguro(empleado) });
+    const empSeguro = empleadoSeguro({
+      ...empleado,
+      cargo: empleado.cargo?.nombreCargo,
+      idSuc: empleado.cargo?.idSuc,
+      nombreSuc: empleado.cargo?.sucursal?.nombreSuc,
+    });
+    res.json({ token: emitirSesion(empSeguro), empleado: empSeguro });
   } catch (error) {
     errorServidor(res, error);
   }
@@ -672,45 +771,64 @@ app.post('/auth/google', loginLimiter, async (req, res) => {
     if (!perfil?.sub || !perfil.email || perfil.email_verified !== true) {
       return res.status(401).json({ message: 'No fue posible verificar la cuenta de Google' });
     }
-    const [rows] = await db.query(`${empleadoSesionSelect} WHERE LOWER(e.correoEmp) = ?`, [perfil.email.toLowerCase()]);
-    const empleado = rows[0];
+    let empleado = await prisma.empleado.findFirst({
+      where: { correoEmp: { equals: perfil.email.toLowerCase(), mode: 'insensitive' } },
+      include: {
+        cargo: {
+          include: { sucursal: true },
+        },
+      },
+    });
     if (!empleado) return res.status(403).json({ message: 'Esta cuenta no está autorizada para acceder' });
     if (!empleado.estadoEmp) return res.status(403).json({ message: 'Tu cuenta está desactivada' });
-    if (!['ADMINISTRADOR', 'CAJERO'].includes(empleado.cargo)) {
+    if (!['ADMINISTRADOR', 'CAJERO'].includes(empleado.cargo?.nombreCargo)) {
       return res.status(403).json({ message: 'Tu cuenta no tiene un cargo autorizado' });
     }
     if (empleado.googleSub && empleado.googleSub !== perfil.sub) {
       return res.status(403).json({ message: 'Esta cuenta Google no coincide con la cuenta vinculada' });
     }
-    if (!empleado.googleSub)
-      await db.query('UPDATE empleados SET googleSub = ? WHERE idEmp = ?', [perfil.sub, empleado.idEmp]);
-    res.json({ token: emitirSesion(empleado), empleado: empleadoSeguro(empleado) });
+    if (!empleado.googleSub) {
+      empleado = await prisma.empleado.update({
+        where: { idEmp: empleado.idEmp },
+        data: { googleSub: perfil.sub },
+        include: {
+          cargo: {
+            include: { sucursal: true },
+          },
+        },
+      });
+    }
+    const empSeguro = empleadoSeguro({
+      ...empleado,
+      cargo: empleado.cargo?.nombreCargo,
+      idSuc: empleado.cargo?.idSuc,
+      nombreSuc: empleado.cargo?.sucursal?.nombreSuc,
+    });
+    res.json({ token: emitirSesion(empSeguro), empleado: empSeguro });
   } catch (error) {
     console.error('No fue posible verificar Google:', error.message);
     res.status(401).json({ message: 'No fue posible verificar la cuenta de Google' });
   }
 });
 
-async function resolverClienteGoogle(perfil, intento = 0) {
+async function resolverClienteGoogle(perfil) {
   const correo = perfil.email.trim().toLowerCase().slice(0, 150);
   const googleSub = perfil.sub.trim().slice(0, 255);
   const nombreCompleto = texto(perfil.name);
   const nombre = (texto(perfil.given_name) || nombreCompleto || correo.split('@')[0]).slice(0, 100);
   const apellidoPat = texto(perfil.family_name).slice(0, 100) || null;
   const fotoPerfil = texto(perfil.picture) || null;
-  let connection;
 
-  try {
-    connection = await db.getConnection();
-    await connection.beginTransaction();
-
-    let [rows] = await connection.query(`${clienteSesionSelect} WHERE googleSub = ? FOR UPDATE`, [googleSub]);
-    let cliente = rows[0];
+  return await prisma.$transaction(async (tx) => {
+    let cliente = await tx.cliente.findUnique({
+      where: { googleSub },
+    });
 
     if (!cliente) {
-      [rows] = await connection.query(`${clienteSesionSelect} WHERE LOWER(correoCliente) = ? FOR UPDATE`, [correo]);
-      cliente = rows[0];
-      if (cliente?.googleSub !== undefined && cliente.googleSub !== googleSub) {
+      cliente = await tx.cliente.findFirst({
+        where: { correoCliente: { equals: correo, mode: 'insensitive' } },
+      });
+      if (cliente && cliente.googleSub !== googleSub) {
         const error = new Error('Esta cuenta Google no coincide con la cuenta de cliente vinculada');
         error.status = 403;
         throw error;
@@ -723,38 +841,30 @@ async function resolverClienteGoogle(perfil, intento = 0) {
       throw error;
     }
 
-    let idCliente = cliente?.idCliente;
     if (!cliente) {
-      const [insertado] = await connection.query(
-        `
-        INSERT INTO cliente
-          (nombreCliente, apellidoPatCliente, apellidoMatCliente, correoCliente, googleSub, fotoPerfil, estadoCliente, ultimoAcceso)
-        VALUES (?, ?, NULL, ?, ?, ?, 1, NOW())
-      `,
-        [nombre, apellidoPat, correo, googleSub, fotoPerfil],
-      );
-      idCliente = insertado.insertId;
+      cliente = await tx.cliente.create({
+        data: {
+          nombreCliente: nombre,
+          apellidoPatCliente: apellidoPat,
+          correoCliente: correo,
+          googleSub,
+          fotoPerfil,
+          estadoCliente: true,
+          ultimoAcceso: new Date(),
+        },
+      });
     } else {
-      await connection.query(
-        `
-        UPDATE cliente SET ultimoAcceso = NOW(), fotoPerfil = COALESCE(?, fotoPerfil)
-        WHERE idCliente = ?
-      `,
-        [fotoPerfil, idCliente],
-      );
+      cliente = await tx.cliente.update({
+        where: { idCliente: cliente.idCliente },
+        data: {
+          ultimoAcceso: new Date(),
+          fotoPerfil: fotoPerfil || cliente.fotoPerfil,
+        },
+      });
     }
 
-    [rows] = await connection.query(`${clienteSesionSelect} WHERE idCliente = ?`, [idCliente]);
-    await connection.commit();
-    return rows[0];
-  } catch (error) {
-    if (connection) await connection.rollback().catch(() => undefined);
-    if ((error.code === 'ER_DUP_ENTRY' || error.code === '23505') && intento === 0)
-      return resolverClienteGoogle(perfil, 1);
-    throw error;
-  } finally {
-    connection?.release();
-  }
+    return cliente;
+  });
 }
 
 app.post('/auth/google/cliente', loginLimiter, async (req, res) => {
@@ -782,8 +892,34 @@ app.get('/auth/cliente/me', autenticarCliente, (req, res) => res.json({ cliente:
 
 app.get('/productos', autenticar, autorizarRoles('ADMINISTRADOR'), async (req, res) => {
   try {
-    const [productos] = await db.query(`${productoSelect} ORDER BY p.nombrePro`);
-    res.json(productos);
+    const productos = await prisma.producto.findMany({
+      orderBy: { nombrePro: 'asc' },
+      include: {
+        marca: true,
+        categoria: true,
+      },
+    });
+    res.json(
+      productos.map((p) => ({
+        idPro: p.idPro,
+        nombrePro: p.nombrePro,
+        precioVentaPro: Number(p.precioVentaPro),
+        costoPro: p.costoPro !== null && p.costoPro !== undefined ? Number(p.costoPro) : null,
+        existenciaPro: p.existenciaPro,
+        stockMinimoPro: p.stockMinimoPro,
+        tamanoPro: p.tamanoPro,
+        presentacionPro: p.presentacionPro,
+        tipoPro: p.tipoPro,
+        codigoQR: p.codigoQR,
+        skuPro: p.skuPro,
+        imagenPro: p.imagenPro,
+        idMarca: p.idMarca,
+        idCat: p.idCat,
+        nombreMarca: p.marca?.nombreMarca || null,
+        nombreCat: p.categoria?.nombreCat || null,
+        activoPro: p.activoPro,
+      })),
+    );
   } catch (error) {
     errorServidor(res, error);
   }
@@ -791,8 +927,33 @@ app.get('/productos', autenticar, autorizarRoles('ADMINISTRADOR'), async (req, r
 
 app.get('/productos/qr/:codigo', autenticar, autorizarRoles('ADMINISTRADOR'), async (req, res) => {
   try {
-    const [productos] = await db.query(`${productoSelect} WHERE p.codigoQR = ?`, [req.params.codigo]);
-    res.json(productos[0] || null);
+    const p = await prisma.producto.findUnique({
+      where: { codigoQR: req.params.codigo },
+      include: {
+        marca: true,
+        categoria: true,
+      },
+    });
+    if (!p) return res.json(null);
+    res.json({
+      idPro: p.idPro,
+      nombrePro: p.nombrePro,
+      precioVentaPro: Number(p.precioVentaPro),
+      costoPro: p.costoPro !== null && p.costoPro !== undefined ? Number(p.costoPro) : null,
+      existenciaPro: p.existenciaPro,
+      stockMinimoPro: p.stockMinimoPro,
+      tamanoPro: p.tamanoPro,
+      presentacionPro: p.presentacionPro,
+      tipoPro: p.tipoPro,
+      codigoQR: p.codigoQR,
+      skuPro: p.skuPro,
+      imagenPro: p.imagenPro,
+      idMarca: p.idMarca,
+      idCat: p.idCat,
+      nombreMarca: p.marca?.nombreMarca || null,
+      nombreCat: p.categoria?.nombreCat || null,
+      activoPro: p.activoPro,
+    });
   } catch (error) {
     errorServidor(res, error);
   }
@@ -852,7 +1013,6 @@ app.post('/productos', autenticar, autorizarRoles('ADMINISTRADOR'), async (req, 
   const errorValidacion = validarProducto(req.body);
   if (errorValidacion) return res.status(400).json({ message: errorValidacion });
 
-  let connection;
   try {
     const errorCatalogos = await validarCatalogosProducto(req.body);
     if (errorCatalogos) return res.status(400).json({ message: errorCatalogos });
@@ -860,23 +1020,29 @@ app.post('/productos', autenticar, autorizarRoles('ADMINISTRADOR'), async (req, 
       return res.status(409).json({ message: 'El código de barras ya pertenece a otro producto' });
     }
 
-    connection = await db.getConnection();
-    await connection.beginTransaction();
-    const [result] = await connection.query(
-      `INSERT INTO productos
-        (nombrePro, precioVentaPro, costoPro, existenciaPro, stockMinimoPro, tamanoPro, presentacionPro, tipoPro, codigoQR, skuPro, imagenPro, idMarca, idCat)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      valoresProducto(req.body),
-    );
-    const producto = await obtenerProducto(result.insertId, connection);
-    if (!producto) throw new Error('No se pudo recuperar el producto creado dentro de la transacción');
-    await connection.commit();
+    const nuevo = await prisma.producto.create({
+      data: {
+        nombrePro: texto(req.body.nombre),
+        precioVentaPro: Number(req.body.precio),
+        costoPro:
+          req.body.costo !== null && req.body.costo !== undefined && req.body.costo !== '' ? Number(req.body.costo) : 0,
+        existenciaPro: Number(req.body.existencia),
+        stockMinimoPro: req.body.stockMinimo ? Number(req.body.stockMinimo) : 1,
+        tamanoPro: textoNullable(req.body.tamano),
+        presentacionPro: textoNullable(req.body.presentacion),
+        tipoPro: textoNullable(req.body.tipo),
+        codigoQR: textoNullable(req.body.codigoQR),
+        skuPro: textoNullable(req.body.sku),
+        imagenPro: textoNullable(req.body.imagen),
+        idMarca: req.body.idMarca ? Number(req.body.idMarca) : null,
+        idCat: req.body.idCat ? Number(req.body.idCat) : null,
+      },
+    });
+
+    const producto = await obtenerProducto(nuevo.idPro);
     res.status(201).json(producto);
   } catch (error) {
-    if (connection) await connection.rollback();
     errorServidor(res, error);
-  } finally {
-    connection?.release();
   }
 });
 
@@ -902,7 +1068,7 @@ app.post('/productos/:id/imagen', autenticar, autorizarRoles('ADMINISTRADOR'), (
         return res.status(404).json({ message: 'Producto no encontrado' });
       }
       const rutaPublica = `/uploads/productos/${req.file.filename}`;
-      await db.query('UPDATE productos SET imagenPro = ? WHERE idPro = ?', [rutaPublica, idPro]);
+      await prisma.producto.update({ where: { idPro }, data: { imagenPro: rutaPublica } });
       const producto = await obtenerProducto(idPro);
       if (!producto) throw new Error('No se pudo recuperar el producto después de subir la imagen');
       return res.json(producto);
@@ -950,7 +1116,7 @@ app.post('/productos/:id/confirmar-imagen', autenticar, autorizarRoles('ADMINIST
         ? imagenUrl
         : `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/${imagenUrl}`;
 
-    await db.query('UPDATE productos SET imagenPro = ? WHERE idPro = ?', [rutaFinal, idPro]);
+    await prisma.producto.update({ where: { idPro }, data: { imagenPro: rutaFinal } });
 
     if (anterior.imagenPro && anterior.imagenPro !== rutaFinal) {
       eliminarUploadControlado(anterior.imagenPro, productosUploadDir, '/uploads/productos/');
@@ -979,13 +1145,25 @@ app.put('/productos/:id', autenticar, autorizarRoles('ADMINISTRADOR'), async (re
       return res.status(409).json({ message: 'El código de barras ya pertenece a otro producto' });
     }
 
-    await db.query(
-      `UPDATE productos SET
-        nombrePro = ?, precioVentaPro = ?, costoPro = ?, existenciaPro = ?, stockMinimoPro = ?, tamanoPro = ?,
-        presentacionPro = ?, tipoPro = ?, codigoQR = ?, skuPro = ?, imagenPro = ?, idMarca = ?, idCat = ?
-       WHERE idPro = ?`,
-      [...valoresProducto(req.body), idPro],
-    );
+    await prisma.producto.update({
+      where: { idPro },
+      data: {
+        nombrePro: texto(req.body.nombre),
+        precioVentaPro: Number(req.body.precio),
+        costoPro:
+          req.body.costo !== null && req.body.costo !== undefined && req.body.costo !== '' ? Number(req.body.costo) : 0,
+        existenciaPro: Number(req.body.existencia),
+        stockMinimoPro: req.body.stockMinimo ? Number(req.body.stockMinimo) : 1,
+        tamanoPro: textoNullable(req.body.tamano),
+        presentacionPro: textoNullable(req.body.presentacion),
+        tipoPro: textoNullable(req.body.tipo),
+        codigoQR: textoNullable(req.body.codigoQR),
+        skuPro: textoNullable(req.body.sku),
+        imagenPro: textoNullable(req.body.imagen),
+        idMarca: req.body.idMarca ? Number(req.body.idMarca) : null,
+        idCat: req.body.idCat ? Number(req.body.idCat) : null,
+      },
+    });
     res.json(await obtenerProducto(idPro));
   } catch (error) {
     errorServidor(res, error);
@@ -1000,16 +1178,17 @@ app.delete('/productos/:id', autenticar, autorizarRoles('ADMINISTRADOR'), async 
     if (!(await obtenerProducto(idPro))) {
       return res.status(404).json({ message: 'Producto no encontrado' });
     }
-    const [[ventas], [compras]] = await Promise.all([
-      db.query('SELECT idDetVenta FROM detventa WHERE idPro = ? LIMIT 1', [idPro]),
-      db.query('SELECT idDetCompra FROM detcompra WHERE idPro = ? LIMIT 1', [idPro]),
+    const [ventas, compras, pedidos] = await Promise.all([
+      prisma.detVenta.count({ where: { idPro } }),
+      prisma.detCompra.count({ where: { idPro } }),
+      prisma.detallePedidoCliente.count({ where: { idPro } }),
     ]);
-    if (ventas.length > 0 || compras.length > 0) {
+    if (ventas > 0 || compras > 0 || pedidos > 0) {
       return res.status(409).json({
-        message: 'No se puede eliminar el producto porque tiene ventas o compras relacionadas',
+        message: 'No se puede eliminar el producto porque tiene ventas, compras o pedidos relacionados',
       });
     }
-    await db.query('DELETE FROM productos WHERE idPro = ?', [idPro]);
+    await prisma.producto.delete({ where: { idPro } });
     res.json({ message: 'Producto eliminado correctamente' });
   } catch (error) {
     errorServidor(res, error);
@@ -1018,7 +1197,9 @@ app.delete('/productos/:id', autenticar, autorizarRoles('ADMINISTRADOR'), async 
 
 app.get('/marca', autenticar, autorizarRoles('ADMINISTRADOR'), async (req, res) => {
   try {
-    const [marcas] = await db.query('SELECT idMarca, nombreMarca, descripMarca FROM marca ORDER BY nombreMarca');
+    const marcas = await prisma.marca.findMany({
+      orderBy: { nombreMarca: 'asc' },
+    });
     res.json(marcas);
   } catch (error) {
     errorServidor(res, error);
@@ -1029,14 +1210,13 @@ app.post('/marca', autenticar, autorizarRoles('ADMINISTRADOR'), async (req, res)
   const nombre = texto(req.body.nombre);
   if (!nombre) return res.status(400).json({ message: 'El nombre de la marca es obligatorio' });
   try {
-    const [result] = await db.query('INSERT INTO marca (nombreMarca, descripMarca) VALUES (?, ?)', [
-      nombre,
-      texto(req.body.descripcion),
-    ]);
-    const [marcas] = await db.query('SELECT idMarca, nombreMarca, descripMarca FROM marca WHERE idMarca = ?', [
-      result.insertId,
-    ]);
-    res.status(201).json(marcas[0]);
+    const marca = await prisma.marca.create({
+      data: {
+        nombreMarca: nombre,
+        descripMarca: textoNullable(req.body.descripcion),
+      },
+    });
+    res.status(201).json(marca);
   } catch (error) {
     errorServidor(res, error);
   }
@@ -1048,17 +1228,16 @@ app.put('/marca/:id', autenticar, autorizarRoles('ADMINISTRADOR'), async (req, r
   if (!idMarca) return res.status(400).json({ message: 'El ID de la marca no es válido' });
   if (!nombre) return res.status(400).json({ message: 'El nombre de la marca es obligatorio' });
   try {
-    const [result] = await db.query('UPDATE marca SET nombreMarca = ?, descripMarca = ? WHERE idMarca = ?', [
-      nombre,
-      texto(req.body.descripcion),
-      idMarca,
-    ]);
-    if (result.affectedRows === 0) return res.status(404).json({ message: 'Marca no encontrada' });
-    const [marcas] = await db.query('SELECT idMarca, nombreMarca, descripMarca FROM marca WHERE idMarca = ?', [
-      idMarca,
-    ]);
-    res.json(marcas[0]);
+    const marca = await prisma.marca.update({
+      where: { idMarca },
+      data: {
+        nombreMarca: nombre,
+        descripMarca: textoNullable(req.body.descripcion),
+      },
+    });
+    res.json(marca);
   } catch (error) {
+    if (error.code === 'P2025') return res.status(404).json({ message: 'Marca no encontrada' });
     errorServidor(res, error);
   }
 });
@@ -1067,13 +1246,13 @@ app.delete('/marca/:id', autenticar, autorizarRoles('ADMINISTRADOR'), async (req
   const idMarca = idValido(req.params.id);
   if (!idMarca) return res.status(400).json({ message: 'El ID de la marca no es válido' });
   try {
-    const [marcas] = await db.query('SELECT idMarca FROM marca WHERE idMarca = ?', [idMarca]);
-    if (marcas.length === 0) return res.status(404).json({ message: 'Marca no encontrada' });
-    const [productos] = await db.query('SELECT idPro FROM productos WHERE idMarca = ? LIMIT 1', [idMarca]);
-    if (productos.length > 0) {
+    const marca = await prisma.marca.findUnique({ where: { idMarca } });
+    if (!marca) return res.status(404).json({ message: 'Marca no encontrada' });
+    const productos = await prisma.producto.count({ where: { idMarca } });
+    if (productos > 0) {
       return res.status(409).json({ message: 'No se puede eliminar la marca porque tiene productos asociados' });
     }
-    await db.query('DELETE FROM marca WHERE idMarca = ?', [idMarca]);
+    await prisma.marca.delete({ where: { idMarca } });
     res.json({ message: 'Marca eliminada correctamente' });
   } catch (error) {
     errorServidor(res, error);
@@ -1082,7 +1261,9 @@ app.delete('/marca/:id', autenticar, autorizarRoles('ADMINISTRADOR'), async (req
 
 app.get('/categoria', autenticar, autorizarRoles('ADMINISTRADOR'), async (req, res) => {
   try {
-    const [categorias] = await db.query('SELECT idCat, nombreCat, descripCat FROM categoria ORDER BY nombreCat');
+    const categorias = await prisma.categoria.findMany({
+      orderBy: { nombreCat: 'asc' },
+    });
     res.json(categorias);
   } catch (error) {
     errorServidor(res, error);
@@ -1093,14 +1274,13 @@ app.post('/categoria', autenticar, autorizarRoles('ADMINISTRADOR'), async (req, 
   const nombre = texto(req.body.nombre);
   if (!nombre) return res.status(400).json({ message: 'El nombre de la categoría es obligatorio' });
   try {
-    const [result] = await db.query('INSERT INTO categoria (nombreCat, descripCat) VALUES (?, ?)', [
-      nombre,
-      texto(req.body.descripcion),
-    ]);
-    const [categorias] = await db.query('SELECT idCat, nombreCat, descripCat FROM categoria WHERE idCat = ?', [
-      result.insertId,
-    ]);
-    res.status(201).json(categorias[0]);
+    const categoria = await prisma.categoria.create({
+      data: {
+        nombreCat: nombre,
+        descripCat: textoNullable(req.body.descripcion),
+      },
+    });
+    res.status(201).json(categoria);
   } catch (error) {
     errorServidor(res, error);
   }
@@ -1112,15 +1292,16 @@ app.put('/categoria/:id', autenticar, autorizarRoles('ADMINISTRADOR'), async (re
   if (!idCat) return res.status(400).json({ message: 'El ID de la categoría no es válido' });
   if (!nombre) return res.status(400).json({ message: 'El nombre de la categoría es obligatorio' });
   try {
-    const [result] = await db.query('UPDATE categoria SET nombreCat = ?, descripCat = ? WHERE idCat = ?', [
-      nombre,
-      texto(req.body.descripcion),
-      idCat,
-    ]);
-    if (result.affectedRows === 0) return res.status(404).json({ message: 'Categoría no encontrada' });
-    const [categorias] = await db.query('SELECT idCat, nombreCat, descripCat FROM categoria WHERE idCat = ?', [idCat]);
-    res.json(categorias[0]);
+    const categoria = await prisma.categoria.update({
+      where: { idCat },
+      data: {
+        nombreCat: nombre,
+        descripCat: textoNullable(req.body.descripcion),
+      },
+    });
+    res.json(categoria);
   } catch (error) {
+    if (error.code === 'P2025') return res.status(404).json({ message: 'Categoría no encontrada' });
     errorServidor(res, error);
   }
 });
@@ -1129,13 +1310,13 @@ app.delete('/categoria/:id', autenticar, autorizarRoles('ADMINISTRADOR'), async 
   const idCat = idValido(req.params.id);
   if (!idCat) return res.status(400).json({ message: 'El ID de la categoría no es válido' });
   try {
-    const [categorias] = await db.query('SELECT idCat FROM categoria WHERE idCat = ?', [idCat]);
-    if (categorias.length === 0) return res.status(404).json({ message: 'Categoría no encontrada' });
-    const [productos] = await db.query('SELECT idPro FROM productos WHERE idCat = ? LIMIT 1', [idCat]);
-    if (productos.length > 0) {
+    const categoria = await prisma.categoria.findUnique({ where: { idCat } });
+    if (!categoria) return res.status(404).json({ message: 'Categoría no encontrada' });
+    const productos = await prisma.producto.count({ where: { idCat } });
+    if (productos > 0) {
       return res.status(409).json({ message: 'No se puede eliminar la categoría porque tiene productos asociados' });
     }
-    await db.query('DELETE FROM categoria WHERE idCat = ?', [idCat]);
+    await prisma.categoria.delete({ where: { idCat } });
     res.json({ message: 'Categoría eliminada correctamente' });
   } catch (error) {
     errorServidor(res, error);
@@ -1144,8 +1325,40 @@ app.delete('/categoria/:id', autenticar, autorizarRoles('ADMINISTRADOR'), async 
 
 app.get('/sucursal', autenticar, autorizarRoles('ADMINISTRADOR'), async (req, res) => {
   try {
-    const [sucursales] = await db.query(`${sucursalSelect} ORDER BY s.nombreSuc, s.idSuc`);
-    res.json(sucursales);
+    const sucursales = await prisma.sucursal.findMany({
+      orderBy: [{ nombreSuc: 'asc' }, { idSuc: 'asc' }],
+      include: { direccion: true },
+    });
+    res.json(
+      sucursales.map((s) => {
+        const d = s.direccion;
+        const direccionStr = d
+          ? [
+              d.calle,
+              [d.noExt, d.noInt].filter(Boolean).join(' '),
+              d.colonia,
+              d.municipio,
+              d.estado,
+              d.codPostal,
+              d.pais,
+            ]
+              .filter(Boolean)
+              .join(', ') || null
+          : null;
+        return {
+          idSuc: s.idSuc,
+          nombreSuc: s.nombreSuc,
+          descripcionSuc: s.descripcionSuc,
+          telefonoSuc: s.telefonoSuc,
+          correoSuc: s.correoSuc,
+          paginaWebSuc: s.paginaWebSuc,
+          redSocialSuc: s.redSocialSuc,
+          logoSuc: s.logoSuc,
+          idDir: s.idDir,
+          direccion: direccionStr,
+        };
+      }),
+    );
   } catch (error) {
     errorServidor(res, error);
   }
@@ -1167,13 +1380,17 @@ app.post('/sucursal', autenticar, autorizarRoles('ADMINISTRADOR'), async (req, r
   const errorValidacion = validarSucursal(req.body);
   if (errorValidacion) return res.status(400).json({ message: errorValidacion });
   try {
-    const [result] = await db.query(
-      `INSERT INTO sucursal
-        (nombreSuc, descripcionSuc, telefonoSuc, correoSuc, paginaWebSuc, redSocialSuc)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      valoresSucursal(req.body),
-    );
-    res.status(201).json(await obtenerSucursal(result.insertId));
+    const nueva = await prisma.sucursal.create({
+      data: {
+        nombreSuc: texto(req.body.nombreSuc),
+        descripcionSuc: textoNullable(req.body.descripcionSuc),
+        telefonoSuc: textoNullable(req.body.telefonoSuc),
+        correoSuc: textoNullable(req.body.correoSuc),
+        paginaWebSuc: textoNullable(req.body.paginaWebSuc),
+        redSocialSuc: textoNullable(req.body.redSocialSuc),
+      },
+    });
+    res.status(201).json(await obtenerSucursal(nueva.idSuc));
   } catch (error) {
     errorServidor(res, error);
   }
@@ -1185,14 +1402,20 @@ app.put('/sucursal/:id', autenticar, autorizarRoles('ADMINISTRADOR'), async (req
   const errorValidacion = validarSucursal(req.body);
   if (errorValidacion) return res.status(400).json({ message: errorValidacion });
   try {
-    const [result] = await db.query(
-      `UPDATE sucursal SET nombreSuc = ?, descripcionSuc = ?, telefonoSuc = ?, correoSuc = ?,
-        paginaWebSuc = ?, redSocialSuc = ? WHERE idSuc = ?`,
-      [...valoresSucursal(req.body), idSuc],
-    );
-    if (result.affectedRows === 0) return res.status(404).json({ message: 'Sucursal no encontrada' });
+    await prisma.sucursal.update({
+      where: { idSuc },
+      data: {
+        nombreSuc: texto(req.body.nombreSuc),
+        descripcionSuc: textoNullable(req.body.descripcionSuc),
+        telefonoSuc: textoNullable(req.body.telefonoSuc),
+        correoSuc: textoNullable(req.body.correoSuc),
+        paginaWebSuc: textoNullable(req.body.paginaWebSuc),
+        redSocialSuc: textoNullable(req.body.redSocialSuc),
+      },
+    });
     res.json(await obtenerSucursal(idSuc));
   } catch (error) {
+    if (error.code === 'P2025') return res.status(404).json({ message: 'Sucursal no encontrada' });
     errorServidor(res, error);
   }
 });
@@ -1219,7 +1442,7 @@ app.post('/sucursal/:id/logo', autenticar, autorizarRoles('ADMINISTRADOR'), (req
         return res.status(404).json({ message: 'Sucursal no encontrada' });
       }
       const rutaPublica = `/uploads/tienda/${req.file.filename}`;
-      await db.query('UPDATE sucursal SET logoSuc = ? WHERE idSuc = ?', [rutaPublica, idSuc]);
+      await prisma.sucursal.update({ where: { idSuc }, data: { logoSuc: rutaPublica } });
       const sucursal = await obtenerSucursal(idSuc);
       eliminarUploadControlado(anterior.logoSuc, tiendaUploadDir, '/uploads/tienda/');
       res.json(sucursal);
@@ -1267,7 +1490,7 @@ app.post('/sucursal/:id/confirmar-logo', autenticar, autorizarRoles('ADMINISTRAD
         ? logoUrl
         : `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/${logoUrl}`;
 
-    await db.query('UPDATE sucursal SET logoSuc = ? WHERE idSuc = ?', [rutaFinal, idSuc]);
+    await prisma.sucursal.update({ where: { idSuc }, data: { logoSuc: rutaFinal } });
 
     if (anterior.logoSuc && anterior.logoSuc !== rutaFinal) {
       eliminarUploadControlado(anterior.logoSuc, tiendaUploadDir, '/uploads/tienda/');
@@ -1286,7 +1509,7 @@ app.delete('/sucursal/:id/logo', autenticar, autorizarRoles('ADMINISTRADOR'), as
   try {
     const anterior = await obtenerSucursal(idSuc);
     if (!anterior) return res.status(404).json({ message: 'Sucursal no encontrada' });
-    await db.query('UPDATE sucursal SET logoSuc = NULL WHERE idSuc = ?', [idSuc]);
+    await prisma.sucursal.update({ where: { idSuc }, data: { logoSuc: null } });
     eliminarUploadControlado(anterior.logoSuc, tiendaUploadDir, '/uploads/tienda/');
     res.json(await obtenerSucursal(idSuc));
   } catch (error) {
@@ -1340,8 +1563,12 @@ function normalizarConfiguracionTransferencia(row, incluirAdministrativo = false
     : configuracion;
 }
 
-async function obtenerSucursalDisponibleCliente(executor = db) {
-  const [sucursales] = await executor.query('SELECT idSuc FROM sucursal ORDER BY idSuc LIMIT 2');
+async function obtenerSucursalDisponibleCliente() {
+  const sucursales = await prisma.sucursal.findMany({
+    orderBy: { idSuc: 'asc' },
+    take: 2,
+    select: { idSuc: true },
+  });
   if (!sucursales.length) throw errorFuncional('No hay una sucursal disponible para recibir pedidos.', 409);
   if (sucursales.length > 1) {
     throw errorFuncional('Selecciona una sucursal antes de continuar con tu pedido.', 409);
@@ -1349,9 +1576,18 @@ async function obtenerSucursalDisponibleCliente(executor = db) {
   return Number(sucursales[0].idSuc);
 }
 
-async function obtenerConfiguracionTransferencia(executor, idSuc, exigirActiva = true) {
-  const [rows] = await executor.query('SELECT * FROM configuracion_transferencia WHERE idSuc = ?', [idSuc]);
-  const configuracion = rows[0];
+async function obtenerConfiguracionTransferencia(idSucOrExecutor, idSucParam, exigirActivaParam) {
+  let idSuc = idSucOrExecutor;
+  let exigirActiva = true;
+  if (typeof idSucOrExecutor === 'object' || isNaN(Number(idSucOrExecutor))) {
+    idSuc = idSucParam;
+    exigirActiva = exigirActivaParam !== undefined ? exigirActivaParam : true;
+  } else if (idSucParam !== undefined && typeof idSucParam === 'boolean') {
+    exigirActiva = idSucParam;
+  }
+  const configuracion = await prisma.configuracionTransferencia.findUnique({
+    where: { idSuc: Number(idSuc) },
+  });
   if (!configuracion || (exigirActiva && !configuracion.activo)) {
     throw errorFuncional('Los pagos por transferencia no están disponibles en este momento.', 409);
   }
@@ -1393,114 +1629,102 @@ function configuracionTransferenciaPedido(pedido) {
   };
 }
 
-async function obtenerPedidoSeguro(executor, idPedido, idCliente) {
-  const [pedidos] = await executor.query(
-    `
-    SELECT idPedido, uuidPedido, idCliente, idSuc, fechaPedido, total, estado, fechaLimitePago,
-      comprobanteRuta, comprobanteMime, comprobanteNombre, fechaComprobante,
-      idEmpRevisa, fechaRevision, motivoRechazo, idVenta,
-      bancoSnapshot, titularSnapshot, clabeSnapshot, numeroCuentaSnapshot, instruccionesSnapshot
-    FROM pedido_cliente WHERE idPedido = ? AND idCliente = ?
-  `,
-    [idPedido, idCliente],
-  );
-  if (!pedidos.length) return null;
-  const pedido = pedidos[0];
-  const [items] = await executor.query(
-    `
-    SELECT d.idPro, COALESCE(p.nombrePro, 'Producto') AS nombre, p.imagenPro,
-      p.tamanoPro, p.presentacionPro, d.cantidad, d.precioUnitario, d.subtotal
-    FROM detalle_pedido_cliente d
-    LEFT JOIN productos p ON p.idPro = d.idPro
-    WHERE d.idPedido = ? ORDER BY d.idDetallePedido
-  `,
-    [idPedido],
-  );
-  let configuracionTransferencia = configuracionTransferenciaPedido(pedido);
+async function obtenerPedidoSeguro(idPedido, idCliente, client = prisma) {
+  const p = await client.pedidoCliente.findFirst({
+    where: {
+      idPedido: Number(idPedido),
+      idCliente: Number(idCliente),
+    },
+    include: {
+      detalles: {
+        include: { producto: true },
+        orderBy: { idDetallePedido: 'asc' },
+      },
+    },
+  });
+  if (!p) return null;
+
+  let configuracionTransferencia = configuracionTransferenciaPedido(p);
   if (!configuracionTransferencia) {
     try {
-      configuracionTransferencia = normalizarConfiguracionTransferencia(
-        await obtenerConfiguracionTransferencia(executor, Number(pedido.idSuc), false),
-      );
+      const conf = await client.configuracionTransferencia.findUnique({
+        where: { idSuc: p.idSuc },
+      });
+      configuracionTransferencia = normalizarConfiguracionTransferencia(conf);
     } catch {
       configuracionTransferencia = null;
     }
   }
+
   return {
-    ...normalizarPedido(pedido),
-    items: items.map((item) => ({
-      idPro: Number(item.idPro),
-      nombre: item.nombre,
-      imagen: item.imagenPro,
-      presentacion: [item.tamanoPro, item.presentacionPro].filter(Boolean).join(' · ') || null,
-      cantidad: Number(item.cantidad),
-      precioUnitario: Number(item.precioUnitario),
-      subtotal: Number(item.subtotal),
+    ...normalizarPedido(p),
+    items: p.detalles.map((d) => ({
+      idPro: d.idPro,
+      nombre: d.producto?.nombrePro || 'Producto',
+      imagen: d.producto?.imagenPro || null,
+      presentacion: [d.producto?.tamanoPro, d.producto?.presentacionPro].filter(Boolean).join(' · ') || null,
+      cantidad: d.cantidad,
+      precioUnitario: Number(d.precioUnitario),
+      subtotal: Number(d.subtotal),
     })),
     configuracionTransferencia,
   };
 }
 
-async function restaurarStockPedido(connection, idPedido) {
-  const [detalles] = await connection.query(
-    'SELECT idPro, cantidad FROM detalle_pedido_cliente WHERE idPedido = ? ORDER BY idPro',
-    [idPedido],
-  );
-  if (!detalles.length) return;
-  const ids = detalles.map((detalle) => Number(detalle.idPro));
-  await connection.query(
-    `SELECT idPro FROM productos WHERE idPro IN (${ids.map(() => '?').join(',')}) ORDER BY idPro FOR UPDATE`,
-    ids,
-  );
-  for (const detalle of detalles) {
-    await connection.query('UPDATE productos SET existenciaPro = existenciaPro + ? WHERE idPro = ?', [
-      Number(detalle.cantidad),
-      Number(detalle.idPro),
-    ]);
+async function restaurarStockPedido(tx, idPedido) {
+  const detalles = await tx.detallePedidoCliente.findMany({
+    where: { idPedido: Number(idPedido) },
+    orderBy: { idPro: 'asc' },
+  });
+  for (const d of detalles) {
+    await tx.producto.update({
+      where: { idPro: d.idPro },
+      data: { existenciaPro: { increment: d.cantidad } },
+    });
   }
 }
 
-async function expirarPedidoBloqueado(connection, pedido) {
+async function expirarPedidoBloqueado(tx, pedido) {
   const vencido =
     pedido.estado === 'PENDIENTE_PAGO' &&
     !pedido.comprobanteRuta &&
     pedido.fechaLimitePago &&
     new Date(pedido.fechaLimitePago).getTime() < Date.now();
   if (!vencido) return false;
-  await restaurarStockPedido(connection, Number(pedido.idPedido));
-  await connection.query(
-    "UPDATE pedido_cliente SET estado = 'EXPIRADO' WHERE idPedido = ? AND estado = 'PENDIENTE_PAGO'",
-    [pedido.idPedido],
-  );
+
+  await restaurarStockPedido(tx, Number(pedido.idPedido));
+  await tx.pedidoCliente.update({
+    where: { idPedido: Number(pedido.idPedido) },
+    data: { estado: 'EXPIRADO' },
+  });
   return true;
 }
 
 async function liberarPedidosExpirados(idCliente = null) {
-  const parametros = [];
-  let filtro = "estado = 'PENDIENTE_PAGO' AND comprobanteRuta IS NULL AND fechaLimitePago < NOW()";
-  if (idCliente) {
-    filtro += ' AND idCliente = ?';
-    parametros.push(idCliente);
-  }
-  const [candidatos] = await db.query(
-    `SELECT idPedido FROM pedido_cliente WHERE ${filtro} ORDER BY idPedido LIMIT 50`,
-    parametros,
-  );
+  const where = {
+    estado: 'PENDIENTE_PAGO',
+    comprobanteRuta: null,
+    fechaLimitePago: { lt: new Date() },
+  };
+  if (idCliente) where.idCliente = Number(idCliente);
+
+  const candidatos = await prisma.pedidoCliente.findMany({
+    where,
+    select: { idPedido: true },
+    orderBy: { idPedido: 'asc' },
+    take: 50,
+  });
+
   for (const candidato of candidatos) {
-    let connection;
     try {
-      connection = await db.getConnection();
-      await connection.beginTransaction();
-      const [rows] = await connection.query('SELECT * FROM pedido_cliente WHERE idPedido = ? FOR UPDATE', [
-        candidato.idPedido,
-      ]);
-      if (rows.length) await expirarPedidoBloqueado(connection, rows[0]);
-      await connection.commit();
+      await prisma.$transaction(async (tx) => {
+        const p = await tx.pedidoCliente.findUnique({
+          where: { idPedido: candidato.idPedido },
+        });
+        if (p) await expirarPedidoBloqueado(tx, p);
+      });
     } catch (error) {
-      if (connection) await connection.rollback().catch(() => undefined);
       console.error('No se pudo liberar un pedido expirado:', error.message);
-    } finally {
-      connection?.release();
     }
   }
 }
@@ -1536,8 +1760,10 @@ app.get('/configuracion/transferencia', autenticar, autorizarRoles('ADMINISTRADO
   const idSuc = idValido(req.empleado.idSuc);
   if (!idSuc) return res.status(409).json({ message: 'El administrador no tiene una sucursal asignada.' });
   try {
-    const [rows] = await db.query('SELECT * FROM configuracion_transferencia WHERE idSuc = ?', [idSuc]);
-    res.json({ configuracion: normalizarConfiguracionTransferencia(rows[0], true) });
+    const configuracion = await prisma.configuracionTransferencia.findUnique({
+      where: { idSuc },
+    });
+    res.json({ configuracion: normalizarConfiguracionTransferencia(configuracion, true) });
   } catch (error) {
     errorServidor(res, error);
   }
@@ -1550,22 +1776,28 @@ app.put('/configuracion/transferencia', autenticar, autorizarRoles('ADMINISTRADO
   if (validacion.error) return res.status(400).json({ message: validacion.error });
   const datos = validacion.valores;
   try {
-    await db.query(
-      `INSERT INTO configuracion_transferencia
-      (idSuc, banco, titular, clabe, numeroCuenta, instrucciones, activo)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT (idSuc) DO UPDATE SET
-        banco = EXCLUDED.banco,
-        titular = EXCLUDED.titular,
-        clabe = EXCLUDED.clabe,
-        numeroCuenta = EXCLUDED.numeroCuenta,
-        instrucciones = EXCLUDED.instrucciones,
-        activo = EXCLUDED.activo,
-        fechaActualizacion = CURRENT_TIMESTAMP`,
-      [idSuc, datos.banco, datos.titular, datos.clabe, datos.numeroCuenta, datos.instrucciones, datos.activo],
-    );
-    const [rows] = await db.query('SELECT * FROM configuracion_transferencia WHERE idSuc = ?', [idSuc]);
-    res.json({ configuracion: normalizarConfiguracionTransferencia(rows[0], true) });
+    const configuracion = await prisma.configuracionTransferencia.upsert({
+      where: { idSuc },
+      update: {
+        banco: datos.banco,
+        titular: datos.titular,
+        clabe: datos.clabe,
+        numeroCuenta: datos.numeroCuenta,
+        instrucciones: datos.instrucciones,
+        activo: datos.activo,
+        fechaActualizacion: new Date(),
+      },
+      create: {
+        idSuc,
+        banco: datos.banco,
+        titular: datos.titular,
+        clabe: datos.clabe,
+        numeroCuenta: datos.numeroCuenta,
+        instrucciones: datos.instrucciones,
+        activo: datos.activo,
+      },
+    });
+    res.json({ configuracion: normalizarConfiguracionTransferencia(configuracion, true) });
   } catch (error) {
     errorServidor(res, error);
   }
@@ -1574,7 +1806,7 @@ app.put('/configuracion/transferencia', autenticar, autorizarRoles('ADMINISTRADO
 app.get('/cliente/configuracion-transferencia', autenticarCliente, async (req, res) => {
   try {
     const idSuc = await obtenerSucursalDisponibleCliente();
-    const configuracion = await obtenerConfiguracionTransferencia(db, idSuc, true);
+    const configuracion = await obtenerConfiguracionTransferencia(idSuc, true);
     res.json({ configuracion: normalizarConfiguracionTransferencia(configuracion) });
   } catch (error) {
     if (error.status) return res.status(error.status).json({ message: error.message });
@@ -1603,101 +1835,100 @@ app.post('/cliente/pedidos', autenticarCliente, async (req, res) => {
   const itemsSolicitados = [...cantidades.entries()].sort((a, b) => a[0] - b[0]);
   const idCliente = Number(req.cliente.idCliente);
   await liberarPedidosExpirados();
-  let connection;
+
   try {
-    connection = await db.getConnection();
-    await connection.beginTransaction();
-    const [repetidos] = await connection.query(
-      'SELECT idPedido, idCliente FROM pedido_cliente WHERE uuidPedido = ? FOR UPDATE',
-      [uuidPedido],
-    );
-    if (repetidos.length) {
-      if (Number(repetidos[0].idCliente) !== idCliente)
-        throw errorFuncional('El identificador del pedido ya está en uso.', 409);
-      const existente = await obtenerPedidoSeguro(connection, Number(repetidos[0].idPedido), idCliente);
-      await connection.commit();
-      return res.json(existente);
-    }
-    const idSuc = await obtenerSucursalDisponibleCliente(connection);
-    const configuracion = await obtenerConfiguracionTransferencia(connection, idSuc, true);
-    const ids = itemsSolicitados.map(([idPro]) => idPro);
-    const [productos] = await connection.query(
-      `
-      SELECT idPro, nombrePro, precioVentaPro, existenciaPro, activoPro
-      FROM productos WHERE idPro IN (${ids.map(() => '?').join(',')}) ORDER BY idPro FOR UPDATE
-    `,
-      ids,
-    );
-    if (productos.length !== ids.length) throw errorFuncional('Uno de los productos ya no está disponible.', 409);
-    const porId = new Map(productos.map((producto) => [Number(producto.idPro), producto]));
-    const detalles = [];
-    let totalCentavos = 0;
-    for (const [idPro, cantidad] of itemsSolicitados) {
-      const producto = porId.get(idPro);
-      if (!producto || !producto.activoPro)
-        throw errorFuncional(`${producto?.nombrePro || 'Un producto'} ya no está disponible.`, 409);
-      if (!Number.isInteger(Number(producto.existenciaPro)) || Number(producto.existenciaPro) < cantidad) {
-        throw errorFuncional(`Stock insuficiente para ${producto.nombrePro}.`, 409);
+    const pedido = await prisma.$transaction(async (tx) => {
+      const repetido = await tx.pedidoCliente.findUnique({
+        where: { uuidPedido },
+      });
+      if (repetido) {
+        if (Number(repetido.idCliente) !== idCliente) {
+          throw errorFuncional('El identificador del pedido ya está en uso.', 409);
+        }
+        return await obtenerPedidoSeguro(repetido.idPedido, idCliente, tx);
       }
-      const precioCentavos = dineroCentavos(producto.precioVentaPro);
-      if (precioCentavos === null || precioCentavos < 0)
-        throw errorFuncional(`El precio de ${producto.nombrePro} no es válido.`, 409);
-      const subtotalCentavos = precioCentavos * cantidad;
-      if (!Number.isSafeInteger(subtotalCentavos))
-        throw errorFuncional('El total solicitado supera el límite permitido.', 400);
-      totalCentavos += subtotalCentavos;
-      if (!Number.isSafeInteger(totalCentavos) || totalCentavos > MAX_TOTAL_PEDIDO_CENTAVOS) {
-        throw errorFuncional('El total solicitado supera el límite permitido.', 400);
+
+      const idSuc = await obtenerSucursalDisponibleCliente();
+      const configuracion = await obtenerConfiguracionTransferencia(tx, idSuc, true);
+
+      const ids = itemsSolicitados.map(([idPro]) => idPro);
+      const productos = await tx.producto.findMany({
+        where: { idPro: { in: ids } },
+        orderBy: { idPro: 'asc' },
+      });
+
+      if (productos.length !== ids.length) throw errorFuncional('Uno de los productos ya no está disponible.', 409);
+      const porId = new Map(productos.map((producto) => [Number(producto.idPro), producto]));
+      const detalles = [];
+      let totalCentavos = 0;
+
+      for (const [idPro, cantidad] of itemsSolicitados) {
+        const producto = porId.get(idPro);
+        if (!producto || !producto.activoPro) {
+          throw errorFuncional(`${producto?.nombrePro || 'Un producto'} ya no está disponible.`, 409);
+        }
+        if (!Number.isInteger(Number(producto.existenciaPro)) || Number(producto.existenciaPro) < cantidad) {
+          throw errorFuncional(`Stock insuficiente para ${producto.nombrePro}.`, 409);
+        }
+        const precioCentavos = dineroCentavos(producto.precioVentaPro);
+        if (precioCentavos === null || precioCentavos < 0) {
+          throw errorFuncional(`El precio de ${producto.nombrePro} no es válido.`, 409);
+        }
+        const subtotalCentavos = precioCentavos * cantidad;
+        if (!Number.isSafeInteger(subtotalCentavos)) {
+          throw errorFuncional('El total solicitado supera el límite permitido.', 400);
+        }
+        totalCentavos += subtotalCentavos;
+        if (!Number.isSafeInteger(totalCentavos) || totalCentavos > MAX_TOTAL_PEDIDO_CENTAVOS) {
+          throw errorFuncional('El total solicitado supera el límite permitido.', 400);
+        }
+        detalles.push({ idPro, cantidad, precioCentavos, subtotalCentavos });
       }
-      detalles.push({ idPro, cantidad, precioCentavos, subtotalCentavos });
-    }
-    const [resultado] = await connection.query(
-      `INSERT INTO pedido_cliente
-      (uuidPedido, idCliente, idSuc, fechaPedido, total, estado, fechaLimitePago,
-       bancoSnapshot, titularSnapshot, clabeSnapshot, numeroCuentaSnapshot, instruccionesSnapshot)
-      VALUES (?, ?, ?, NOW(), ?, 'PENDIENTE_PAGO', DATE_ADD(NOW(), INTERVAL ? HOUR), ?, ?, ?, ?, ?)`,
-      [
-        uuidPedido,
-        idCliente,
-        idSuc,
-        totalCentavos / 100,
-        HORAS_RESERVA_PEDIDO,
-        configuracion.banco,
-        configuracion.titular,
-        configuracion.clabe,
-        configuracion.numeroCuenta,
-        configuracion.instrucciones,
-      ],
-    );
-    for (const detalle of detalles) {
-      await connection.query(
-        `INSERT INTO detalle_pedido_cliente
-        (idPedido, idPro, cantidad, precioUnitario, subtotal) VALUES (?, ?, ?, ?, ?)`,
-        [
-          resultado.insertId,
-          detalle.idPro,
-          detalle.cantidad,
-          detalle.precioCentavos / 100,
-          detalle.subtotalCentavos / 100,
-        ],
-      );
-      await connection.query('UPDATE productos SET existenciaPro = existenciaPro - ? WHERE idPro = ?', [
-        detalle.cantidad,
-        detalle.idPro,
-      ]);
-    }
-    const pedido = await obtenerPedidoSeguro(connection, Number(resultado.insertId), idCliente);
-    await connection.commit();
-    return res.status(201).json(pedido);
-  } catch (error) {
-    if (connection) await connection.rollback().catch(() => undefined);
-    if (error.code === 'ER_DUP_ENTRY' || error.code === '23505') {
-      try {
-        const [rows] = await db.query('SELECT idPedido, idCliente FROM pedido_cliente WHERE uuidPedido = ?', [
+
+      const fechaLimitePago = new Date(Date.now() + HORAS_RESERVA_PEDIDO * 60 * 60 * 1000);
+
+      const nuevoPedido = await tx.pedidoCliente.create({
+        data: {
           uuidPedido,
-        ]);
-        if (rows.length && Number(rows[0].idCliente) === idCliente)
-          return res.json(await obtenerPedidoSeguro(db, Number(rows[0].idPedido), idCliente));
+          idCliente,
+          idSuc,
+          total: totalCentavos / 100,
+          estado: 'PENDIENTE_PAGO',
+          fechaLimitePago,
+          bancoSnapshot: configuracion.banco,
+          titularSnapshot: configuracion.titular,
+          clabeSnapshot: configuracion.clabe,
+          numeroCuentaSnapshot: configuracion.numeroCuenta,
+          instruccionesSnapshot: configuracion.instrucciones,
+          detalles: {
+            create: detalles.map((d) => ({
+              idPro: d.idPro,
+              cantidad: d.cantidad,
+              precioUnitario: d.precioCentavos / 100,
+              subtotal: d.subtotalCentavos / 100,
+            })),
+          },
+        },
+      });
+
+      for (const d of detalles) {
+        await tx.producto.update({
+          where: { idPro: d.idPro },
+          data: { existenciaPro: { decrement: d.cantidad } },
+        });
+      }
+
+      return await obtenerPedidoSeguro(nuevoPedido.idPedido, idCliente, tx);
+    });
+
+    res.status(201).json(pedido);
+  } catch (error) {
+    if (error.code === 'P2002' || error.code === 'ER_DUP_ENTRY' || error.code === '23505') {
+      try {
+        const existente = await prisma.pedidoCliente.findUnique({ where: { uuidPedido } });
+        if (existente && Number(existente.idCliente) === idCliente) {
+          return res.json(await obtenerPedidoSeguro(existente.idPedido, idCliente));
+        }
         return res.status(409).json({ message: 'El identificador del pedido ya está en uso.' });
       } catch (consultaError) {
         return errorServidor(res, consultaError);
@@ -1705,8 +1936,6 @@ app.post('/cliente/pedidos', autenticarCliente, async (req, res) => {
     }
     if (error.status) return res.status(error.status).json({ message: error.message });
     return errorServidor(res, error);
-  } finally {
-    connection?.release();
   }
 });
 
@@ -1714,13 +1943,11 @@ app.get('/cliente/pedidos', autenticarCliente, async (req, res) => {
   const idCliente = Number(req.cliente.idCliente);
   try {
     await liberarPedidosExpirados(idCliente);
-    const [rows] = await db.query(
-      `SELECT idPedido, uuidPedido, fechaPedido, total, estado, fechaLimitePago,
-      comprobanteRuta, fechaComprobante FROM pedido_cliente WHERE idCliente = ?
-      ORDER BY fechaPedido DESC, idPedido DESC`,
-      [idCliente],
-    );
-    res.json(rows.map(normalizarPedido));
+    const pedidos = await prisma.pedidoCliente.findMany({
+      where: { idCliente },
+      orderBy: [{ fechaPedido: 'desc' }, { idPedido: 'desc' }],
+    });
+    res.json(pedidos.map(normalizarPedido));
   } catch (error) {
     errorServidor(res, error);
   }
@@ -1731,7 +1958,7 @@ app.get('/cliente/pedidos/:id', autenticarCliente, async (req, res) => {
   if (!idPedido) return res.status(400).json({ message: 'El pedido no es válido.' });
   try {
     await liberarPedidosExpirados(Number(req.cliente.idCliente));
-    const pedido = await obtenerPedidoSeguro(db, idPedido, Number(req.cliente.idCliente));
+    const pedido = await obtenerPedidoSeguro(idPedido, Number(req.cliente.idCliente));
     if (!pedido) return res.status(404).json({ message: 'Pedido no encontrado.' });
     res.json(pedido);
   } catch (error) {
@@ -1742,37 +1969,35 @@ app.get('/cliente/pedidos/:id', autenticarCliente, async (req, res) => {
 app.post('/cliente/pedidos/:id/cancelar', autenticarCliente, async (req, res) => {
   const idPedido = idValido(req.params.id);
   if (!idPedido) return res.status(400).json({ message: 'El pedido no es válido.' });
-  let connection;
+
   try {
-    connection = await db.getConnection();
-    await connection.beginTransaction();
-    const [rows] = await connection.query(
-      'SELECT * FROM pedido_cliente WHERE idPedido = ? AND idCliente = ? FOR UPDATE',
-      [idPedido, req.cliente.idCliente],
-    );
-    if (!rows.length) throw errorFuncional('Pedido no encontrado.', 404);
-    const pedido = rows[0];
-    if (await expirarPedidoBloqueado(connection, pedido)) {
-      await connection.commit();
-      return res.status(409).json({ message: 'Tu reserva expiró y los productos volvieron al inventario.' });
-    }
-    if (pedido.estado !== 'PENDIENTE_PAGO' || pedido.comprobanteRuta) {
-      throw errorFuncional(`El pedido ya no puede cancelarse porque está ${pedido.estado}.`, 409);
-    }
-    await restaurarStockPedido(connection, idPedido);
-    await connection.query(
-      "UPDATE pedido_cliente SET estado = 'CANCELADO' WHERE idPedido = ? AND estado = 'PENDIENTE_PAGO'",
-      [idPedido],
-    );
-    const actualizado = await obtenerPedidoSeguro(connection, idPedido, Number(req.cliente.idCliente));
-    await connection.commit();
+    const actualizado = await prisma.$transaction(async (tx) => {
+      const pedido = await tx.pedidoCliente.findFirst({
+        where: { idPedido, idCliente: req.cliente.idCliente },
+      });
+      if (!pedido) throw errorFuncional('Pedido no encontrado.', 404);
+
+      if (await expirarPedidoBloqueado(tx, pedido)) {
+        throw errorFuncional('Tu reserva expiró y los productos volvieron al inventario.', 409);
+      }
+
+      if (pedido.estado !== 'PENDIENTE_PAGO' || pedido.comprobanteRuta) {
+        throw errorFuncional(`El pedido ya no puede cancelarse porque está ${pedido.estado}.`, 409);
+      }
+
+      await restaurarStockPedido(tx, idPedido);
+      await tx.pedidoCliente.update({
+        where: { idPedido },
+        data: { estado: 'CANCELADO' },
+      });
+
+      return await obtenerPedidoSeguro(idPedido, Number(req.cliente.idCliente), tx);
+    });
+
     res.json(actualizado);
   } catch (error) {
-    if (connection) await connection.rollback().catch(() => undefined);
     if (error.status) return res.status(error.status).json({ message: error.message });
     errorServidor(res, error);
-  } finally {
-    connection?.release();
   }
 });
 
@@ -1825,45 +2050,40 @@ app.post('/cliente/pedidos/:id/comprobante', autenticarCliente, (req, res) => {
       eliminarComprobanteTemporal(req.file);
       return res.status(400).json({ message: 'Selecciona una imagen JPG, PNG, WEBP o un PDF de máximo 5 MB.' });
     }
-    let connection;
+
     try {
-      connection = await db.getConnection();
-      await connection.beginTransaction();
-      const [rows] = await connection.query(
-        'SELECT * FROM pedido_cliente WHERE idPedido = ? AND idCliente = ? FOR UPDATE',
-        [idPedido, req.cliente.idCliente],
-      );
-      if (!rows.length) throw errorFuncional('Pedido no encontrado.', 404);
-      const pedido = rows[0];
-      if (await expirarPedidoBloqueado(connection, pedido)) {
-        await connection.commit();
-        eliminarComprobanteTemporal(req.file);
-        return res.status(409).json({ message: 'Tu reserva expiró y los productos volvieron al inventario.' });
-      }
-      if (pedido.estado !== 'PENDIENTE_PAGO' || pedido.comprobanteRuta) {
-        throw errorFuncional('Este pedido ya no acepta comprobantes.', 409);
-      }
-      await connection.query(
-        `UPDATE pedido_cliente SET comprobanteRuta=?, comprobanteMime=?, comprobanteNombre=?,
-        fechaComprobante=NOW(), estado='EN_REVISION' WHERE idPedido=? AND idCliente=? AND estado='PENDIENTE_PAGO'`,
-        [
-          req.file.filename,
-          req.file.mimetype,
-          texto(req.file.originalname).slice(0, 255) || 'comprobante',
-          idPedido,
-          req.cliente.idCliente,
-        ],
-      );
-      const actualizado = await obtenerPedidoSeguro(connection, idPedido, Number(req.cliente.idCliente));
-      await connection.commit();
+      const actualizado = await prisma.$transaction(async (tx) => {
+        const pedido = await tx.pedidoCliente.findFirst({
+          where: { idPedido, idCliente: req.cliente.idCliente },
+        });
+        if (!pedido) throw errorFuncional('Pedido no encontrado.', 404);
+
+        if (await expirarPedidoBloqueado(tx, pedido)) {
+          throw errorFuncional('Tu reserva expiró y los productos volvieron al inventario.', 409);
+        }
+        if (pedido.estado !== 'PENDIENTE_PAGO' || pedido.comprobanteRuta) {
+          throw errorFuncional('Este pedido ya no acepta comprobantes.', 409);
+        }
+
+        await tx.pedidoCliente.update({
+          where: { idPedido },
+          data: {
+            comprobanteRuta: req.file.filename,
+            comprobanteMime: req.file.mimetype,
+            comprobanteNombre: texto(req.file.originalname).slice(0, 255) || 'comprobante',
+            fechaComprobante: new Date(),
+            estado: 'EN_REVISION',
+          },
+        });
+
+        return await obtenerPedidoSeguro(idPedido, Number(req.cliente.idCliente), tx);
+      });
+
       res.json(actualizado);
     } catch (error) {
-      if (connection) await connection.rollback().catch(() => undefined);
       eliminarComprobanteTemporal(req.file);
       if (error.status) return res.status(error.status).json({ message: error.message });
       errorServidor(res, error);
-    } finally {
-      connection?.release();
     }
   });
 });
@@ -1876,12 +2096,11 @@ app.post('/cliente/pedidos/:id/presign-comprobante', autenticarCliente, async (r
     return res.status(400).json({ message: 'Selecciona una imagen JPG, PNG, WEBP o un PDF de máximo 5 MB.' });
   }
   try {
-    const [rows] = await db.query(
-      'SELECT idPedido, estado, comprobanteRuta, fechaLimitePago FROM pedido_cliente WHERE idPedido = ? AND idCliente = ?',
-      [idPedido, req.cliente.idCliente],
-    );
-    if (!rows.length) return res.status(404).json({ message: 'Pedido no encontrado.' });
-    const pedido = rows[0];
+    const pedido = await prisma.pedidoCliente.findFirst({
+      where: { idPedido, idCliente: req.cliente.idCliente },
+      select: { idPedido: true, estado: true, comprobanteRuta: true, fechaLimitePago: true },
+    });
+    if (!pedido) return res.status(404).json({ message: 'Pedido no encontrado.' });
     if (pedido.estado !== 'PENDIENTE_PAGO' || pedido.comprobanteRuta) {
       return res.status(409).json({ message: 'Este pedido ya no acepta comprobantes.' });
     }
@@ -1917,37 +2136,38 @@ app.post('/cliente/pedidos/:id/confirmar-comprobante', autenticarCliente, async 
     return res.status(400).json({ message: 'Tipo MIME de comprobante no válido.' });
   }
 
-  let connection;
   try {
-    connection = await db.getConnection();
-    await connection.beginTransaction();
-    const [rows] = await connection.query(
-      'SELECT * FROM pedido_cliente WHERE idPedido = ? AND idCliente = ? FOR UPDATE',
-      [idPedido, req.cliente.idCliente],
-    );
-    if (!rows.length) throw errorFuncional('Pedido no encontrado.', 404);
-    const pedido = rows[0];
-    if (await expirarPedidoBloqueado(connection, pedido)) {
-      await connection.commit();
-      return res.status(409).json({ message: 'Tu reserva expiró y los productos volvieron al inventario.' });
-    }
-    if (pedido.estado !== 'PENDIENTE_PAGO' || pedido.comprobanteRuta) {
-      throw errorFuncional('Este pedido ya no acepta comprobantes.', 409);
-    }
-    await connection.query(
-      `UPDATE pedido_cliente SET comprobanteRuta=?, comprobanteMime=?, comprobanteNombre=?,
-      fechaComprobante=NOW(), estado='EN_REVISION' WHERE idPedido=? AND idCliente=? AND estado='PENDIENTE_PAGO'`,
-      [key, mimeType, nombreOriginal, idPedido, req.cliente.idCliente],
-    );
-    const actualizado = await obtenerPedidoSeguro(connection, idPedido, Number(req.cliente.idCliente));
-    await connection.commit();
+    const actualizado = await prisma.$transaction(async (tx) => {
+      const pedido = await tx.pedidoCliente.findFirst({
+        where: { idPedido, idCliente: req.cliente.idCliente },
+      });
+      if (!pedido) throw errorFuncional('Pedido no encontrado.', 404);
+
+      if (await expirarPedidoBloqueado(tx, pedido)) {
+        throw errorFuncional('Tu reserva expiró y los productos volvieron al inventario.', 409);
+      }
+      if (pedido.estado !== 'PENDIENTE_PAGO' || pedido.comprobanteRuta) {
+        throw errorFuncional('Este pedido ya no acepta comprobantes.', 409);
+      }
+
+      await tx.pedidoCliente.update({
+        where: { idPedido },
+        data: {
+          comprobanteRuta: key,
+          comprobanteMime: mimeType,
+          comprobanteNombre: nombreOriginal,
+          fechaComprobante: new Date(),
+          estado: 'EN_REVISION',
+        },
+      });
+
+      return await obtenerPedidoSeguro(idPedido, Number(req.cliente.idCliente), tx);
+    });
+
     res.json(actualizado);
   } catch (error) {
-    if (connection) await connection.rollback().catch(() => undefined);
     if (error.status) return res.status(error.status).json({ message: error.message });
     errorServidor(res, error);
-  } finally {
-    connection?.release();
   }
 });
 
@@ -1955,13 +2175,20 @@ app.get('/cliente/pedidos/:id/comprobante', autenticarCliente, async (req, res) 
   const idPedido = idValido(req.params.id);
   if (!idPedido) return res.status(400).json({ message: 'El pedido no es válido.' });
   try {
-    const [rows] = await db.query(
-      `SELECT comprobanteRuta, comprobanteMime, comprobanteNombre
-      FROM pedido_cliente WHERE idPedido = ? AND idCliente = ? AND comprobanteRuta IS NOT NULL`,
-      [idPedido, req.cliente.idCliente],
-    );
-    if (!rows.length) return res.status(404).json({ message: 'Comprobante no encontrado.' });
-    const { comprobanteRuta, comprobanteMime, comprobanteNombre } = rows[0];
+    const pedido = await prisma.pedidoCliente.findFirst({
+      where: {
+        idPedido,
+        idCliente: req.cliente.idCliente,
+        comprobanteRuta: { not: null },
+      },
+      select: {
+        comprobanteRuta: true,
+        comprobanteMime: true,
+        comprobanteNombre: true,
+      },
+    });
+    if (!pedido) return res.status(404).json({ message: 'Comprobante no encontrado.' });
+    const { comprobanteRuta, comprobanteMime, comprobanteNombre } = pedido;
 
     if (esUrlS3(comprobanteRuta)) {
       const key = extraerKeyS3(comprobanteRuta);
@@ -2008,58 +2235,60 @@ function normalizarPedidoAdmin(row) {
     motivoRechazo: row.motivoRechazo || null,
     idVenta: row.idVenta === null || row.idVenta === undefined ? null : Number(row.idVenta),
     cliente: {
-      idCliente: Number(row.idCliente),
-      nombre: [row.nombreCliente, row.apellidoPatCliente, row.apellidoMatCliente].filter(Boolean).join(' '),
-      correo: row.correoCliente,
-      foto: row.fotoPerfil || null,
+      idCliente: Number(row.cliente?.idCliente || row.idCliente),
+      nombre: [row.cliente?.nombreCliente, row.cliente?.apellidoPatCliente, row.cliente?.apellidoMatCliente]
+        .filter(Boolean)
+        .join(' '),
+      correo: row.cliente?.correoCliente || '',
+      foto: row.cliente?.fotoPerfil || null,
     },
   };
 }
 
-const pedidoAdminSelect = `
-  SELECT pc.idPedido, pc.uuidPedido, pc.idCliente, pc.idSuc, pc.fechaPedido, pc.total, pc.estado,
-    pc.fechaLimitePago, pc.comprobanteRuta, pc.comprobanteMime, pc.comprobanteNombre,
-    pc.fechaComprobante, pc.idEmpRevisa, pc.fechaRevision, pc.motivoRechazo, pc.idVenta,
-    pc.bancoSnapshot, pc.titularSnapshot, pc.clabeSnapshot, pc.numeroCuentaSnapshot,
-    pc.instruccionesSnapshot, c.nombreCliente, c.apellidoPatCliente, c.apellidoMatCliente,
-    c.correoCliente, c.fotoPerfil,
-    TRIM(CONCAT_WS(' ', e.nombreEmp, e.apellidoPatEmp, e.apellidoMatEmp)) AS empleadoRevisa
-  FROM pedido_cliente pc
-  INNER JOIN cliente c ON c.idCliente = pc.idCliente
-  LEFT JOIN empleados e ON e.idEmp = pc.idEmpRevisa
-`;
+async function obtenerPedidoAdmin(idPedido, idSuc, client = prisma) {
+  const p = await client.pedidoCliente.findFirst({
+    where: {
+      idPedido: Number(idPedido),
+      idSuc: Number(idSuc),
+    },
+    include: {
+      cliente: true,
+      empleadoRevisa: true,
+      detalles: {
+        include: { producto: true },
+        orderBy: { idDetallePedido: 'asc' },
+      },
+    },
+  });
+  if (!p) return null;
 
-async function obtenerPedidoAdmin(executor, idPedido, idSuc) {
-  const [rows] = await executor.query(`${pedidoAdminSelect} WHERE pc.idPedido = ? AND pc.idSuc = ?`, [idPedido, idSuc]);
-  if (!rows.length) return null;
-  const row = rows[0];
-  const [items] = await executor.query(
-    `
-    SELECT d.idPro, COALESCE(p.nombrePro, 'Producto') AS nombre, p.imagenPro AS imagen,
-      p.tamanoPro, p.presentacionPro, d.cantidad, d.precioUnitario, d.subtotal
-    FROM detalle_pedido_cliente d LEFT JOIN productos p ON p.idPro = d.idPro
-    WHERE d.idPedido = ? ORDER BY d.idDetallePedido`,
-    [idPedido],
-  );
-  let configuracionTransferencia = configuracionTransferenciaPedido(row);
+  let configuracionTransferencia = configuracionTransferenciaPedido(p);
   if (!configuracionTransferencia) {
     try {
-      configuracionTransferencia = normalizarConfiguracionTransferencia(
-        await obtenerConfiguracionTransferencia(executor, Number(row.idSuc), false),
-      );
+      const conf = await client.configuracionTransferencia.findUnique({
+        where: { idSuc: p.idSuc },
+      });
+      configuracionTransferencia = normalizarConfiguracionTransferencia(conf);
     } catch {
       configuracionTransferencia = null;
     }
   }
+
+  const empRevisa = p.empleadoRevisa
+    ? [p.empleadoRevisa.nombreEmp, p.empleadoRevisa.apellidoPatEmp, p.empleadoRevisa.apellidoMatEmp]
+        .filter(Boolean)
+        .join(' ')
+    : null;
+
   return {
-    ...normalizarPedidoAdmin(row),
-    empleadoRevisa: row.empleadoRevisa || null,
+    ...normalizarPedidoAdmin(p),
+    empleadoRevisa: empRevisa,
     configuracionTransferencia,
-    items: items.map((item) => ({
+    items: p.detalles.map((item) => ({
       idPro: Number(item.idPro),
-      nombre: item.nombre,
-      imagen: item.imagen,
-      presentacion: [item.tamanoPro, item.presentacionPro].filter(Boolean).join(' · ') || null,
+      nombre: item.producto?.nombrePro || 'Producto',
+      imagen: item.producto?.imagenPro || null,
+      presentacion: [item.producto?.tamanoPro, item.producto?.presentacionPro].filter(Boolean).join(' · ') || null,
       cantidad: Number(item.cantidad),
       precioUnitario: Number(item.precioUnitario),
       subtotal: Number(item.subtotal),
@@ -2074,12 +2303,15 @@ app.get('/admin/pedidos', autenticar, soloAdministrador, async (req, res) => {
   if (!idSuc) return res.status(409).json({ message: 'El administrador no tiene una sucursal asignada.' });
   try {
     await liberarPedidosExpirados();
-    const [rows] = await db.query(
-      `${pedidoAdminSelect}
-      WHERE pc.idSuc = ? ORDER BY pc.fechaPedido DESC, pc.idPedido DESC`,
-      [idSuc],
-    );
-    res.json(rows.map(normalizarPedidoAdmin));
+    const pedidos = await prisma.pedidoCliente.findMany({
+      where: { idSuc },
+      orderBy: [{ fechaPedido: 'desc' }, { idPedido: 'desc' }],
+      include: {
+        cliente: true,
+        empleadoRevisa: true,
+      },
+    });
+    res.json(pedidos.map(normalizarPedidoAdmin));
   } catch (error) {
     errorServidor(res, error);
   }
@@ -2089,7 +2321,7 @@ app.get('/admin/pedidos/:id', autenticar, soloAdministrador, async (req, res) =>
   const idPedido = idValido(req.params.id);
   if (!idPedido) return res.status(400).json({ message: 'El pedido no es válido.' });
   try {
-    const pedido = await obtenerPedidoAdmin(db, idPedido, Number(req.empleado.idSuc));
+    const pedido = await obtenerPedidoAdmin(idPedido, Number(req.empleado.idSuc));
     if (!pedido) return res.status(404).json({ message: 'Pedido no encontrado.' });
     res.json(pedido);
   } catch (error) {
@@ -2101,13 +2333,20 @@ app.get('/admin/pedidos/:id/comprobante', autenticar, soloAdministrador, async (
   const idPedido = idValido(req.params.id);
   if (!idPedido) return res.status(400).json({ message: 'El pedido no es válido.' });
   try {
-    const [rows] = await db.query(
-      `SELECT comprobanteRuta, comprobanteMime, comprobanteNombre
-      FROM pedido_cliente WHERE idPedido = ? AND idSuc = ? AND comprobanteRuta IS NOT NULL`,
-      [idPedido, req.empleado.idSuc],
-    );
-    if (!rows.length) return res.status(404).json({ message: 'Comprobante no encontrado.' });
-    const { comprobanteRuta, comprobanteMime, comprobanteNombre } = rows[0];
+    const pedido = await prisma.pedidoCliente.findFirst({
+      where: {
+        idPedido,
+        idSuc: req.empleado.idSuc,
+        comprobanteRuta: { not: null },
+      },
+      select: {
+        comprobanteRuta: true,
+        comprobanteMime: true,
+        comprobanteNombre: true,
+      },
+    });
+    if (!pedido) return res.status(404).json({ message: 'Comprobante no encontrado.' });
+    const { comprobanteRuta, comprobanteMime, comprobanteNombre } = pedido;
 
     if (esUrlS3(comprobanteRuta)) {
       const key = extraerKeyS3(comprobanteRuta);
@@ -2131,143 +2370,159 @@ app.get('/admin/pedidos/:id/comprobante', autenticar, soloAdministrador, async (
   }
 });
 
-async function bloquearPedidoAdmin(connection, idPedido, idSuc) {
-  const [rows] = await connection.query('SELECT * FROM pedido_cliente WHERE idPedido = ? AND idSuc = ? FOR UPDATE', [
-    idPedido,
-    idSuc,
-  ]);
-  if (!rows.length) throw errorFuncional('Pedido no encontrado.', 404);
-  return rows[0];
-}
-
 app.post('/admin/pedidos/:id/rechazar', autenticar, soloAdministrador, async (req, res) => {
   const idPedido = idValido(req.params.id);
   const motivo = texto(req.body?.motivo);
   if (!idPedido) return res.status(400).json({ message: 'El pedido no es válido.' });
   if (motivo.length < 3 || motivo.length > 255)
     return res.status(400).json({ message: 'El motivo debe tener entre 3 y 255 caracteres.' });
-  let connection;
+
   try {
-    connection = await db.getConnection();
-    await connection.beginTransaction();
-    const pedido = await bloquearPedidoAdmin(connection, idPedido, Number(req.empleado.idSuc));
-    if (pedido.estado !== 'EN_REVISION')
-      throw errorFuncional('Sólo pueden rechazarse pedidos con pago en revisión.', 409);
-    await restaurarStockPedido(connection, idPedido);
-    await connection.query(
-      `UPDATE pedido_cliente SET estado='RECHAZADO', idEmpRevisa=?,
-      fechaRevision=NOW(), motivoRechazo=? WHERE idPedido=? AND estado='EN_REVISION'`,
-      [req.empleado.idEmp, motivo, idPedido],
-    );
-    const actualizado = await obtenerPedidoAdmin(connection, idPedido, Number(req.empleado.idSuc));
-    await connection.commit();
+    const actualizado = await prisma.$transaction(async (tx) => {
+      const pedido = await tx.pedidoCliente.findFirst({
+        where: { idPedido, idSuc: Number(req.empleado.idSuc) },
+      });
+      if (!pedido) throw errorFuncional('Pedido no encontrado.', 404);
+      if (pedido.estado !== 'EN_REVISION')
+        throw errorFuncional('Sólo pueden rechazarse pedidos con pago en revisión.', 409);
+
+      await restaurarStockPedido(tx, idPedido);
+      await tx.pedidoCliente.update({
+        where: { idPedido },
+        data: {
+          estado: 'RECHAZADO',
+          idEmpRevisa: req.empleado.idEmp,
+          fechaRevision: new Date(),
+          motivoRechazo: motivo,
+        },
+      });
+
+      return await obtenerPedidoAdmin(idPedido, Number(req.empleado.idSuc), tx);
+    });
+
     res.json(actualizado);
   } catch (error) {
-    if (connection) await connection.rollback().catch(() => undefined);
     if (error.status) return res.status(error.status).json({ message: error.message });
     errorServidor(res, error);
-  } finally {
-    connection?.release();
   }
 });
 
 app.post('/admin/pedidos/:id/aprobar', autenticar, soloAdministrador, async (req, res) => {
   const idPedido = idValido(req.params.id);
   if (!idPedido) return res.status(400).json({ message: 'El pedido no es válido.' });
-  let connection;
+
   try {
-    connection = await db.getConnection();
-    await connection.beginTransaction();
-    const pedido = await bloquearPedidoAdmin(connection, idPedido, Number(req.empleado.idSuc));
-    if (pedido.estado === 'PAGADO' && pedido.idVenta) throw errorFuncional('El pedido ya fue aprobado.', 409);
-    if (pedido.estado !== 'EN_REVISION')
-      throw errorFuncional('Sólo pueden aprobarse pedidos con pago en revisión.', 409);
-    if (!pedido.comprobanteRuta || !pedido.fechaComprobante)
-      throw errorFuncional('El pedido no tiene un comprobante válido para revisar.', 409);
-    if (!esUrlS3(pedido.comprobanteRuta) && !resolverComprobantePrivado(pedido.comprobanteRuta)) {
-      throw errorFuncional('El archivo del comprobante no está disponible.', 409);
-    }
-    const [detalles] = await connection.query(
-      `SELECT idPro, cantidad, precioUnitario, subtotal
-      FROM detalle_pedido_cliente WHERE idPedido = ? ORDER BY idPro`,
-      [idPedido],
-    );
-    if (!detalles.length) throw errorFuncional('El pedido no contiene productos.', 409);
-    let sumaCentavos = 0;
-    for (const detalle of detalles) {
-      const cantidad = Number(detalle.cantidad);
-      const precioCentavos = dineroCentavos(detalle.precioUnitario);
-      const subtotalCentavos = dineroCentavos(detalle.subtotal);
-      if (
-        !Number.isInteger(cantidad) ||
-        cantidad <= 0 ||
-        precioCentavos === null ||
-        precioCentavos < 0 ||
-        subtotalCentavos === null ||
-        subtotalCentavos !== precioCentavos * cantidad
-      ) {
-        throw errorFuncional('Los importes históricos del pedido no son coherentes.', 409);
+    const actualizado = await prisma.$transaction(async (tx) => {
+      const pedido = await tx.pedidoCliente.findFirst({
+        where: { idPedido, idSuc: Number(req.empleado.idSuc) },
+        include: {
+          detalles: { orderBy: { idPro: 'asc' } },
+        },
+      });
+      if (!pedido) throw errorFuncional('Pedido no encontrado.', 404);
+      if (pedido.estado === 'PAGADO' && pedido.idVenta) throw errorFuncional('El pedido ya fue aprobado.', 409);
+      if (pedido.estado !== 'EN_REVISION')
+        throw errorFuncional('Sólo pueden aprobarse pedidos con pago en revisión.', 409);
+      if (!pedido.comprobanteRuta || !pedido.fechaComprobante)
+        throw errorFuncional('El pedido no tiene un comprobante válido para revisar.', 409);
+      if (!esUrlS3(pedido.comprobanteRuta) && !resolverComprobantePrivado(pedido.comprobanteRuta)) {
+        throw errorFuncional('El archivo del comprobante no está disponible.', 409);
       }
-      sumaCentavos += subtotalCentavos;
-      if (!Number.isSafeInteger(sumaCentavos)) throw errorFuncional('El total del pedido no es válido.', 409);
-    }
-    const totalPedidoCentavos = dineroCentavos(pedido.total);
-    if (totalPedidoCentavos === null || sumaCentavos !== totalPedidoCentavos)
-      throw errorFuncional('El total del pedido no coincide con sus productos.', 409);
-    const [venta] = await connection.query(
-      `INSERT INTO venta
-      (uuidVenta, fechaVenta, horaVenta, total, metodoPago, montoRecibido, cambio, estadoVenta, idEmp, idSuc, idSesionCaja)
-      VALUES (?, CURDATE(), CURTIME(), ?, 'TRANSFERENCIA', NULL, 0.00, 'COMPLETADA', ?, ?, NULL)`,
-      [crypto.randomUUID(), totalPedidoCentavos / 100, req.empleado.idEmp, pedido.idSuc],
-    );
-    for (const detalle of detalles) {
-      await connection.query(
-        `INSERT INTO detventa
-        (idVenta, idPro, cantidadDetVenta, precioUnitarioDetVenta, subtotalDetVenta) VALUES (?, ?, ?, ?, ?)`,
-        [venta.insertId, detalle.idPro, detalle.cantidad, detalle.precioUnitario, detalle.subtotal],
-      );
-    }
-    await connection.query(
-      `UPDATE pedido_cliente SET estado='PAGADO', idEmpRevisa=?, fechaRevision=NOW(),
-      motivoRechazo=NULL, idVenta=? WHERE idPedido=? AND estado='EN_REVISION'`,
-      [req.empleado.idEmp, venta.insertId, idPedido],
-    );
-    const actualizado = await obtenerPedidoAdmin(connection, idPedido, Number(req.empleado.idSuc));
-    await connection.commit();
+      if (!pedido.detalles.length) throw errorFuncional('El pedido no contiene productos.', 409);
+
+      let sumaCentavos = 0;
+      for (const detalle of pedido.detalles) {
+        const cantidad = Number(detalle.cantidad);
+        const precioCentavos = dineroCentavos(detalle.precioUnitario);
+        const subtotalCentavos = dineroCentavos(detalle.subtotal);
+        if (
+          !Number.isInteger(cantidad) ||
+          cantidad <= 0 ||
+          precioCentavos === null ||
+          precioCentavos < 0 ||
+          subtotalCentavos === null ||
+          subtotalCentavos !== precioCentavos * cantidad
+        ) {
+          throw errorFuncional('Los importes históricos del pedido no son coherentes.', 409);
+        }
+        sumaCentavos += subtotalCentavos;
+        if (!Number.isSafeInteger(sumaCentavos)) throw errorFuncional('El total del pedido no es válido.', 409);
+      }
+      const totalPedidoCentavos = dineroCentavos(pedido.total);
+      if (totalPedidoCentavos === null || sumaCentavos !== totalPedidoCentavos)
+        throw errorFuncional('El total del pedido no coincide con sus productos.', 409);
+
+      const ahora = new Date();
+
+      const venta = await tx.venta.create({
+        data: {
+          uuidVenta: crypto.randomUUID(),
+          fechaVenta: ahora,
+          horaVenta: ahora,
+          total: totalPedidoCentavos / 100,
+          metodoPago: 'TRANSFERENCIA',
+          montoRecibido: null,
+          cambio: 0.0,
+          estadoVenta: 'COMPLETADA',
+          idEmp: req.empleado.idEmp,
+          idSuc: pedido.idSuc,
+          detalles: {
+            create: pedido.detalles.map((d) => ({
+              idPro: d.idPro,
+              cantidadDetVenta: d.cantidad,
+              precioUnitarioDetVenta: Number(d.precioUnitario),
+              subtotalDetVenta: Number(d.subtotal),
+            })),
+          },
+        },
+      });
+
+      await tx.pedidoCliente.update({
+        where: { idPedido },
+        data: {
+          estado: 'PAGADO',
+          idEmpRevisa: req.empleado.idEmp,
+          fechaRevision: ahora,
+          motivoRechazo: null,
+          idVenta: venta.idVenta,
+        },
+      });
+
+      return await obtenerPedidoAdmin(idPedido, Number(req.empleado.idSuc), tx);
+    });
+
     res.json(actualizado);
   } catch (error) {
-    if (connection) await connection.rollback().catch(() => undefined);
     if (error.status) return res.status(error.status).json({ message: error.message });
     errorServidor(res, error);
-  } finally {
-    connection?.release();
   }
 });
 
 async function cambiarEstadoOperativoPedido(req, res, estadoActual, estadoNuevo) {
   const idPedido = idValido(req.params.id);
   if (!idPedido) return res.status(400).json({ message: 'El pedido no es válido.' });
-  let connection;
+
   try {
-    connection = await db.getConnection();
-    await connection.beginTransaction();
-    const pedido = await bloquearPedidoAdmin(connection, idPedido, Number(req.empleado.idSuc));
-    if (pedido.estado !== estadoActual)
-      throw errorFuncional(`El pedido debe estar en estado ${estadoActual} para continuar.`, 409);
-    await connection.query('UPDATE pedido_cliente SET estado=? WHERE idPedido=? AND estado=?', [
-      estadoNuevo,
-      idPedido,
-      estadoActual,
-    ]);
-    const actualizado = await obtenerPedidoAdmin(connection, idPedido, Number(req.empleado.idSuc));
-    await connection.commit();
+    const actualizado = await prisma.$transaction(async (tx) => {
+      const pedido = await tx.pedidoCliente.findFirst({
+        where: { idPedido, idSuc: Number(req.empleado.idSuc) },
+      });
+      if (!pedido) throw errorFuncional('Pedido no encontrado.', 404);
+      if (pedido.estado !== estadoActual)
+        throw errorFuncional(`El pedido debe estar en estado ${estadoActual} para continuar.`, 409);
+
+      await tx.pedidoCliente.update({
+        where: { idPedido },
+        data: { estado: estadoNuevo },
+      });
+
+      return await obtenerPedidoAdmin(idPedido, Number(req.empleado.idSuc), tx);
+    });
+
     res.json(actualizado);
   } catch (error) {
-    if (connection) await connection.rollback().catch(() => undefined);
     if (error.status) return res.status(error.status).json({ message: error.message });
     errorServidor(res, error);
-  } finally {
-    connection?.release();
   }
 }
 
@@ -2278,16 +2533,8 @@ app.post('/admin/pedidos/:id/entregar', autenticar, soloAdministrador, (req, res
   cambiarEstadoOperativoPedido(req, res, 'LISTO', 'ENTREGADO'),
 );
 
-const sesionCajaSelect = `
-  SELECT sc.*, TRIM(CONCAT_WS(' ', e.nombreEmp, e.apellidoPatEmp, e.apellidoMatEmp)) AS empleado,
-    s.nombreSuc
-  FROM sesion_caja sc
-  LEFT JOIN empleados e ON e.idEmp = sc.idEmp
-  LEFT JOIN sucursal s ON s.idSuc = sc.idSuc
-`;
-
-function normalizarCaja(row) {
-  if (!row) return null;
+function normalizarCaja(caja) {
+  if (!caja) return null;
   const campos = [
     'fondoInicial',
     'totalVentas',
@@ -2300,53 +2547,95 @@ function normalizarCaja(row) {
     'efectivoContado',
     'diferencia',
   ];
-  const caja = { ...row };
-  for (const campo of campos) caja[campo] = caja[campo] === null ? null : Number(caja[campo]);
-  caja.numeroVentas = Number(caja.numeroVentas) || 0;
-  return caja;
-}
-
-async function obtenerCajaActual(executor, idEmp, bloquear = false) {
-  const [rows] = await executor.query(
-    `${sesionCajaSelect} WHERE sc.idEmp = ? AND sc.estado = 'ABIERTA' ORDER BY sc.idSesionCaja DESC LIMIT 1${bloquear ? ' FOR UPDATE' : ''}`,
-    [idEmp],
-  );
-  return normalizarCaja(rows[0]);
-}
-
-async function calcularResumenCaja(executor, caja) {
-  const [ventas] = await executor.query(
-    `
-    SELECT COALESCE(SUM(total),0) AS totalVentas,
-      COALESCE(SUM(CASE WHEN metodoPago='EFECTIVO' THEN total ELSE 0 END),0) AS totalEfectivo,
-      COALESCE(SUM(CASE WHEN metodoPago='TARJETA' THEN total ELSE 0 END),0) AS totalTarjeta,
-      COALESCE(SUM(CASE WHEN metodoPago='TRANSFERENCIA' THEN total ELSE 0 END),0) AS totalTransferencia,
-      COUNT(*) AS numeroVentas
-    FROM venta WHERE idSesionCaja = ? AND estadoVenta = 'COMPLETADA'
-  `,
-    [caja.idSesionCaja],
-  );
-  const [movimientos] = await executor.query(
-    `
-    SELECT COALESCE(SUM(CASE WHEN tipoMovimiento='INGRESO' THEN monto ELSE 0 END),0) AS totalIngresos,
-      COALESCE(SUM(CASE WHEN tipoMovimiento='RETIRO' THEN monto ELSE 0 END),0) AS totalRetiros
-    FROM movimiento_caja WHERE idSesionCaja = ?
-  `,
-    [caja.idSesionCaja],
-  );
-  const resumen = {
+  const resultado = {
     ...caja,
-    totalVentas: Number(ventas[0].totalVentas),
-    totalEfectivo: Number(ventas[0].totalEfectivo),
-    totalTarjeta: Number(ventas[0].totalTarjeta),
-    totalTransferencia: Number(ventas[0].totalTransferencia),
-    numeroVentas: Number(ventas[0].numeroVentas),
-    totalIngresos: Number(movimientos[0].totalIngresos),
-    totalRetiros: Number(movimientos[0].totalRetiros),
+    empleado: caja.empleado
+      ? [caja.empleado.nombreEmp, caja.empleado.apellidoPatEmp, caja.empleado.apellidoMatEmp].filter(Boolean).join(' ')
+      : null,
+    nombreSuc: caja.sucursal?.nombreSuc || null,
   };
-  resumen.efectivoEsperado =
-    Number(caja.fondoInicial) + resumen.totalEfectivo + resumen.totalIngresos - resumen.totalRetiros;
-  return resumen;
+  for (const campo of campos) {
+    resultado[campo] = resultado[campo] === null || resultado[campo] === undefined ? null : Number(resultado[campo]);
+  }
+  resultado.numeroVentas = Number(resultado.numeroVentas) || 0;
+  return resultado;
+}
+
+async function obtenerCajaActual(idEmp) {
+  const row = await prisma.sesionCaja.findFirst({
+    where: {
+      idEmp: Number(idEmp),
+      estado: 'ABIERTA',
+    },
+    orderBy: { idSesionCaja: 'desc' },
+    include: {
+      empleado: true,
+      sucursal: true,
+    },
+  });
+  return normalizarCaja(row);
+}
+
+async function calcularResumenCaja(caja, client = prisma) {
+  const [ventas, movimientos] = await Promise.all([
+    client.venta.findMany({
+      where: {
+        idSesionCaja: caja.idSesionCaja,
+        estadoVenta: 'COMPLETADA',
+      },
+      select: {
+        total: true,
+        metodoPago: true,
+      },
+    }),
+    client.movimientoCaja.findMany({
+      where: {
+        idSesionCaja: caja.idSesionCaja,
+      },
+      select: {
+        tipoMovimiento: true,
+        monto: true,
+      },
+    }),
+  ]);
+
+  let totalVentas = 0;
+  let totalEfectivo = 0;
+  let totalTarjeta = 0;
+  let totalTransferencia = 0;
+  let numeroVentas = ventas.length;
+
+  for (const v of ventas) {
+    const tot = Number(v.total);
+    totalVentas += tot;
+    if (v.metodoPago === 'EFECTIVO') totalEfectivo += tot;
+    else if (v.metodoPago === 'TARJETA') totalTarjeta += tot;
+    else if (v.metodoPago === 'TRANSFERENCIA') totalTransferencia += tot;
+  }
+
+  let totalIngresos = 0;
+  let totalRetiros = 0;
+
+  for (const m of movimientos) {
+    const monto = Number(m.monto);
+    if (m.tipoMovimiento === 'INGRESO') totalIngresos += monto;
+    else if (m.tipoMovimiento === 'RETIRO') totalRetiros += monto;
+  }
+
+  const fondoInicial = Number(caja.fondoInicial) || 0;
+  const efectivoEsperado = fondoInicial + totalEfectivo + totalIngresos - totalRetiros;
+
+  return {
+    ...caja,
+    totalVentas,
+    totalEfectivo,
+    totalTarjeta,
+    totalTransferencia,
+    numeroVentas,
+    totalIngresos,
+    totalRetiros,
+    efectivoEsperado,
+  };
 }
 
 app.post('/caja/abrir', autenticar, rolesPos, async (req, res) => {
@@ -2354,50 +2643,57 @@ app.post('/caja/abrir', autenticar, rolesPos, async (req, res) => {
   const fondo = dineroCentavos(req.body.fondoInicial);
   if (!uuid) return res.status(400).json({ message: 'uuidSesionCaja no es válido' });
   if (fondo === null || fondo < 0) return res.status(400).json({ message: 'El fondo inicial no es válido' });
-  let connection;
+
   try {
-    connection = await db.getConnection();
-    await connection.beginTransaction();
-    await connection.query('SELECT idEmp FROM empleados WHERE idEmp = ? FOR UPDATE', [req.empleado.idEmp]);
-    const [repetidas] = await connection.query(`${sesionCajaSelect} WHERE sc.uuidSesionCaja = ?`, [uuid]);
-    if (repetidas.length) {
-      if (
-        Number(repetidas[0].idEmp) !== Number(req.empleado.idEmp) ||
-        Number(repetidas[0].idSuc) !== Number(req.empleado.idSuc)
-      ) {
-        const error = new Error('El identificador de caja ya está en uso.');
-        error.status = 409;
-        throw error;
+    const caja = await prisma.$transaction(async (tx) => {
+      const repetida = await tx.sesionCaja.findUnique({
+        where: { uuidSesionCaja: uuid },
+        include: { empleado: true, sucursal: true },
+      });
+      if (repetida) {
+        if (
+          Number(repetida.idEmp) !== Number(req.empleado.idEmp) ||
+          Number(repetida.idSuc) !== Number(req.empleado.idSuc)
+        ) {
+          throw errorFuncional('El identificador de caja ya está en uso.', 409);
+        }
+        return normalizarCaja(repetida);
       }
-      await connection.commit();
-      return res.json(normalizarCaja(repetidas[0]));
-    }
-    if (await obtenerCajaActual(connection, req.empleado.idEmp, true)) {
-      const error = new Error('Ya tienes una caja abierta.');
-      error.status = 409;
-      throw error;
-    }
-    const [result] = await connection.query(
-      `INSERT INTO sesion_caja
-      (uuidSesionCaja,idEmp,idSuc,fechaHoraApertura,fondoInicial,estado)
-      VALUES (?,?,?,NOW(),?,'ABIERTA')`,
-      [uuid, req.empleado.idEmp, req.empleado.idSuc, fondo / 100],
-    );
-    const [rows] = await connection.query(`${sesionCajaSelect} WHERE sc.idSesionCaja = ?`, [result.insertId]);
-    await connection.commit();
-    res.status(201).json(normalizarCaja(rows[0]));
+
+      const activa = await tx.sesionCaja.findFirst({
+        where: {
+          idEmp: Number(req.empleado.idEmp),
+          estado: 'ABIERTA',
+        },
+      });
+      if (activa) {
+        throw errorFuncional('Ya tienes una caja abierta.', 409);
+      }
+
+      const nueva = await tx.sesionCaja.create({
+        data: {
+          uuidSesionCaja: uuid,
+          idEmp: req.empleado.idEmp,
+          idSuc: req.empleado.idSuc,
+          fondoInicial: fondo / 100,
+          estado: 'ABIERTA',
+        },
+        include: { empleado: true, sucursal: true },
+      });
+
+      return normalizarCaja(nueva);
+    });
+
+    res.status(201).json(caja);
   } catch (error) {
-    if (connection) await connection.rollback().catch(() => undefined);
     if (error.status) return res.status(error.status).json({ message: error.message });
     errorServidor(res, error);
-  } finally {
-    connection?.release();
   }
 });
 
 app.get('/caja/actual', autenticar, rolesPos, async (req, res) => {
   try {
-    res.json({ caja: await obtenerCajaActual(db, req.empleado.idEmp) });
+    res.json({ caja: await obtenerCajaActual(req.empleado.idEmp) });
   } catch (error) {
     errorServidor(res, error);
   }
@@ -2405,72 +2701,75 @@ app.get('/caja/actual', autenticar, rolesPos, async (req, res) => {
 
 app.get('/caja/actual/resumen', autenticar, rolesPos, async (req, res) => {
   try {
-    const caja = await obtenerCajaActual(db, req.empleado.idEmp);
+    const caja = await obtenerCajaActual(req.empleado.idEmp);
     if (!caja) return res.status(404).json({ message: 'No tienes una caja abierta.' });
-    res.json(await calcularResumenCaja(db, caja));
+    res.json(await calcularResumenCaja(caja));
   } catch (error) {
     errorServidor(res, error);
   }
 });
 
 app.post('/caja/movimientos', autenticar, rolesPos, async (req, res) => {
-  const uuid = uuidValido(req.body.uuidMovimientoCaja),
-    tipo = texto(req.body.tipoMovimiento).toUpperCase(),
-    concepto = texto(req.body.concepto),
-    monto = dineroCentavos(req.body.monto);
+  const uuid = uuidValido(req.body.uuidMovimientoCaja);
+  const tipo = texto(req.body.tipoMovimiento).toUpperCase();
+  const concepto = texto(req.body.concepto);
+  const monto = dineroCentavos(req.body.monto);
   if (!uuid) return res.status(400).json({ message: 'uuidMovimientoCaja no es válido' });
   if (!['INGRESO', 'RETIRO'].includes(tipo))
     return res.status(400).json({ message: 'El tipo de movimiento no es válido' });
   if (monto === null || monto <= 0) return res.status(400).json({ message: 'El monto debe ser mayor que cero' });
   if (!concepto || concepto.length > 255)
     return res.status(400).json({ message: 'El concepto es obligatorio y admite hasta 255 caracteres' });
-  let connection;
+
   try {
-    connection = await db.getConnection();
-    await connection.beginTransaction();
-    const caja = await obtenerCajaActual(connection, req.empleado.idEmp, true);
-    if (!caja) {
-      const e = new Error('No tienes una caja abierta.');
-      e.status = 409;
-      throw e;
-    }
-    const [existentes] = await connection.query('SELECT * FROM movimiento_caja WHERE uuidMovimientoCaja=?', [uuid]);
-    if (existentes.length) {
-      if (
-        Number(existentes[0].idSesionCaja) !== Number(caja.idSesionCaja) ||
-        Number(existentes[0].idEmp) !== Number(req.empleado.idEmp)
-      ) {
-        const e = new Error('El identificador del movimiento ya está en uso.');
-        e.status = 409;
-        throw e;
+    const mov = await prisma.$transaction(async (tx) => {
+      const caja = await tx.sesionCaja.findFirst({
+        where: { idEmp: req.empleado.idEmp, estado: 'ABIERTA' },
+      });
+      if (!caja) throw errorFuncional('No tienes una caja abierta.', 409);
+
+      const existente = await tx.movimientoCaja.findUnique({
+        where: { uuidMovimientoCaja: uuid },
+      });
+      if (existente) {
+        if (
+          Number(existente.idSesionCaja) !== Number(caja.idSesionCaja) ||
+          Number(existente.idEmp) !== Number(req.empleado.idEmp)
+        ) {
+          throw errorFuncional('El identificador del movimiento ya está en uso.', 409);
+        }
+        return { ...existente, monto: Number(existente.monto) };
       }
-      await connection.commit();
-      return res.json({ ...existentes[0], monto: Number(existentes[0].monto) });
-    }
-    const [result] = await connection.query(
-      `INSERT INTO movimiento_caja(uuidMovimientoCaja,idSesionCaja,idEmp,tipoMovimiento,monto,concepto,fechaHora) VALUES(?,?,?,?,?,?,NOW())`,
-      [uuid, caja.idSesionCaja, req.empleado.idEmp, tipo, monto / 100, concepto],
-    );
-    const [rows] = await connection.query('SELECT * FROM movimiento_caja WHERE idMovimientoCaja=?', [result.insertId]);
-    await connection.commit();
-    res.status(201).json({ ...rows[0], monto: Number(rows[0].monto) });
+
+      const nuevo = await tx.movimientoCaja.create({
+        data: {
+          uuidMovimientoCaja: uuid,
+          idSesionCaja: caja.idSesionCaja,
+          idEmp: req.empleado.idEmp,
+          tipoMovimiento: tipo,
+          monto: monto / 100,
+          concepto,
+        },
+      });
+
+      return { ...nuevo, monto: Number(nuevo.monto) };
+    });
+
+    res.status(201).json(mov);
   } catch (error) {
-    if (connection) await connection.rollback().catch(() => undefined);
     if (error.status) return res.status(error.status).json({ message: error.message });
     errorServidor(res, error);
-  } finally {
-    connection?.release();
   }
 });
 
 app.get('/caja/movimientos', autenticar, rolesPos, async (req, res) => {
   try {
-    const caja = await obtenerCajaActual(db, req.empleado.idEmp);
+    const caja = await obtenerCajaActual(req.empleado.idEmp);
     if (!caja) return res.status(404).json({ message: 'No tienes una caja abierta.' });
-    const [rows] = await db.query(
-      'SELECT * FROM movimiento_caja WHERE idSesionCaja=? ORDER BY fechaHora DESC,idMovimientoCaja DESC',
-      [caja.idSesionCaja],
-    );
+    const rows = await prisma.movimientoCaja.findMany({
+      where: { idSesionCaja: caja.idSesionCaja },
+      orderBy: [{ fechaHora: 'desc' }, { idMovimientoCaja: 'desc' }],
+    });
     res.json(rows.map((r) => ({ ...r, monto: Number(r.monto) })));
   } catch (error) {
     errorServidor(res, error);
@@ -2478,78 +2777,76 @@ app.get('/caja/movimientos', autenticar, rolesPos, async (req, res) => {
 });
 
 app.post('/caja/cerrar', autenticar, rolesPos, async (req, res) => {
-  const contado = dineroCentavos(req.body.efectivoContado),
-    observaciones = texto(req.body.observaciones);
+  const contado = dineroCentavos(req.body.efectivoContado);
+  const observaciones = texto(req.body.observaciones);
   if (contado === null || contado < 0) return res.status(400).json({ message: 'El efectivo contado no es válido' });
   if (observaciones.length > 1000) return res.status(400).json({ message: 'Las observaciones son demasiado largas' });
-  let connection;
+
   try {
-    connection = await db.getConnection();
-    await connection.beginTransaction();
-    const caja = await obtenerCajaActual(connection, req.empleado.idEmp, true);
-    if (!caja) {
-      const e = new Error('No tienes una caja abierta.');
-      e.status = 409;
-      throw e;
-    }
-    const resumen = await calcularResumenCaja(connection, caja);
-    const diferencia = contado / 100 - resumen.efectivoEsperado;
-    await connection.query(
-      `UPDATE sesion_caja SET fechaHoraCierre=NOW(),totalVentas=?,totalEfectivo=?,totalTarjeta=?,totalTransferencia=?,totalIngresos=?,totalRetiros=?,efectivoEsperado=?,efectivoContado=?,diferencia=?,numeroVentas=?,estado='CERRADA',observaciones=? WHERE idSesionCaja=? AND estado='ABIERTA'`,
-      [
-        resumen.totalVentas,
-        resumen.totalEfectivo,
-        resumen.totalTarjeta,
-        resumen.totalTransferencia,
-        resumen.totalIngresos,
-        resumen.totalRetiros,
-        resumen.efectivoEsperado,
-        contado / 100,
-        diferencia,
-        resumen.numeroVentas,
-        observaciones || null,
-        caja.idSesionCaja,
-      ],
-    );
-    const [rows] = await connection.query(`${sesionCajaSelect} WHERE sc.idSesionCaja=?`, [caja.idSesionCaja]);
-    await connection.commit();
-    res.json(normalizarCaja(rows[0]));
+    const cerrada = await prisma.$transaction(async (tx) => {
+      const cajaRow = await tx.sesionCaja.findFirst({
+        where: { idEmp: req.empleado.idEmp, estado: 'ABIERTA' },
+        include: { empleado: true, sucursal: true },
+      });
+      if (!cajaRow) throw errorFuncional('No tienes una caja abierta.', 409);
+      const caja = normalizarCaja(cajaRow);
+      const resumen = await calcularResumenCaja(caja, tx);
+      const diferencia = contado / 100 - resumen.efectivoEsperado;
+
+      const actualizada = await tx.sesionCaja.update({
+        where: { idSesionCaja: caja.idSesionCaja },
+        data: {
+          fechaHoraCierre: new Date(),
+          totalVentas: resumen.totalVentas,
+          totalEfectivo: resumen.totalEfectivo,
+          totalTarjeta: resumen.totalTarjeta,
+          totalTransferencia: resumen.totalTransferencia,
+          totalIngresos: resumen.totalIngresos,
+          totalRetiros: resumen.totalRetiros,
+          efectivoEsperado: resumen.efectivoEsperado,
+          efectivoContado: contado / 100,
+          diferencia,
+          numeroVentas: resumen.numeroVentas,
+          estado: 'CERRADA',
+          observaciones: observaciones || null,
+        },
+        include: { empleado: true, sucursal: true },
+      });
+
+      return normalizarCaja(actualizada);
+    });
+
+    res.json(cerrada);
   } catch (error) {
-    if (connection) await connection.rollback().catch(() => undefined);
     if (error.status) return res.status(error.status).json({ message: error.message });
     errorServidor(res, error);
-  } finally {
-    connection?.release();
   }
 });
 
 app.get('/caja/historial', autenticar, rolesPos, async (req, res) => {
-  const filtros = [],
-    valores = [];
+  const where = {};
   if (req.empleado.cargo === 'CAJERO') {
-    filtros.push('sc.idEmp=?');
-    valores.push(req.empleado.idEmp);
+    where.idEmp = req.empleado.idEmp;
   } else {
-    filtros.push('sc.idSuc=?');
-    valores.push(req.empleado.idSuc);
+    where.idSuc = req.empleado.idSuc;
     if (idValido(req.query.idEmp)) {
-      filtros.push('sc.idEmp=?');
-      valores.push(idValido(req.query.idEmp));
+      where.idEmp = idValido(req.query.idEmp);
     }
   }
   if (['ABIERTA', 'CERRADA'].includes(texto(req.query.estado).toUpperCase())) {
-    filtros.push('sc.estado=?');
-    valores.push(texto(req.query.estado).toUpperCase());
+    where.estado = texto(req.query.estado).toUpperCase();
   }
   if (/^\d{4}-\d{2}-\d{2}$/.test(texto(req.query.fecha))) {
-    filtros.push('DATE(sc.fechaHoraApertura)=?');
-    valores.push(texto(req.query.fecha));
+    const fechaInicio = new Date(`${req.query.fecha}T00:00:00.000Z`);
+    const fechaFin = new Date(`${req.query.fecha}T23:59:59.999Z`);
+    where.fechaHoraApertura = { gte: fechaInicio, lte: fechaFin };
   }
   try {
-    const [rows] = await db.query(
-      `${sesionCajaSelect} WHERE ${filtros.join(' AND ')} ORDER BY sc.fechaHoraApertura DESC`,
-      valores,
-    );
+    const rows = await prisma.sesionCaja.findMany({
+      where,
+      orderBy: { fechaHoraApertura: 'desc' },
+      include: { empleado: true, sucursal: true },
+    });
     res.json(rows.map(normalizarCaja));
   } catch (error) {
     errorServidor(res, error);
@@ -2559,12 +2856,19 @@ app.get('/caja/historial', autenticar, rolesPos, async (req, res) => {
 app.get('/caja/:id', autenticar, rolesPos, async (req, res) => {
   const id = idValido(req.params.id);
   if (!id) return res.status(400).json({ message: 'El folio de caja no es válido' });
-  const filtro = req.empleado.cargo === 'CAJERO' ? 'sc.idEmp=?' : 'sc.idSuc=?',
-    valor = req.empleado.cargo === 'CAJERO' ? req.empleado.idEmp : req.empleado.idSuc;
+  const where = { idSesionCaja: id };
+  if (req.empleado.cargo === 'CAJERO') {
+    where.idEmp = req.empleado.idEmp;
+  } else {
+    where.idSuc = req.empleado.idSuc;
+  }
   try {
-    const [rows] = await db.query(`${sesionCajaSelect} WHERE sc.idSesionCaja=? AND ${filtro}`, [id, valor]);
-    if (!rows.length) return res.status(404).json({ message: 'Corte no encontrado' });
-    res.json(normalizarCaja(rows[0]));
+    const row = await prisma.sesionCaja.findFirst({
+      where,
+      include: { empleado: true, sucursal: true },
+    });
+    if (!row) return res.status(404).json({ message: 'Corte no encontrado' });
+    res.json(normalizarCaja(row));
   } catch (error) {
     errorServidor(res, error);
   }
@@ -2572,21 +2876,27 @@ app.get('/caja/:id', autenticar, rolesPos, async (req, res) => {
 
 app.get('/pos/productos', autenticar, rolesPos, async (req, res) => {
   try {
-    const [rows] = await db.query(`
-      SELECT p.idPro, p.nombrePro, p.precioVentaPro, p.existenciaPro, p.codigoQR,
-        p.skuPro, p.imagenPro, p.tamanoPro, p.presentacionPro,
-        m.nombreMarca, c.nombreCat
-      FROM productos p
-      LEFT JOIN marca m ON m.idMarca = p.idMarca
-      LEFT JOIN categoria c ON c.idCat = p.idCat
-      WHERE p.activoPro = 1
-      ORDER BY p.nombrePro, p.idPro
-    `);
+    const productos = await prisma.producto.findMany({
+      where: { activoPro: true },
+      orderBy: [{ nombrePro: 'asc' }, { idPro: 'asc' }],
+      include: {
+        marca: true,
+        categoria: true,
+      },
+    });
     res.json(
-      rows.map((row) => ({
-        ...row,
-        precioVentaPro: Number(row.precioVentaPro),
-        existenciaPro: Number(row.existenciaPro) || 0,
+      productos.map((p) => ({
+        idPro: p.idPro,
+        nombrePro: p.nombrePro,
+        precioVentaPro: Number(p.precioVentaPro),
+        existenciaPro: p.existenciaPro || 0,
+        codigoQR: p.codigoQR,
+        skuPro: p.skuPro,
+        imagenPro: p.imagenPro,
+        tamanoPro: p.tamanoPro,
+        presentacionPro: p.presentacionPro,
+        nombreMarca: p.marca?.nombreMarca || null,
+        nombreCat: p.categoria?.nombreCat || null,
       })),
     );
   } catch (error) {
@@ -2594,33 +2904,56 @@ app.get('/pos/productos', autenticar, rolesPos, async (req, res) => {
   }
 });
 
+function formatearFechaVenta(fecha) {
+  if (!fecha) return null;
+  if (fecha instanceof Date) return fecha.toISOString().split('T')[0];
+  return String(fecha).slice(0, 10);
+}
+
+function formatearHoraVenta(hora) {
+  if (!hora) return null;
+  if (hora instanceof Date) return hora.toISOString().slice(11, 19);
+  return String(hora).slice(0, 8);
+}
+
 function dineroCentavos(value) {
   const numero = Number(value);
   return Number.isFinite(numero) ? Math.round(numero * 100) : null;
 }
 
-async function obtenerVentaRegistrada(executor, idVenta, empleado) {
-  const [ventas] = await executor.query(
-    `SELECT idVenta,uuidVenta,idSesionCaja,DATE_FORMAT(fechaVenta,'%Y-%m-%d') fechaVenta,TIME_FORMAT(horaVenta,'%H:%i:%s') horaVenta,total,metodoPago,montoRecibido,cambio,estadoVenta,idEmp,idSuc FROM venta WHERE idVenta=?`,
-    [idVenta],
-  );
-  if (!ventas.length) return null;
-  const [items] = await executor.query(
-    `SELECT d.idPro,COALESCE(p.nombrePro,'Producto') nombre,d.cantidadDetVenta cantidad,d.precioUnitarioDetVenta precioUnitario,d.subtotalDetVenta subtotal FROM detventa d LEFT JOIN productos p ON p.idPro=d.idPro WHERE d.idVenta=? ORDER BY d.idDetVenta`,
-    [idVenta],
-  );
-  const venta = ventas[0];
+async function obtenerVentaRegistrada(idVenta, empleado, client = prisma) {
+  const v = await client.venta.findUnique({
+    where: { idVenta: Number(idVenta) },
+    include: {
+      empleado: true,
+      detalles: {
+        include: { producto: true },
+        orderBy: { idDetVenta: 'asc' },
+      },
+    },
+  });
+  if (!v) return null;
+
   return {
-    ...venta,
-    total: Number(venta.total),
-    montoRecibido: venta.montoRecibido === null ? null : Number(venta.montoRecibido),
-    cambio: Number(venta.cambio),
-    cajero: { idEmp: Number(venta.idEmp), nombre: empleadoSeguro(empleado).nombre },
-    items: items.map((i) => ({
-      ...i,
-      cantidad: Number(i.cantidad),
-      precioUnitario: Number(i.precioUnitario),
-      subtotal: Number(i.subtotal),
+    idVenta: v.idVenta,
+    uuidVenta: v.uuidVenta,
+    idSesionCaja: v.idSesionCaja,
+    fechaVenta: formatearFechaVenta(v.fechaVenta),
+    horaVenta: formatearHoraVenta(v.horaVenta),
+    total: Number(v.total),
+    metodoPago: v.metodoPago,
+    montoRecibido: v.montoRecibido !== null && v.montoRecibido !== undefined ? Number(v.montoRecibido) : null,
+    cambio: Number(v.cambio),
+    estadoVenta: v.estadoVenta,
+    idEmp: v.idEmp,
+    idSuc: v.idSuc,
+    cajero: { idEmp: Number(v.idEmp), nombre: empleadoSeguro(empleado).nombre },
+    items: v.detalles.map((d) => ({
+      idPro: d.idPro,
+      nombre: d.producto?.nombrePro || 'Producto',
+      cantidad: d.cantidadDetVenta,
+      precioUnitario: Number(d.precioUnitarioDetVenta),
+      subtotal: Number(d.subtotalDetVenta),
     })),
   };
 }
@@ -2650,130 +2983,118 @@ app.post('/ventas', autenticar, rolesPos, async (req, res) => {
     return res.status(400).json({ message: 'El monto recibido no es válido' });
   }
 
-  let connection;
   try {
-    connection = await db.getConnection();
-    await connection.beginTransaction();
-    await connection.query('SELECT idEmp FROM empleados WHERE idEmp=? FOR UPDATE', [req.empleado.idEmp]);
-    const [repetidas] = await connection.query('SELECT idVenta,idEmp,idSuc FROM venta WHERE uuidVenta=? FOR UPDATE', [
-      uuidVenta,
-    ]);
-    if (repetidas.length) {
-      if (
-        Number(repetidas[0].idEmp) !== Number(req.empleado.idEmp) ||
-        Number(repetidas[0].idSuc) !== Number(req.empleado.idSuc)
-      ) {
-        const error = new Error('El identificador de venta ya está en uso.');
-        error.status = 409;
-        throw error;
+    const registrada = await prisma.$transaction(async (tx) => {
+      const repetida = await tx.venta.findUnique({
+        where: { uuidVenta },
+      });
+      if (repetida) {
+        if (
+          Number(repetida.idEmp) !== Number(req.empleado.idEmp) ||
+          Number(repetida.idSuc) !== Number(req.empleado.idSuc)
+        ) {
+          throw errorFuncional('El identificador de venta ya está en uso.', 409);
+        }
+        return await obtenerVentaRegistrada(repetida.idVenta, req.empleado, tx);
       }
-      const existente = await obtenerVentaRegistrada(connection, repetidas[0].idVenta, req.empleado);
-      await connection.commit();
-      return res.json(existente);
-    }
-    const caja = await obtenerCajaActual(connection, req.empleado.idEmp, true);
-    if (!caja) {
-      const error = new Error('Debes abrir caja antes de registrar ventas.');
-      error.status = 409;
-      throw error;
-    }
-    const [productos] = await connection.query(
-      `
-      SELECT idPro, nombrePro, precioVentaPro, existenciaPro, activoPro
-      FROM productos WHERE idPro IN (?) ORDER BY idPro FOR UPDATE
-    `,
-      [ids],
-    );
-    if (productos.length !== ids.length) {
-      const encontrados = new Set(productos.map((producto) => Number(producto.idPro)));
-      const faltante = ids.find((id) => !encontrados.has(id));
-      const error = new Error('Uno de los productos ya no está disponible');
-      error.status = 404;
-      error.payload = { idPro: faltante };
-      throw error;
-    }
 
-    let totalCentavos = 0;
-    const itemsVenta = productos.map((producto) => {
-      const cantidad = cantidades.get(Number(producto.idPro));
-      const disponible = Number(producto.existenciaPro) || 0;
-      if (!producto.activoPro) {
-        const error = new Error(`${producto.nombrePro || 'El producto'} no está disponible para venta.`);
-        error.status = 409;
-        error.payload = { idPro: producto.idPro };
-        throw error;
+      const caja = await tx.sesionCaja.findFirst({
+        where: { idEmp: req.empleado.idEmp, estado: 'ABIERTA' },
+      });
+      if (!caja) {
+        throw errorFuncional('Debes abrir caja antes de registrar ventas.', 409);
       }
-      if (cantidad > disponible) {
-        const error = new Error(`Stock insuficiente para ${producto.nombrePro || 'el producto'}.`);
-        error.status = 409;
-        error.payload = { idPro: producto.idPro, disponible };
-        throw error;
+
+      const productos = await tx.producto.findMany({
+        where: { idPro: { in: ids } },
+        orderBy: { idPro: 'asc' },
+      });
+
+      if (productos.length !== ids.length) {
+        const encontrados = new Set(productos.map((p) => Number(p.idPro)));
+        const faltante = ids.find((id) => !encontrados.has(id));
+        const err = errorFuncional('Uno de los productos ya no está disponible', 404);
+        err.payload = { idPro: faltante };
+        throw err;
       }
-      const precioCentavos = dineroCentavos(producto.precioVentaPro);
-      if (precioCentavos === null || precioCentavos < 0) {
-        const error = new Error(`${producto.nombrePro || 'El producto'} no tiene un precio válido.`);
-        error.status = 409;
-        error.payload = { idPro: producto.idPro };
-        throw error;
+
+      let totalCentavos = 0;
+      const itemsVenta = productos.map((producto) => {
+        const cantidad = cantidades.get(Number(producto.idPro));
+        const disponible = Number(producto.existenciaPro) || 0;
+        if (!producto.activoPro) {
+          const err = errorFuncional(`${producto.nombrePro || 'El producto'} no está disponible para venta.`, 409);
+          err.payload = { idPro: producto.idPro };
+          throw err;
+        }
+        if (cantidad > disponible) {
+          const err = errorFuncional(`Stock insuficiente para ${producto.nombrePro || 'el producto'}.`, 409);
+          err.payload = { idPro: producto.idPro, disponible };
+          throw err;
+        }
+        const precioCentavos = dineroCentavos(producto.precioVentaPro);
+        if (precioCentavos === null || precioCentavos < 0) {
+          const err = errorFuncional(`${producto.nombrePro || 'El producto'} no tiene un precio válido.`, 409);
+          err.payload = { idPro: producto.idPro };
+          throw err;
+        }
+        const subtotalCentavos = precioCentavos * cantidad;
+        totalCentavos += subtotalCentavos;
+        return {
+          idPro: Number(producto.idPro),
+          nombre: producto.nombrePro,
+          cantidad,
+          precioUnitario: precioCentavos / 100,
+          subtotal: subtotalCentavos / 100,
+        };
+      });
+
+      if (metodoPago === 'EFECTIVO' && montoRecibidoCentavos < totalCentavos) {
+        throw errorFuncional('El efectivo recibido es insuficiente.', 400);
       }
-      const subtotalCentavos = precioCentavos * cantidad;
-      totalCentavos += subtotalCentavos;
-      return {
-        idPro: Number(producto.idPro),
-        nombre: producto.nombrePro,
-        cantidad,
-        precioUnitario: precioCentavos / 100,
-        subtotal: subtotalCentavos / 100,
-      };
+      const cambioCentavos = metodoPago === 'EFECTIVO' ? montoRecibidoCentavos - totalCentavos : 0;
+      const montoDb = metodoPago === 'EFECTIVO' ? montoRecibidoCentavos / 100 : null;
+
+      const ahora = new Date();
+
+      const venta = await tx.venta.create({
+        data: {
+          uuidVenta,
+          fechaVenta: ahora,
+          horaVenta: ahora,
+          total: totalCentavos / 100,
+          metodoPago,
+          montoRecibido: montoDb,
+          cambio: cambioCentavos / 100,
+          estadoVenta: 'COMPLETADA',
+          idEmp: req.empleado.idEmp,
+          idSuc: req.empleado.idSuc,
+          idSesionCaja: caja.idSesionCaja,
+          detalles: {
+            create: itemsVenta.map((item) => ({
+              idPro: item.idPro,
+              cantidadDetVenta: item.cantidad,
+              precioUnitarioDetVenta: item.precioUnitario,
+              subtotalDetVenta: item.subtotal,
+            })),
+          },
+        },
+      });
+
+      for (const item of itemsVenta) {
+        await tx.producto.update({
+          where: { idPro: item.idPro },
+          data: { existenciaPro: { decrement: item.cantidad } },
+        });
+      }
+
+      return await obtenerVentaRegistrada(venta.idVenta, req.empleado, tx);
     });
 
-    if (metodoPago === 'EFECTIVO' && montoRecibidoCentavos < totalCentavos) {
-      const error = new Error('El efectivo recibido es insuficiente.');
-      error.status = 400;
-      throw error;
-    }
-    const cambioCentavos = metodoPago === 'EFECTIVO' ? montoRecibidoCentavos - totalCentavos : 0;
-    const montoDb = metodoPago === 'EFECTIVO' ? montoRecibidoCentavos / 100 : null;
-    const [venta] = await connection.query(
-      `
-      INSERT INTO venta
-        (uuidVenta,fechaVenta, horaVenta, total, metodoPago, montoRecibido, cambio, estadoVenta, idEmp, idSuc,idSesionCaja)
-      VALUES (?,CURDATE(), CURTIME(), ?, ?, ?, ?, 'COMPLETADA', ?, ?,?)
-    `,
-      [
-        uuidVenta,
-        totalCentavos / 100,
-        metodoPago,
-        montoDb,
-        cambioCentavos / 100,
-        req.empleado.idEmp,
-        req.empleado.idSuc,
-        caja.idSesionCaja,
-      ],
-    );
-
-    for (const item of itemsVenta) {
-      await connection.query(
-        `
-        INSERT INTO detventa (idVenta, idPro, cantidadDetVenta, precioUnitarioDetVenta, subtotalDetVenta)
-        VALUES (?, ?, ?, ?, ?)
-      `,
-        [venta.insertId, item.idPro, item.cantidad, item.precioUnitario, item.subtotal],
-      );
-      await connection.query('UPDATE productos SET existenciaPro = existenciaPro - ? WHERE idPro = ?', [
-        item.cantidad,
-        item.idPro,
-      ]);
-    }
-    const registrada = await obtenerVentaRegistrada(connection, venta.insertId, req.empleado);
-    await connection.commit();
     res.status(201).json(registrada);
   } catch (error) {
-    if (connection) await connection.rollback().catch(() => undefined);
     if (error.status) return res.status(error.status).json({ message: error.message, ...(error.payload || {}) });
     errorServidor(res, error);
-  } finally {
-    connection?.release();
   }
 });
 
@@ -2785,126 +3106,103 @@ app.post('/ventas/:id/cancelar', autenticar, autorizarRoles('ADMINISTRADOR'), as
     return res.status(400).json({ message: 'El motivo debe tener entre 3 y 255 caracteres' });
   }
 
-  let connection;
   try {
-    connection = await db.getConnection();
-    await connection.beginTransaction();
-    const [ventas] = await connection.query(
-      `
-      SELECT v.idVenta, v.estadoVenta, v.idSuc, v.idSesionCaja, sc.estado AS estadoCaja
-      FROM venta v LEFT JOIN sesion_caja sc ON sc.idSesionCaja=v.idSesionCaja
-      WHERE v.idVenta = ? FOR UPDATE
-    `,
-      [idVenta],
-    );
-    if (!ventas.length) {
-      const error = new Error('Venta no encontrada');
-      error.status = 404;
-      throw error;
-    }
-    if (Number(ventas[0].idSuc) !== Number(req.empleado.idSuc)) {
-      const error = new Error('Venta no encontrada');
-      error.status = 404;
-      throw error;
-    }
-    if (ventas[0].estadoVenta === 'CANCELADA') {
-      const error = new Error('La venta ya fue cancelada.');
-      error.status = 409;
-      throw error;
-    }
-    if (ventas[0].estadoVenta !== 'COMPLETADA') {
-      const error = new Error('La venta no se encuentra en un estado cancelable.');
-      error.status = 409;
-      throw error;
-    }
-    if (ventas[0].idSesionCaja && ventas[0].estadoCaja === 'CERRADA') {
-      const error = new Error('La venta pertenece a una caja cerrada.');
-      error.status = 409;
-      throw error;
-    }
-    const [pedidosOnline] = await connection.query('SELECT idPedido FROM pedido_cliente WHERE idVenta = ? FOR UPDATE', [
-      idVenta,
-    ]);
-    if (pedidosOnline.length)
-      throw errorFuncional('Las ventas de pedidos online deben gestionarse desde el pedido.', 409);
+    const resultado = await prisma.$transaction(async (tx) => {
+      const venta = await tx.venta.findFirst({
+        where: { idVenta },
+        include: {
+          sesionCaja: true,
+          pedidos: true,
+          detalles: true,
+        },
+      });
+      if (!venta || Number(venta.idSuc) !== Number(req.empleado.idSuc)) {
+        throw errorFuncional('Venta no encontrada', 404);
+      }
+      if (venta.estadoVenta === 'CANCELADA') {
+        throw errorFuncional('La venta ya fue cancelada.', 409);
+      }
+      if (venta.estadoVenta !== 'COMPLETADA') {
+        throw errorFuncional('La venta no se encuentra en un estado cancelable.', 409);
+      }
+      if (venta.idSesionCaja && venta.sesionCaja?.estado === 'CERRADA') {
+        throw errorFuncional('La venta pertenece a una caja cerrada.', 409);
+      }
+      if (venta.pedidos && venta.pedidos.length > 0) {
+        throw errorFuncional('Las ventas de pedidos online deben gestionarse desde el pedido.', 409);
+      }
+      if (!venta.detalles.length) {
+        throw errorFuncional('La venta no contiene detalles para restaurar.', 409);
+      }
 
-    const [detalles] = await connection.query(
-      `
-      SELECT idPro, SUM(cantidadDetVenta) AS cantidad
-      FROM detventa WHERE idVenta = ? GROUP BY idPro ORDER BY idPro
-    `,
-      [idVenta],
-    );
-    if (!detalles.length) {
-      const error = new Error('La venta no contiene detalles para restaurar.');
-      error.status = 409;
-      throw error;
-    }
-    const ids = detalles.map((detalle) => Number(detalle.idPro));
-    const [productos] = await connection.query(
-      `
-      SELECT idPro FROM productos WHERE idPro IN (?) ORDER BY idPro FOR UPDATE
-    `,
-      [ids],
-    );
-    if (productos.length !== ids.length) {
-      const error = new Error('No fue posible restaurar todos los productos de la venta.');
-      error.status = 409;
-      throw error;
-    }
-    for (const detalle of detalles) {
-      await connection.query(
-        `
-        UPDATE productos SET existenciaPro = existenciaPro + ? WHERE idPro = ?
-      `,
-        [Number(detalle.cantidad), Number(detalle.idPro)],
-      );
-    }
-    await connection.query(
-      `
-      UPDATE venta SET estadoVenta = 'CANCELADA', fechaCancelacion = NOW(),
-        motivoCancelacion = ?, idEmpCancela = ? WHERE idVenta = ?
-    `,
-      [motivo, req.empleado.idEmp, idVenta],
-    );
-    const [actualizadas] = await connection.query(
-      `
-      SELECT idVenta, estadoVenta,
-        DATE_FORMAT(fechaCancelacion, '%Y-%m-%d %H:%i:%s') AS fechaCancelacion,
-        motivoCancelacion, idEmpCancela
-      FROM venta WHERE idVenta = ?
-    `,
-      [idVenta],
-    );
-    await connection.commit();
-    res.json({ message: 'Venta cancelada correctamente.', venta: actualizadas[0] });
+      for (const d of venta.detalles) {
+        await tx.producto.update({
+          where: { idPro: d.idPro },
+          data: { existenciaPro: { increment: d.cantidadDetVenta } },
+        });
+      }
+
+      const ahora = new Date();
+      const actualizada = await tx.venta.update({
+        where: { idVenta },
+        data: {
+          estadoVenta: 'CANCELADA',
+          fechaCancelacion: ahora,
+          motivoCancelacion: motivo,
+          idEmpCancela: req.empleado.idEmp,
+        },
+      });
+
+      return {
+        idVenta: actualizada.idVenta,
+        estadoVenta: actualizada.estadoVenta,
+        fechaCancelacion: actualizada.fechaCancelacion?.toISOString() || null,
+        motivoCancelacion: actualizada.motivoCancelacion,
+        idEmpCancela: actualizada.idEmpCancela,
+      };
+    });
+
+    res.json({ message: 'Venta cancelada correctamente.', venta: resultado });
   } catch (error) {
-    if (connection) await connection.rollback().catch(() => undefined);
     if (error.status) return res.status(error.status).json({ message: error.message });
     errorServidor(res, error);
-  } finally {
-    connection?.release();
   }
 });
 
 app.get('/ventas', autenticar, rolesPos, async (req, res) => {
-  const filtroRol = req.empleado.cargo === 'CAJERO' ? 'v.idEmp = ?' : 'v.idSuc = ?';
-  const filtroValor = req.empleado.cargo === 'CAJERO' ? req.empleado.idEmp : req.empleado.idSuc;
+  const where = req.empleado.cargo === 'CAJERO' ? { idEmp: req.empleado.idEmp } : { idSuc: req.empleado.idSuc };
   try {
-    const [rows] = await db.query(
-      `
-      SELECT v.idVenta, DATE_FORMAT(v.fechaVenta, '%Y-%m-%d') AS fechaVenta,
-        TIME_FORMAT(v.horaVenta, '%H:%i:%s') AS horaVenta, v.total, v.metodoPago,
-        v.estadoVenta, v.idEmp, v.idSesionCaja, v.uuidVenta,
-        CASE WHEN EXISTS(SELECT 1 FROM pedido_cliente pc WHERE pc.idVenta=v.idVenta) THEN 'ONLINE' ELSE 'POS' END AS origenVenta,
-        TRIM(CONCAT_WS(' ', e.nombreEmp, e.apellidoPatEmp, e.apellidoMatEmp)) AS cajero
-      FROM venta v LEFT JOIN empleados e ON e.idEmp = v.idEmp
-      WHERE ${filtroRol}
-      ORDER BY v.fechaVenta DESC, v.horaVenta DESC, v.idVenta DESC
-    `,
-      [filtroValor],
+    const ventas = await prisma.venta.findMany({
+      where,
+      orderBy: [{ fechaVenta: 'desc' }, { horaVenta: 'desc' }, { idVenta: 'desc' }],
+      include: {
+        empleado: true,
+        pedidos: { select: { idPedido: true } },
+      },
+    });
+
+    res.json(
+      ventas.map((v) => {
+        const cajeroStr = v.empleado
+          ? [v.empleado.nombreEmp, v.empleado.apellidoPatEmp, v.empleado.apellidoMatEmp].filter(Boolean).join(' ')
+          : null;
+        const origenVenta = v.pedidos && v.pedidos.length > 0 ? 'ONLINE' : 'POS';
+
+        return {
+          idVenta: v.idVenta,
+          fechaVenta: formatearFechaVenta(v.fechaVenta),
+          horaVenta: formatearHoraVenta(v.horaVenta),
+          total: Number(v.total),
+          metodoPago: v.metodoPago,
+          estadoVenta: v.estadoVenta,
+          idEmp: v.idEmp,
+          idSesionCaja: v.idSesionCaja,
+          uuidVenta: v.uuidVenta,
+          origenVenta,
+          cajero: cajeroStr,
+        };
+      }),
     );
-    res.json(rows.map((row) => ({ ...row, total: Number(row.total) })));
   } catch (error) {
     errorServidor(res, error);
   }
@@ -2913,50 +3211,70 @@ app.get('/ventas', autenticar, rolesPos, async (req, res) => {
 app.get('/ventas/:id', autenticar, rolesPos, async (req, res) => {
   const idVenta = idValido(req.params.id);
   if (!idVenta) return res.status(400).json({ message: 'El folio de venta no es válido' });
-  const filtroRol = req.empleado.cargo === 'CAJERO' ? 'v.idEmp = ?' : 'v.idSuc = ?';
-  const filtroValor = req.empleado.cargo === 'CAJERO' ? req.empleado.idEmp : req.empleado.idSuc;
+  const where = {
+    idVenta,
+    ...(req.empleado.cargo === 'CAJERO' ? { idEmp: req.empleado.idEmp } : { idSuc: req.empleado.idSuc }),
+  };
   try {
-    const [ventas] = await db.query(
-      `
-      SELECT v.idVenta, DATE_FORMAT(v.fechaVenta, '%Y-%m-%d') AS fechaVenta,
-        TIME_FORMAT(v.horaVenta, '%H:%i:%s') AS horaVenta, v.total, v.metodoPago,
-        v.uuidVenta, v.idSesionCaja, v.montoRecibido, v.cambio, v.estadoVenta, v.idEmp,
-        CASE WHEN pc.idPedido IS NULL THEN 'POS' ELSE 'ONLINE' END AS origenVenta, pc.idPedido,
-        DATE_FORMAT(v.fechaCancelacion, '%Y-%m-%d %H:%i:%s') AS fechaCancelacion,
-        v.motivoCancelacion, v.idEmpCancela,
-        TRIM(CONCAT_WS(' ', e.nombreEmp, e.apellidoPatEmp, e.apellidoMatEmp)) AS cajero,
-        TRIM(CONCAT_WS(' ', ec.nombreEmp, ec.apellidoPatEmp, ec.apellidoMatEmp)) AS nombreEmpleadoCancela,
-        s.nombreSuc, s.descripcionSuc, s.telefonoSuc, s.correoSuc, s.logoSuc
-      FROM venta v LEFT JOIN empleados e ON e.idEmp = v.idEmp
-      LEFT JOIN empleados ec ON ec.idEmp = v.idEmpCancela
-      LEFT JOIN sucursal s ON s.idSuc = v.idSuc
-      LEFT JOIN pedido_cliente pc ON pc.idVenta = v.idVenta
-      WHERE v.idVenta = ? AND ${filtroRol}
-    `,
-      [idVenta, filtroValor],
-    );
-    if (!ventas.length) return res.status(404).json({ message: 'Venta no encontrada' });
-    const [items] = await db.query(
-      `
-      SELECT d.idPro, COALESCE(p.nombrePro, 'Producto') AS nombre,
-        d.cantidadDetVenta AS cantidad, d.precioUnitarioDetVenta AS precioUnitario,
-        d.subtotalDetVenta AS subtotal
-      FROM detventa d LEFT JOIN productos p ON p.idPro = d.idPro
-      WHERE d.idVenta = ? ORDER BY d.idDetVenta
-    `,
-      [idVenta],
-    );
+    const v = await prisma.venta.findFirst({
+      where,
+      include: {
+        empleado: true,
+        empleadoCancela: true,
+        sucursal: true,
+        pedidos: { select: { idPedido: true } },
+        detalles: {
+          include: { producto: true },
+          orderBy: { idDetVenta: 'asc' },
+        },
+      },
+    });
+    if (!v) return res.status(404).json({ message: 'Venta no encontrada' });
+
+    const fechaCancelacionStr = v.fechaCancelacion ? new Date(v.fechaCancelacion).toISOString() : null;
+    const cajeroStr = v.empleado
+      ? [v.empleado.nombreEmp, v.empleado.apellidoPatEmp, v.empleado.apellidoMatEmp].filter(Boolean).join(' ')
+      : null;
+    const cancStr = v.empleadoCancela
+      ? [v.empleadoCancela.nombreEmp, v.empleadoCancela.apellidoPatEmp, v.empleadoCancela.apellidoMatEmp]
+          .filter(Boolean)
+          .join(' ')
+      : null;
+
+    const idPedido = v.pedidos && v.pedidos.length > 0 ? v.pedidos[0].idPedido : null;
+    const origenVenta = idPedido ? 'ONLINE' : 'POS';
+
     res.json({
-      ...ventas[0],
-      total: Number(ventas[0].total),
-      folioPedido: ventas[0].idPedido ? folioPedido(ventas[0].idPedido) : null,
-      montoRecibido: ventas[0].montoRecibido === null ? null : Number(ventas[0].montoRecibido),
-      cambio: Number(ventas[0].cambio),
-      items: items.map((item) => ({
-        ...item,
-        cantidad: Number(item.cantidad),
-        precioUnitario: Number(item.precioUnitario),
-        subtotal: Number(item.subtotal),
+      idVenta: v.idVenta,
+      fechaVenta: formatearFechaVenta(v.fechaVenta),
+      horaVenta: formatearHoraVenta(v.horaVenta),
+      total: Number(v.total),
+      metodoPago: v.metodoPago,
+      uuidVenta: v.uuidVenta,
+      idSesionCaja: v.idSesionCaja,
+      montoRecibido: v.montoRecibido !== null && v.montoRecibido !== undefined ? Number(v.montoRecibido) : null,
+      cambio: Number(v.cambio),
+      estadoVenta: v.estadoVenta,
+      idEmp: v.idEmp,
+      origenVenta,
+      idPedido,
+      folioPedido: idPedido ? folioPedido(idPedido) : null,
+      fechaCancelacion: fechaCancelacionStr,
+      motivoCancelacion: v.motivoCancelacion || null,
+      idEmpCancela: v.idEmpCancela || null,
+      cajero: cajeroStr,
+      nombreEmpleadoCancela: cancStr,
+      nombreSuc: v.sucursal?.nombreSuc || null,
+      descripcionSuc: v.sucursal?.descripcionSuc || null,
+      telefonoSuc: v.sucursal?.telefonoSuc || null,
+      correoSuc: v.sucursal?.correoSuc || null,
+      logoSuc: v.sucursal?.logoSuc || null,
+      items: v.detalles.map((d) => ({
+        idPro: d.idPro,
+        nombre: d.producto?.nombrePro || 'Producto',
+        cantidad: d.cantidadDetVenta,
+        precioUnitario: Number(d.precioUnitarioDetVenta),
+        subtotal: Number(d.subtotalDetVenta),
       })),
     });
   } catch (error) {
@@ -2966,9 +3284,11 @@ app.get('/ventas/:id', autenticar, rolesPos, async (req, res) => {
 
 app.get('/cargos', autenticar, autorizarRoles('ADMINISTRADOR'), async (req, res) => {
   try {
-    const [rows] = await db.query(`SELECT idCargo, nombreCargo, descripcionCargo, idSuc FROM cargo
-      WHERE nombreCargo IN ('ADMINISTRADOR', 'CAJERO') ORDER BY nombreCargo`);
-    res.json(rows);
+    const cargos = await prisma.cargo.findMany({
+      where: { nombreCargo: { in: ['ADMINISTRADOR', 'CAJERO'] } },
+      orderBy: { nombreCargo: 'asc' },
+    });
+    res.json(cargos);
   } catch (error) {
     errorServidor(res, error);
   }
@@ -2976,8 +3296,24 @@ app.get('/cargos', autenticar, autorizarRoles('ADMINISTRADOR'), async (req, res)
 
 app.get('/empleados', autenticar, autorizarRoles('ADMINISTRADOR'), async (req, res) => {
   try {
-    const [rows] = await db.query(`${empleadoSesionSelect} ORDER BY e.nombreEmp, e.apellidoPatEmp`);
-    res.json(rows.map(empleadoSeguro));
+    const empleados = await prisma.empleado.findMany({
+      orderBy: [{ nombreEmp: 'asc' }, { apellidoPatEmp: 'asc' }],
+      include: {
+        cargo: {
+          include: { sucursal: true },
+        },
+      },
+    });
+    res.json(
+      empleados.map((e) =>
+        empleadoSeguro({
+          ...e,
+          cargo: e.cargo?.nombreCargo,
+          idSuc: e.cargo?.idSuc,
+          nombreSuc: e.cargo?.sucursal?.nombreSuc,
+        }),
+      ),
+    );
   } catch (error) {
     errorServidor(res, error);
   }
@@ -2994,33 +3330,47 @@ app.post('/empleados', autenticar, autorizarRoles('ADMINISTRADOR'), async (req, 
   if (password && password.length < 8)
     return res.status(400).json({ message: 'La contraseña debe tener al menos 8 caracteres' });
   try {
-    const [cargos] = await db.query(
-      `SELECT idCargo FROM cargo WHERE idCargo = ? AND nombreCargo IN ('ADMINISTRADOR','CAJERO')`,
-      [idCargo],
-    );
-    if (!cargos.length) return res.status(400).json({ message: 'El cargo no es válido' });
+    const cargo = await prisma.cargo.findFirst({
+      where: { idCargo, nombreCargo: { in: ['ADMINISTRADOR', 'CAJERO'] } },
+    });
+    if (!cargo) return res.status(400).json({ message: 'El cargo no es válido' });
+
     const hash = password ? await bcrypt.hash(password, 12) : null;
-    const [result] = await db.query(
-      `INSERT INTO empleados
-      (nombreEmp, apellidoPatEmp, apellidoMatEmp, correoEmp, contrasenaHash, estadoEmp, telefono, fechaIngreso, fotoPerfil, idCargo)
-      VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?)`,
-      [
-        nombre,
-        textoNullable(req.body.apellidoPat),
-        textoNullable(req.body.apellidoMat),
-        correo,
-        hash,
-        textoNullable(req.body.telefono),
-        textoNullable(req.body.fechaIngreso),
-        textoNullable(req.body.fotoPerfil),
+    const empleado = await prisma.empleado.create({
+      data: {
+        nombreEmp: nombre,
+        apellidoPatEmp: textoNullable(req.body.apellidoPat),
+        apellidoMatEmp: textoNullable(req.body.apellidoMat),
+        correoEmp: correo,
+        contrasenaHash: hash,
+        estadoEmp: true,
+        telefono: textoNullable(req.body.telefono),
+        fechaIngreso: req.body.fechaIngreso ? new Date(req.body.fechaIngreso) : new Date(),
+        fotoPerfil: textoNullable(req.body.fotoPerfil),
         idCargo,
-      ],
+      },
+      include: {
+        cargo: {
+          include: { sucursal: true },
+        },
+      },
+    });
+    res.status(201).json(
+      empleadoSeguro({
+        ...empleado,
+        cargo: empleado.cargo?.nombreCargo,
+        idSuc: empleado.cargo?.idSuc,
+        nombreSuc: empleado.cargo?.sucursal?.nombreSuc,
+      }),
     );
-    const [rows] = await db.query(`${empleadoSesionSelect} WHERE e.idEmp = ?`, [result.insertId]);
-    res.status(201).json(empleadoSeguro(rows[0]));
   } catch (error) {
-    if (error.code === 'ER_DUP_ENTRY' || error.code === '23505')
+    if (error.code === 'P2002' || error.code === 'ER_DUP_ENTRY' || error.code === '23505') {
+      const target = Array.isArray(error.meta?.target) ? error.meta.target.join(' ') : String(error.meta?.target || '');
+      if (target.toLowerCase().includes('idemp')) {
+        return errorServidor(res, error);
+      }
       return res.status(409).json({ message: 'El correo ya está registrado' });
+    }
     errorServidor(res, error);
   }
 });
@@ -3037,60 +3387,94 @@ app.put('/empleados/:id', autenticar, autorizarRoles('ADMINISTRADOR'), async (re
   if (password && password.length < 8)
     return res.status(400).json({ message: 'La contraseña debe tener al menos 8 caracteres' });
   try {
-    const [actuales] = await db.query('SELECT idEmp FROM empleados WHERE idEmp = ?', [idEmp]);
-    if (!actuales.length) return res.status(404).json({ message: 'Empleado no encontrado' });
-    const [cargos] = await db.query(
-      `SELECT idCargo FROM cargo WHERE idCargo = ? AND nombreCargo IN ('ADMINISTRADOR','CAJERO')`,
-      [idCargo],
-    );
-    if (!cargos.length) return res.status(400).json({ message: 'El cargo seleccionado no es válido' });
-    const valores = [
-      nombre,
-      textoNullable(req.body.apellidoPat),
-      textoNullable(req.body.apellidoMat),
-      correo,
-      textoNullable(req.body.telefono),
-      textoNullable(req.body.fechaIngreso),
-      textoNullable(req.body.fotoPerfil),
+    const actual = await prisma.empleado.findUnique({ where: { idEmp } });
+    if (!actual) return res.status(404).json({ message: 'Empleado no encontrado' });
+    const cargo = await prisma.cargo.findFirst({
+      where: { idCargo, nombreCargo: { in: ['ADMINISTRADOR', 'CAJERO'] } },
+    });
+    if (!cargo) return res.status(400).json({ message: 'El cargo seleccionado no es válido' });
+
+    const data = {
+      nombreEmp: nombre,
+      apellidoPatEmp: textoNullable(req.body.apellidoPat),
+      apellidoMatEmp: textoNullable(req.body.apellidoMat),
+      correoEmp: correo,
+      telefono: textoNullable(req.body.telefono),
+      fotoPerfil: textoNullable(req.body.fotoPerfil),
       idCargo,
-    ];
-    let sql = `UPDATE empleados SET nombreEmp=?, apellidoPatEmp=?, apellidoMatEmp=?, correoEmp=?, telefono=?, fechaIngreso=?, fotoPerfil=?, idCargo=?`;
-    if (password) {
-      sql += ', contrasenaHash=?';
-      valores.push(await bcrypt.hash(password, 12));
+    };
+    if (req.body.fechaIngreso) {
+      data.fechaIngreso = new Date(req.body.fechaIngreso);
     }
-    await db.query(`${sql} WHERE idEmp=?`, [...valores, idEmp]);
-    const [rows] = await db.query(`${empleadoSesionSelect} WHERE e.idEmp = ?`, [idEmp]);
-    res.json(empleadoSeguro(rows[0]));
+    if (password) {
+      data.contrasenaHash = await bcrypt.hash(password, 12);
+    }
+
+    const empleado = await prisma.empleado.update({
+      where: { idEmp },
+      data,
+      include: {
+        cargo: {
+          include: { sucursal: true },
+        },
+      },
+    });
+    res.json(
+      empleadoSeguro({
+        ...empleado,
+        cargo: empleado.cargo?.nombreCargo,
+        idSuc: empleado.cargo?.idSuc,
+        nombreSuc: empleado.cargo?.sucursal?.nombreSuc,
+      }),
+    );
   } catch (error) {
-    if (error.code === 'ER_DUP_ENTRY' || error.code === '23505')
+    if (error.code === 'P2002' || error.code === 'ER_DUP_ENTRY' || error.code === '23505') {
+      const target = Array.isArray(error.meta?.target) ? error.meta.target.join(' ') : String(error.meta?.target || '');
+      if (target.toLowerCase().includes('idemp')) {
+        return errorServidor(res, error);
+      }
       return res.status(409).json({ message: 'El correo ya está registrado' });
+    }
     errorServidor(res, error);
   }
 });
 
 app.patch('/empleados/:id/estado', autenticar, autorizarRoles('ADMINISTRADOR'), async (req, res) => {
   const idEmp = idValido(req.params.id);
-  const estado = req.body.estado === true || req.body.estado === 1 ? 1 : 0;
+  const estado = req.body.estado === true || req.body.estado === 1;
   if (!idEmp) return res.status(400).json({ message: 'El ID del empleado no es válido' });
-  if (idEmp === req.empleado.idEmp && estado === 0)
+  if (idEmp === req.empleado.idEmp && !estado)
     return res.status(400).json({ message: 'No puedes desactivar tu propia sesión' });
   try {
-    const [result] = await db.query('UPDATE empleados SET estadoEmp = ? WHERE idEmp = ?', [estado, idEmp]);
-    if (!result.affectedRows) return res.status(404).json({ message: 'Empleado no encontrado' });
-    const [rows] = await db.query(`${empleadoSesionSelect} WHERE e.idEmp = ?`, [idEmp]);
-    res.json(empleadoSeguro(rows[0]));
+    const empleado = await prisma.empleado.update({
+      where: { idEmp },
+      data: { estadoEmp: estado },
+      include: {
+        cargo: {
+          include: { sucursal: true },
+        },
+      },
+    });
+    res.json(
+      empleadoSeguro({
+        ...empleado,
+        cargo: empleado.cargo?.nombreCargo,
+        idSuc: empleado.cargo?.idSuc,
+        nombreSuc: empleado.cargo?.sucursal?.nombreSuc,
+      }),
+    );
   } catch (error) {
+    if (error.code === 'P2025') return res.status(404).json({ message: 'Empleado no encontrado' });
     errorServidor(res, error);
   }
 });
 
-db.getConnection()
-  .then((connection) => {
-    console.log('Conectado a MySQL');
-    connection.release();
+prisma
+  .$connect()
+  .then(() => {
+    console.log('Conectado a PostgreSQL mediante Prisma Client');
   })
-  .catch((error) => console.error('No se pudo conectar a MySQL:', error.message));
+  .catch((error) => console.error('No se pudo conectar a PostgreSQL mediante Prisma:', error.message));
 
 const port = Number(process.env.PORT) || 3000;
 app.listen(port, '0.0.0.0', () => {

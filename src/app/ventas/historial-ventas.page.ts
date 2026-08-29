@@ -28,6 +28,10 @@ export class HistorialVentasPage implements OnInit {
     void this.cargar();
   }
 
+  ionViewWillEnter(): void {
+    void this.cargar();
+  }
+
   /* =========================================
      VENTAS COMPLETADAS
   ========================================= */
