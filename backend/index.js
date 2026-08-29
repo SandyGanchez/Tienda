@@ -16,6 +16,20 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const { rateLimit } = require('express-rate-limit');
+const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+
+const s3Region = process.env.AWS_REGION || 'us-east-1';
+const s3Bucket = process.env.AWS_BUCKET_NAME || 'tienda-donapaty-uploads';
+
+const s3Config = { region: s3Region };
+if (process.env.AWS_ACCESS_KEY_ID?.trim() && process.env.AWS_SECRET_ACCESS_KEY?.trim()) {
+  s3Config.credentials = {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID.trim(),
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY.trim(),
+  };
+}
+const s3Client = new S3Client(s3Config);
 
 const app = express();
 app.use(cors());
@@ -89,6 +103,97 @@ const uploadComprobante = multer({
     callback(null, true);
   },
 });
+
+function esUrlS3(ruta) {
+  if (!ruta || typeof ruta !== 'string') return false;
+  return (
+    ruta.includes('.amazonaws.com/') ||
+    ruta.startsWith('s3://') ||
+    ruta.startsWith('productos/') ||
+    ruta.startsWith('tienda/') ||
+    ruta.startsWith('comprobantes/')
+  );
+}
+
+function extraerKeyS3(ruta) {
+  if (!ruta || typeof ruta !== 'string') return null;
+  if (ruta.includes('.amazonaws.com/')) {
+    return ruta.split('.amazonaws.com/')[1]?.split('?')[0] || null;
+  }
+  if (ruta.startsWith('productos/') || ruta.startsWith('tienda/') || ruta.startsWith('comprobantes/')) {
+    return ruta;
+  }
+  return null;
+}
+
+async function eliminarObjetoS3(rutaOKey) {
+  const key = extraerKeyS3(rutaOKey);
+  if (!key) return;
+  try {
+    await s3Client.send(new DeleteObjectCommand({ Bucket: s3Bucket, Key: key }));
+  } catch (err) {
+    console.error('Error al eliminar objeto de S3:', err?.message || err);
+  }
+}
+
+function limpiarNombreArchivo(nombreOriginal, fallback = 'archivo') {
+  if (!nombreOriginal || typeof nombreOriginal !== 'string') return fallback;
+
+  let nombre = path.basename(nombreOriginal.trim());
+  const parsedExt = path.extname(nombre).toLowerCase();
+  let base = path.basename(nombre, parsedExt);
+
+  base = base.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  base = base
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/_+/g, '_')
+    .replace(/^[-_.]+/, '')
+    .replace(/[-_.]+$/, '');
+
+  if (!base) base = fallback;
+  base = base.slice(0, 80);
+
+  const extLimpia = parsedExt.replace(/[^a-z0-9.]/g, '').toLowerCase();
+  return `${base}${extLimpia}`;
+}
+
+async function generarPresignedUpload({ folder, mimeType, extensionOriginal, nombreArchivoOriginal }) {
+  let ext = extensionOriginal || extensionesComprobante.get(mimeType) || extensionesImagen.get(mimeType) || '';
+  if (ext && !ext.startsWith('.')) ext = `.${ext}`;
+  ext = ext.toLowerCase().replace(/[^a-z0-9.]/g, '');
+
+  let nombreLimpio = '';
+  if (nombreArchivoOriginal) {
+    const seguro = limpiarNombreArchivo(nombreArchivoOriginal);
+    nombreLimpio = path.basename(seguro, path.extname(seguro)).slice(0, 40);
+  }
+
+  const nombreFichero = nombreLimpio ? `${crypto.randomUUID()}-${nombreLimpio}${ext}` : `${crypto.randomUUID()}${ext}`;
+  const key = `${folder}/${nombreFichero}`;
+
+  const command = new PutObjectCommand({
+    Bucket: s3Bucket,
+    Key: key,
+    ContentType: mimeType,
+  });
+  const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 900 });
+  const publicUrl = `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/${key}`;
+  return { uploadUrl, key, publicUrl, fileName: nombreFichero };
+}
+
+async function generarPresignedDownload(key, filename, mimeType) {
+  const nombreLimpio = limpiarNombreArchivo(filename || path.basename(key) || 'comprobante');
+  const command = new GetObjectCommand({
+    Bucket: s3Bucket,
+    Key: key,
+    ResponseContentType: mimeType || undefined,
+    ResponseContentDisposition: `inline; filename="${nombreLimpio}"; filename*=UTF-8''${encodeURIComponent(nombreLimpio)}`,
+  });
+  return await getSignedUrl(s3Client, command, { expiresIn: 900 });
+}
 
 const db = mysql
   .createPool({
@@ -370,7 +475,12 @@ function valoresSucursal(sucursal) {
 }
 
 function eliminarUploadControlado(rutaPublica, directorio, prefijo) {
-  if (!rutaPublica || !rutaPublica.startsWith(prefijo)) return;
+  if (!rutaPublica) return;
+  if (esUrlS3(rutaPublica)) {
+    eliminarObjetoS3(rutaPublica);
+    return;
+  }
+  if (!rutaPublica.startsWith(prefijo)) return;
   const nombre = path.basename(rutaPublica);
   const ruta = path.join(directorio, nombre);
   if (path.dirname(ruta) === directorio) fs.unlink(ruta, () => undefined);
@@ -454,6 +564,70 @@ async function codigoEnUso(codigoQR, idPro = 0) {
   const [rows] = await db.query('SELECT idPro FROM productos WHERE codigoQR = ? AND idPro <> ?', [codigo, idPro]);
   return rows.length > 0;
 }
+
+app.post('/uploads/presign', async (req, res) => {
+  const authHeader = req.headers.authorization || '';
+  const token = /^Bearer\s+(.+)$/i.exec(authHeader)?.[1];
+  if (!token || !process.env.JWT_SECRET) {
+    return res.status(401).json({ message: 'Sesión no válida' });
+  }
+
+  let payload;
+  try {
+    payload = jwt.verify(token, process.env.JWT_SECRET, { issuer: 'tienda-api' });
+  } catch {
+    return res.status(401).json({ message: 'Sesión no válida' });
+  }
+
+  const tipo = texto(req.body?.tipo).toUpperCase();
+  const mimeType = texto(req.body?.mimeType).toLowerCase();
+  const extension = texto(req.body?.extension).toLowerCase();
+
+  const carpetasPorTipo = {
+    PRODUCTO: 'productos',
+    TIENDA: 'tienda',
+    COMPROBANTE: 'comprobantes',
+  };
+
+  const carpeta = carpetasPorTipo[tipo];
+  if (!carpeta) {
+    return res.status(400).json({ message: 'Tipo de upload no válido. Usa PRODUCTO, TIENDA o COMPROBANTE.' });
+  }
+
+  if (tipo === 'COMPROBANTE') {
+    if (payload.tipo !== 'CLIENTE' && payload.tipo !== 'EMPLEADO') {
+      return res.status(403).json({ message: 'No autorizado' });
+    }
+    if (!extensionesComprobante.has(mimeType)) {
+      return res.status(400).json({ message: 'MIME type no permitido para comprobante (JPG, PNG, WEBP, PDF).' });
+    }
+  } else {
+    if (payload.tipo === 'CLIENTE') {
+      return res.status(403).json({ message: 'No autorizado' });
+    }
+    if (!extensionesImagen.has(mimeType)) {
+      return res.status(400).json({ message: 'MIME type no permitido para imagen (JPG, PNG, WEBP).' });
+    }
+  }
+
+  const nombreOriginal = texto(req.body?.filename || req.body?.nombreOriginal || req.body?.nombre);
+
+  try {
+    const data = await generarPresignedUpload({
+      folder: carpeta,
+      mimeType,
+      extensionOriginal: extension || undefined,
+      nombreArchivoOriginal: nombreOriginal || undefined,
+    });
+    res.json({
+      ...data,
+      rutaPublica: data.publicUrl,
+      expiresIn: 900,
+    });
+  } catch (error) {
+    errorServidor(res, error);
+  }
+});
 
 app.get('/public/tienda', async (req, res) => {
   try {
@@ -750,6 +924,56 @@ app.post('/productos/:id/imagen', autenticar, autorizarRoles('ADMINISTRADOR'), (
   });
 });
 
+app.post('/productos/:id/presign-imagen', autenticar, autorizarRoles('ADMINISTRADOR'), async (req, res) => {
+  const idPro = idValido(req.params.id);
+  if (!idPro) return res.status(400).json({ message: 'El ID del producto no es válido' });
+  const mimeType = texto(req.body?.mimeType).toLowerCase();
+  const nombreOriginal = texto(req.body?.filename || req.body?.nombreOriginal);
+  if (!extensionesImagen.has(mimeType)) {
+    return res.status(400).json({ message: 'Solo se permiten imágenes JPEG, PNG o WEBP' });
+  }
+  try {
+    const producto = await obtenerProducto(idPro);
+    if (!producto) return res.status(404).json({ message: 'Producto no encontrado' });
+    const presigned = await generarPresignedUpload({
+      folder: 'productos',
+      mimeType,
+      nombreArchivoOriginal: nombreOriginal || undefined,
+    });
+    res.json({ ...presigned, idPro, expiresIn: 900 });
+  } catch (error) {
+    errorServidor(res, error);
+  }
+});
+
+app.post('/productos/:id/confirmar-imagen', autenticar, autorizarRoles('ADMINISTRADOR'), async (req, res) => {
+  const idPro = idValido(req.params.id);
+  if (!idPro) return res.status(400).json({ message: 'El ID del producto no es válido' });
+  const imagenUrl = texto(req.body?.imagenUrl || req.body?.publicUrl || req.body?.key);
+  if (!imagenUrl) return res.status(400).json({ message: 'La URL o Key de la imagen es obligatoria' });
+
+  try {
+    const anterior = await obtenerProducto(idPro);
+    if (!anterior) return res.status(404).json({ message: 'Producto no encontrado' });
+
+    const rutaFinal =
+      imagenUrl.startsWith('http://') || imagenUrl.startsWith('https://') || imagenUrl.startsWith('/uploads')
+        ? imagenUrl
+        : `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/${imagenUrl}`;
+
+    await db.query('UPDATE productos SET imagenPro = ? WHERE idPro = ?', [rutaFinal, idPro]);
+
+    if (anterior.imagenPro && anterior.imagenPro !== rutaFinal) {
+      eliminarUploadControlado(anterior.imagenPro, productosUploadDir, '/uploads/productos/');
+    }
+
+    const actualizado = await obtenerProducto(idPro);
+    res.json(actualizado);
+  } catch (error) {
+    errorServidor(res, error);
+  }
+});
+
 app.put('/productos/:id', autenticar, autorizarRoles('ADMINISTRADOR'), async (req, res) => {
   const idPro = idValido(req.params.id);
   if (!idPro) return res.status(400).json({ message: 'El ID del producto no es válido' });
@@ -1015,6 +1239,56 @@ app.post('/sucursal/:id/logo', autenticar, autorizarRoles('ADMINISTRADOR'), (req
       errorServidor(res, error);
     }
   });
+});
+
+app.post('/sucursal/:id/presign-logo', autenticar, autorizarRoles('ADMINISTRADOR'), async (req, res) => {
+  const idSuc = idValido(req.params.id);
+  if (!idSuc) return res.status(400).json({ message: 'El ID de la sucursal no es válido' });
+  const mimeType = texto(req.body?.mimeType).toLowerCase();
+  const nombreOriginal = texto(req.body?.filename || req.body?.nombreOriginal);
+  if (!extensionesImagen.has(mimeType)) {
+    return res.status(400).json({ message: 'Solo se permiten imágenes JPEG, PNG o WEBP' });
+  }
+  try {
+    const sucursal = await obtenerSucursal(idSuc);
+    if (!sucursal) return res.status(404).json({ message: 'Sucursal no encontrada' });
+    const presigned = await generarPresignedUpload({
+      folder: 'tienda',
+      mimeType,
+      nombreArchivoOriginal: nombreOriginal || undefined,
+    });
+    res.json({ ...presigned, idSuc, expiresIn: 900 });
+  } catch (error) {
+    errorServidor(res, error);
+  }
+});
+
+app.post('/sucursal/:id/confirmar-logo', autenticar, autorizarRoles('ADMINISTRADOR'), async (req, res) => {
+  const idSuc = idValido(req.params.id);
+  if (!idSuc) return res.status(400).json({ message: 'El ID de la sucursal no es válido' });
+  const logoUrl = texto(req.body?.logoUrl || req.body?.publicUrl || req.body?.key);
+  if (!logoUrl) return res.status(400).json({ message: 'La URL o Key del logo es obligatoria' });
+
+  try {
+    const anterior = await obtenerSucursal(idSuc);
+    if (!anterior) return res.status(404).json({ message: 'Sucursal no encontrada' });
+
+    const rutaFinal =
+      logoUrl.startsWith('http://') || logoUrl.startsWith('https://') || logoUrl.startsWith('/uploads')
+        ? logoUrl
+        : `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/${logoUrl}`;
+
+    await db.query('UPDATE sucursal SET logoSuc = ? WHERE idSuc = ?', [rutaFinal, idSuc]);
+
+    if (anterior.logoSuc && anterior.logoSuc !== rutaFinal) {
+      eliminarUploadControlado(anterior.logoSuc, tiendaUploadDir, '/uploads/tienda/');
+    }
+
+    const actualizado = await obtenerSucursal(idSuc);
+    res.json(actualizado);
+  } catch (error) {
+    errorServidor(res, error);
+  }
 });
 
 app.delete('/sucursal/:id/logo', autenticar, autorizarRoles('ADMINISTRADOR'), async (req, res) => {
@@ -1599,6 +1873,89 @@ app.post('/cliente/pedidos/:id/comprobante', autenticarCliente, (req, res) => {
   });
 });
 
+app.post('/cliente/pedidos/:id/presign-comprobante', autenticarCliente, async (req, res) => {
+  const idPedido = idValido(req.params.id);
+  if (!idPedido) return res.status(400).json({ message: 'El pedido no es válido.' });
+  const mimeType = texto(req.body?.mimeType).toLowerCase();
+  if (!extensionesComprobante.has(mimeType)) {
+    return res.status(400).json({ message: 'Selecciona una imagen JPG, PNG, WEBP o un PDF de máximo 5 MB.' });
+  }
+  try {
+    const [rows] = await db.query(
+      'SELECT idPedido, estado, comprobanteRuta, fechaLimitePago FROM pedido_cliente WHERE idPedido = ? AND idCliente = ?',
+      [idPedido, req.cliente.idCliente],
+    );
+    if (!rows.length) return res.status(404).json({ message: 'Pedido no encontrado.' });
+    const pedido = rows[0];
+    if (pedido.estado !== 'PENDIENTE_PAGO' || pedido.comprobanteRuta) {
+      return res.status(409).json({ message: 'Este pedido ya no acepta comprobantes.' });
+    }
+    const nombreOriginal = texto(req.body?.nombreOriginal || req.body?.filename);
+    const presigned = await generarPresignedUpload({
+      folder: 'comprobantes',
+      mimeType,
+      nombreArchivoOriginal: nombreOriginal || undefined,
+    });
+    res.json({
+      uploadUrl: presigned.uploadUrl,
+      key: presigned.key,
+      fileName: presigned.fileName,
+      idPedido,
+      expiresIn: 900,
+    });
+  } catch (error) {
+    errorServidor(res, error);
+  }
+});
+
+app.post('/cliente/pedidos/:id/confirmar-comprobante', autenticarCliente, async (req, res) => {
+  const idPedido = idValido(req.params.id);
+  if (!idPedido) return res.status(400).json({ message: 'El pedido no es válido.' });
+  const key = texto(req.body?.key);
+  const mimeType = texto(req.body?.mimeType).toLowerCase();
+  const nombreOriginal = limpiarNombreArchivo(texto(req.body?.nombreOriginal || 'comprobante')).slice(0, 255);
+
+  if (!key || !key.startsWith('comprobantes/')) {
+    return res.status(400).json({ message: 'Key de comprobante no válida.' });
+  }
+  if (!extensionesComprobante.has(mimeType)) {
+    return res.status(400).json({ message: 'Tipo MIME de comprobante no válido.' });
+  }
+
+  let connection;
+  try {
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+    const [rows] = await connection.query(
+      'SELECT * FROM pedido_cliente WHERE idPedido = ? AND idCliente = ? FOR UPDATE',
+      [idPedido, req.cliente.idCliente],
+    );
+    if (!rows.length) throw errorFuncional('Pedido no encontrado.', 404);
+    const pedido = rows[0];
+    if (await expirarPedidoBloqueado(connection, pedido)) {
+      await connection.commit();
+      return res.status(409).json({ message: 'Tu reserva expiró y los productos volvieron al inventario.' });
+    }
+    if (pedido.estado !== 'PENDIENTE_PAGO' || pedido.comprobanteRuta) {
+      throw errorFuncional('Este pedido ya no acepta comprobantes.', 409);
+    }
+    await connection.query(
+      `UPDATE pedido_cliente SET comprobanteRuta=?, comprobanteMime=?, comprobanteNombre=?,
+      fechaComprobante=NOW(), estado='EN_REVISION' WHERE idPedido=? AND idCliente=? AND estado='PENDIENTE_PAGO'`,
+      [key, mimeType, nombreOriginal, idPedido, req.cliente.idCliente],
+    );
+    const actualizado = await obtenerPedidoSeguro(connection, idPedido, Number(req.cliente.idCliente));
+    await connection.commit();
+    res.json(actualizado);
+  } catch (error) {
+    if (connection) await connection.rollback().catch(() => undefined);
+    if (error.status) return res.status(error.status).json({ message: error.message });
+    errorServidor(res, error);
+  } finally {
+    connection?.release();
+  }
+});
+
 app.get('/cliente/pedidos/:id/comprobante', autenticarCliente, async (req, res) => {
   const idPedido = idValido(req.params.id);
   if (!idPedido) return res.status(400).json({ message: 'El pedido no es válido.' });
@@ -1609,14 +1966,25 @@ app.get('/cliente/pedidos/:id/comprobante', autenticarCliente, async (req, res) 
       [idPedido, req.cliente.idCliente],
     );
     if (!rows.length) return res.status(404).json({ message: 'Comprobante no encontrado.' });
-    const rutaFisica = resolverComprobantePrivado(rows[0].comprobanteRuta);
+    const { comprobanteRuta, comprobanteMime, comprobanteNombre } = rows[0];
+
+    if (esUrlS3(comprobanteRuta)) {
+      const key = extraerKeyS3(comprobanteRuta);
+      const downloadUrl = await generarPresignedDownload(key, comprobanteNombre, comprobanteMime);
+      if (req.query.json === 'true') {
+        return res.json({ downloadUrl, key, mime: comprobanteMime, nombre: comprobanteNombre });
+      }
+      return res.redirect(downloadUrl);
+    }
+
+    const rutaFisica = resolverComprobantePrivado(comprobanteRuta);
     if (!rutaFisica) {
       return res.status(404).json({ message: 'Comprobante no encontrado.' });
     }
-    res.type(rows[0].comprobanteMime);
+    res.type(comprobanteMime);
     res.setHeader(
       'Content-Disposition',
-      `inline; filename*=UTF-8''${encodeURIComponent(rows[0].comprobanteNombre || 'comprobante')}`,
+      `inline; filename*=UTF-8''${encodeURIComponent(comprobanteNombre || 'comprobante')}`,
     );
     res.sendFile(rutaFisica);
   } catch (error) {
@@ -1744,12 +2112,23 @@ app.get('/admin/pedidos/:id/comprobante', autenticar, soloAdministrador, async (
       [idPedido, req.empleado.idSuc],
     );
     if (!rows.length) return res.status(404).json({ message: 'Comprobante no encontrado.' });
-    const rutaFisica = resolverComprobantePrivado(rows[0].comprobanteRuta);
+    const { comprobanteRuta, comprobanteMime, comprobanteNombre } = rows[0];
+
+    if (esUrlS3(comprobanteRuta)) {
+      const key = extraerKeyS3(comprobanteRuta);
+      const downloadUrl = await generarPresignedDownload(key, comprobanteNombre, comprobanteMime);
+      if (req.query.json === 'true') {
+        return res.json({ downloadUrl, key, mime: comprobanteMime, nombre: comprobanteNombre });
+      }
+      return res.redirect(downloadUrl);
+    }
+
+    const rutaFisica = resolverComprobantePrivado(comprobanteRuta);
     if (!rutaFisica) return res.status(404).json({ message: 'Comprobante no encontrado.' });
-    res.type(rows[0].comprobanteMime);
+    res.type(comprobanteMime);
     res.setHeader(
       'Content-Disposition',
-      `inline; filename*=UTF-8''${encodeURIComponent(rows[0].comprobanteNombre || 'comprobante')}`,
+      `inline; filename*=UTF-8''${encodeURIComponent(comprobanteNombre || 'comprobante')}`,
     );
     res.sendFile(rutaFisica);
   } catch (error) {
@@ -1810,7 +2189,7 @@ app.post('/admin/pedidos/:id/aprobar', autenticar, soloAdministrador, async (req
       throw errorFuncional('Sólo pueden aprobarse pedidos con pago en revisión.', 409);
     if (!pedido.comprobanteRuta || !pedido.fechaComprobante)
       throw errorFuncional('El pedido no tiene un comprobante válido para revisar.', 409);
-    if (!resolverComprobantePrivado(pedido.comprobanteRuta)) {
+    if (!esUrlS3(pedido.comprobanteRuta) && !resolverComprobantePrivado(pedido.comprobanteRuta)) {
       throw errorFuncional('El archivo del comprobante no está disponible.', 409);
     }
     const [detalles] = await connection.query(

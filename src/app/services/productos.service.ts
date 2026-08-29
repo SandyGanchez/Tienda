@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, switchMap } from 'rxjs';
 import { CrearProductoDto, Producto, ProductoResponse } from '../models/productos';
 import { environment } from '../../environments/environment';
 import { ImagenesService } from './imagenes.service';
@@ -50,9 +50,28 @@ export class ProductosService {
   }
 
   subirImagen(idPro: number, imagen: Blob, nombreArchivo: string): Observable<ProductoResponse> {
-    const formData = new FormData();
-    formData.append('imagen', imagen, nombreArchivo);
-    return this.http.post<ProductoResponse>(`${this.apiUrl}/${idPro}/imagen`, formData);
+    const mimeType = imagen.type || 'image/jpeg';
+    return this.http
+      .post<{ uploadUrl: string; key: string; publicUrl: string }>(`${this.apiUrl}/${idPro}/presign-imagen`, {
+        mimeType,
+        filename: nombreArchivo,
+      })
+      .pipe(
+        switchMap(({ uploadUrl, publicUrl, key }) =>
+          this.http
+            .put(uploadUrl, imagen, {
+              headers: { 'Content-Type': mimeType },
+            })
+            .pipe(
+              switchMap(() =>
+                this.http.post<ProductoResponse>(`${this.apiUrl}/${idPro}/confirmar-imagen`, {
+                  imagenUrl: publicUrl,
+                  key,
+                }),
+              ),
+            ),
+        ),
+      );
   }
 
   resolverImagenProducto(imagenPro: string | null | undefined): string | null {
