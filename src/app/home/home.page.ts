@@ -15,6 +15,7 @@ import { SqliteService } from '../services/sqlite.service';
 import { SucursalService } from '../services/sucursal.service';
 import { AuthService } from '../services/auth.service';
 import { ScanFeedbackService } from '../services/scan-feedback.service';
+import { SyncService } from '../services/sync.service';
 
 type Seccion = 'inicio' | 'productos' | 'categorias' | 'marcas' | 'configuracion';
 type ModoProducto = 'crear' | 'editar';
@@ -128,6 +129,7 @@ export class HomePage implements OnInit {
   private readonly sucursalApi = inject(SucursalService);
   private readonly route = inject(ActivatedRoute);
   private readonly scanFeedback = inject(ScanFeedbackService);
+  readonly sync = inject(SyncService);
 
   ngOnInit(): void {
     this.route.queryParamMap.subscribe((parametros) => {
@@ -291,15 +293,57 @@ export class HomePage implements OnInit {
 
   cargarMarcas(): void {
     this.catalogosApi.getMarcas().subscribe({
-      next: (marcas) => (this.marcas = marcas),
-      error: (error: unknown) => console.error('No se pudieron cargar las marcas', error),
+      next: async (marcas) => {
+        this.marcas = marcas;
+        if (this.sqlite.disponible) {
+          try {
+            await this.sqlite.sincronizarMarcas(marcas);
+          } catch (err) {
+            console.error('Error al sincronizar marcas en SQLite:', err);
+          }
+        }
+      },
+      error: async (error: unknown) => {
+        console.error('No se pudieron cargar las marcas del servidor, intentando SQLite...', error);
+        if (this.sqlite.disponible) {
+          try {
+            const locales = await this.sqlite.getMarcasLocales();
+            if (locales && locales.length > 0) {
+              this.marcas = locales;
+            }
+          } catch (localError) {
+            console.error('Error al leer marcas locales:', localError);
+          }
+        }
+      },
     });
   }
 
   cargarCategorias(): void {
     this.catalogosApi.getCategorias().subscribe({
-      next: (categorias) => (this.categorias = categorias),
-      error: (error: unknown) => console.error('No se pudieron cargar las categorías', error),
+      next: async (categorias) => {
+        this.categorias = categorias;
+        if (this.sqlite.disponible) {
+          try {
+            await this.sqlite.sincronizarCategorias(categorias);
+          } catch (err) {
+            console.error('Error al sincronizar categorías en SQLite:', err);
+          }
+        }
+      },
+      error: async (error: unknown) => {
+        console.error('No se pudieron cargar las categorías del servidor, intentando SQLite...', error);
+        if (this.sqlite.disponible) {
+          try {
+            const locales = await this.sqlite.getCategoriasLocales();
+            if (locales && locales.length > 0) {
+              this.categorias = locales;
+            }
+          } catch (localError) {
+            console.error('Error al leer categorías locales:', localError);
+          }
+        }
+      },
     });
   }
 
@@ -389,6 +433,52 @@ export class HomePage implements OnInit {
             ? await firstValueFrom(this.api.updateProducto(this.productoEditandoId, dto))
             : await firstValueFrom(this.api.addProducto(dto));
       } catch (error: unknown) {
+        const esErrorConexion =
+          error instanceof HttpErrorResponse && (error.status === 0 || error.status === 504 || error.status === 503);
+        if (esErrorConexion && this.sqlite.disponible && this.modoProducto === 'crear') {
+          try {
+            const base64Foto = this.fotoProductoPendiente ? await this.blobABase64(this.fotoProductoPendiente) : null;
+            const { idProTemporal } = await this.sqlite.guardarProductoOffline(
+              datos,
+              base64Foto,
+              this.nombreFotoPendiente,
+              this.fotoProductoPendiente?.type,
+            );
+            const productoOffline: Producto = {
+              idPro: idProTemporal,
+              nombrePro: datos.nombre,
+              precioVentaPro: datos.precio,
+              costoPro: datos.costo,
+              existenciaPro: datos.existencia,
+              stockMinimoPro: datos.stockMinimo,
+              tamanoPro: datos.tamano,
+              presentacionPro: datos.presentacion,
+              tipoPro: datos.tipo,
+              codigoQR: datos.codigoQR,
+              skuPro: datos.sku,
+              imagenPro: base64Foto || datos.imagen,
+              idMarca: datos.idMarca,
+              idCat: datos.idCat,
+              pendienteSync: 1,
+            };
+            this.actualizarProductoEnLista(productoOffline);
+
+            if (agregarOtro) {
+              this.formProducto = this.formularioProductoVacio();
+              this.reiniciarFotoPendiente();
+              this.limpiarBusquedaPublica();
+            } else {
+              this.mostrarModalProducto = false;
+              this.reiniciarFotoPendiente();
+            }
+
+            await this.mostrarFeedback('Producto guardado en modo offline. Se sincronizará al conectar.', 'warning');
+            return;
+          } catch (offlineError) {
+            console.error('Error al guardar producto offline en SQLite:', offlineError);
+          }
+        }
+
         await this.mostrarFeedback(this.mensajeErrorHttp(error, 'No pudimos guardar el producto.'), 'danger');
         return;
       }
@@ -460,6 +550,10 @@ export class HomePage implements OnInit {
       if (local) {
         this.productoEncontrado = local;
         this.mensajeBusqueda = 'Este producto ya está registrado.';
+        return;
+      }
+      if (!this.sync.estadoConexion().conectado) {
+        this.mensajeBusqueda = 'Modo offline: código asignado al producto sin consultar servicios externos.';
         return;
       }
       const propio = await firstValueFrom(this.api.getByQR(codigo));
@@ -678,20 +772,54 @@ export class HomePage implements OnInit {
     this.guardandoCatalogo = true;
     try {
       let nuevoId: number;
-      if (this.tipoCatalogo === 'marca') {
-        const marca =
-          this.catalogoEditandoId === null
-            ? await firstValueFrom(this.catalogosApi.crearMarca(dto))
-            : await firstValueFrom(this.catalogosApi.actualizarMarca(this.catalogoEditandoId, dto));
-        this.marcas = this.reemplazarPorId(this.marcas, marca, 'idMarca');
-        nuevoId = marca.idMarca;
-      } else {
-        const categoria =
-          this.catalogoEditandoId === null
-            ? await firstValueFrom(this.catalogosApi.crearCategoria(dto))
-            : await firstValueFrom(this.catalogosApi.actualizarCategoria(this.catalogoEditandoId, dto));
-        this.categorias = this.reemplazarPorId(this.categorias, categoria, 'idCat');
-        nuevoId = categoria.idCat;
+      try {
+        if (this.tipoCatalogo === 'marca') {
+          const marca =
+            this.catalogoEditandoId === null
+              ? await firstValueFrom(this.catalogosApi.crearMarca(dto))
+              : await firstValueFrom(this.catalogosApi.actualizarMarca(this.catalogoEditandoId, dto));
+          this.marcas = this.reemplazarPorId(this.marcas, marca, 'idMarca');
+          nuevoId = marca.idMarca;
+          if (this.sqlite.disponible) {
+            void this.sqlite.sincronizarMarcas(this.marcas);
+          }
+        } else {
+          const categoria =
+            this.catalogoEditandoId === null
+              ? await firstValueFrom(this.catalogosApi.crearCategoria(dto))
+              : await firstValueFrom(this.catalogosApi.actualizarCategoria(this.catalogoEditandoId, dto));
+          this.categorias = this.reemplazarPorId(this.categorias, categoria, 'idCat');
+          nuevoId = categoria.idCat;
+          if (this.sqlite.disponible) {
+            void this.sqlite.sincronizarCategorias(this.categorias);
+          }
+        }
+      } catch (error: unknown) {
+        const esErrorConexion =
+          error instanceof HttpErrorResponse && (error.status === 0 || error.status === 504 || error.status === 503);
+        if (esErrorConexion && this.sqlite.disponible && this.catalogoEditandoId === null) {
+          if (this.tipoCatalogo === 'marca') {
+            const marcaOffline = await this.sqlite.guardarMarcaOffline(dto);
+            this.marcas = this.reemplazarPorId(this.marcas, marcaOffline, 'idMarca');
+            nuevoId = marcaOffline.idMarca;
+          } else {
+            const categoriaOffline = await this.sqlite.guardarCategoriaOffline(dto);
+            this.categorias = this.reemplazarPorId(this.categorias, categoriaOffline, 'idCat');
+            nuevoId = categoriaOffline.idCat;
+          }
+          this.mostrarModalCatalogo = false;
+          if (this.catalogoDesdeProducto) {
+            if (this.tipoCatalogo === 'marca') this.formProducto.idMarca = nuevoId;
+            else this.formProducto.idCat = nuevoId;
+            this.catalogoDesdeProducto = false;
+          }
+          await this.mostrarFeedback(
+            `${this.tipoCatalogo === 'marca' ? 'Marca' : 'Categoría'} guardada en modo offline.`,
+            'warning',
+          );
+          return;
+        }
+        throw error;
       }
       this.mostrarModalCatalogo = false;
       if (this.catalogoDesdeProducto && this.catalogoEditandoId === null) {
@@ -856,6 +984,15 @@ export class HomePage implements OnInit {
     this.fotoProductoPendiente = null;
     this.nombreFotoPendiente = '';
     this.previewFotoPendiente = null;
+  }
+
+  private blobABase64(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
   }
 
   private datosFormularioProducto(): DatosProductoFormulario | null {
