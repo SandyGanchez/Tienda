@@ -639,7 +639,7 @@
     </ion-header>
     <ion-content class="form-content">
       <div class="form-shell">
-        <section class="barcode-panel">
+        <section class="barcode-panel" *ngIf="sync.estadoConexion().conectado; else panelCodigoOffline">
           <ion-icon name="barcode-outline"></ion-icon>
           <div>
             <h2>Escanea o ingresa el código de barras</h2>
@@ -685,6 +685,24 @@
           </ion-button>
           <p class="status-message" *ngIf="mensajeBusqueda">{{ mensajeBusqueda }}</p>
         </section>
+
+        <ng-template #panelCodigoOffline>
+          <section class="barcode-panel barcode-offline-notice">
+            <ion-icon name="barcode-outline"></ion-icon>
+            <div>
+              <h2>Código de barras</h2>
+              <p>Modo offline: ingresa el código del producto manualmente</p>
+            </div>
+            <ion-input
+              fill="outline"
+              label="Código de barras (opcional)"
+              labelPlacement="stacked"
+              inputmode="text"
+              [(ngModel)]="formProducto.codigoQR"
+            ></ion-input>
+            <p class="status-message" *ngIf="mensajeBusqueda">{{ mensajeBusqueda }}</p>
+          </section>
+        </ng-template>
 
         <section class="existing-product" *ngIf="productoEncontrado">
           <div class="product-photo">

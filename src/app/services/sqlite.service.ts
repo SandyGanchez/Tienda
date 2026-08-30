@@ -77,6 +77,37 @@ export class SqliteService {
 
     await db.execute(queryVentas);
     await db.execute(
+      `CREATE TABLE IF NOT EXISTS usuarios_offline (
+        idEmp INTEGER PRIMARY KEY,
+        correo TEXT UNIQUE NOT NULL,
+        contrasenaHash TEXT NOT NULL,
+        nombre TEXT NOT NULL,
+        apellidoPat TEXT,
+        apellidoMat TEXT,
+        cargo TEXT NOT NULL,
+        idSuc INTEGER NOT NULL,
+        nombreSuc TEXT NOT NULL,
+        activo INTEGER DEFAULT 1
+      );`,
+    );
+    await this.sembrarAdminOffline(db);
+    await db.execute(
+      `CREATE TABLE IF NOT EXISTS marcas (
+        idMarca INTEGER PRIMARY KEY,
+        nombreMarca TEXT NOT NULL,
+        descripMarca TEXT,
+        pendienteSync INTEGER DEFAULT 0
+      );`,
+    );
+    await db.execute(
+      `CREATE TABLE IF NOT EXISTS categorias (
+        idCat INTEGER PRIMARY KEY,
+        nombreCat TEXT NOT NULL,
+        descripCat TEXT,
+        pendienteSync INTEGER DEFAULT 0
+      );`,
+    );
+    await db.execute(
       `CREATE TABLE IF NOT EXISTS sesiones_caja_local(uuidSesionCaja TEXT PRIMARY KEY,idSesionCaja INTEGER,idEmp INTEGER NOT NULL,idSuc INTEGER NOT NULL,fechaHoraApertura TEXT NOT NULL,fondoInicial REAL NOT NULL,fechaHoraCierre TEXT,efectivoContado REAL,observaciones TEXT,estado TEXT NOT NULL,estadoSync TEXT NOT NULL DEFAULT 'PENDIENTE',errorSync TEXT)`,
     );
     await db.execute(
@@ -91,6 +122,39 @@ export class SqliteService {
     await db.execute(
       `CREATE TABLE IF NOT EXISTS cola_sync(id INTEGER PRIMARY KEY AUTOINCREMENT,tipo TEXT NOT NULL,uuid TEXT NOT NULL UNIQUE,payload TEXT NOT NULL,orden INTEGER NOT NULL,estado TEXT NOT NULL DEFAULT 'PENDIENTE',error TEXT,creadoEn TEXT NOT NULL)`,
     );
+  }
+
+  private async sembrarAdminOffline(db: SQLiteDBConnection): Promise<void> {
+    const hashAdmin = await this.hashTexto('admin1234');
+    await db.run(
+      `INSERT INTO usuarios_offline (
+        idEmp, correo, contrasenaHash, nombre, apellidoPat, apellidoMat, cargo, idSuc, nombreSuc, activo
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+      ON CONFLICT(correo) DO NOTHING`,
+      [
+        1,
+        'admin@tienda.com',
+        hashAdmin,
+        'Administrador Offline',
+        'Sistema',
+        null,
+        'ADMINISTRADOR',
+        1,
+        'Sucursal Central',
+      ],
+    );
+  }
+
+  async hashTexto(texto: string): Promise<string> {
+    try {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(texto.trim());
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+    } catch {
+      return texto.trim();
+    }
   }
 
   private async migrarProductos(db: SQLiteDBConnection): Promise<void> {
@@ -576,5 +640,356 @@ export class SqliteService {
       [uuidSesionCaja],
     );
     return { ...v.values![0], ...m.values![0] };
+  }
+
+  // =========================
+  // USUARIOS OFFLINE
+  // =========================
+  async guardarUsuarioOffline(empleado: any, password?: string): Promise<void> {
+    if (!this.disponible || !empleado) return;
+    const db = await this.getDB();
+    const hash = password ? await this.hashTexto(password) : await this.hashTexto('admin1234');
+    const correo = String(empleado.correo || empleado.correoEmp || '').trim().toLowerCase();
+    if (!correo) return;
+
+    await db.run(
+      `INSERT INTO usuarios_offline (
+        idEmp, correo, contrasenaHash, nombre, apellidoPat, apellidoMat, cargo, idSuc, nombreSuc, activo
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+      ON CONFLICT(correo) DO UPDATE SET
+        contrasenaHash = excluded.contrasenaHash,
+        nombre = excluded.nombre,
+        apellidoPat = excluded.apellidoPat,
+        apellidoMat = excluded.apellidoMat,
+        cargo = excluded.cargo,
+        idSuc = excluded.idSuc,
+        nombreSuc = excluded.nombreSuc,
+        activo = 1`,
+      [
+        Number(empleado.idEmp) || 1,
+        correo,
+        hash,
+        empleado.nombreEmp || empleado.nombre || 'Usuario',
+        empleado.apellidoPatEmp || null,
+        empleado.apellidoMatEmp || null,
+        empleado.cargo || 'ADMINISTRADOR',
+        Number(empleado.idSuc) || 1,
+        empleado.nombreSuc || 'Sucursal Central',
+      ],
+    );
+  }
+
+  async verificarUsuarioOffline(correo: string, password: string): Promise<any | null> {
+    if (!this.disponible) return null;
+    const db = await this.getDB();
+    const c = correo.trim().toLowerCase();
+    const res = await db.query(`SELECT * FROM usuarios_offline WHERE correo = ? AND activo = 1`, [c]);
+    if (!res.values || res.values.length === 0) return null;
+
+    const user = res.values[0];
+    const hashIngresado = await this.hashTexto(password);
+
+    if (user.contrasenaHash === hashIngresado || user.contrasenaHash === password.trim()) {
+      return {
+        idEmp: user.idEmp,
+        nombre: [user.nombre, user.apellidoPat, user.apellidoMat].filter(Boolean).join(' '),
+        nombreEmp: user.nombre,
+        apellidoPatEmp: user.apellidoPat,
+        apellidoMatEmp: user.apellidoMat,
+        correo: user.correo,
+        cargo: user.cargo,
+        idSuc: user.idSuc,
+        nombreSuc: user.nombreSuc,
+        estadoEmp: true,
+      };
+    }
+    return null;
+  }
+
+  // =========================
+  // CREACIÓN Y RECONCILIACIÓN OFFLINE DE PRODUCTOS
+  // =========================
+  async guardarProductoOffline(
+    producto: any,
+    fotoBase64?: string | null,
+    fotoNombre?: string | null,
+    fotoMime?: string | null,
+  ): Promise<{ idProTemporal: number; uuid: string }> {
+    if (!this.disponible) throw new Error('SQLite no disponible');
+    const db = await this.getDB();
+
+    const idTemp = producto.idPro && producto.idPro < 0 ? producto.idPro : -Math.floor(Date.now() / 1000);
+    const uuid = `PROD-${Math.abs(idTemp)}-${Date.now()}`;
+
+    await db.run(
+      `INSERT INTO productos (
+        idPro, nombrePro, precioVentaPro, costoPro, existenciaPro, stockMinimoPro,
+        tamanoPro, presentacionPro, tipoPro, codigoQR, skuPro, imagenPro, idMarca, idCat, pendienteSync
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+      ON CONFLICT(idPro) DO UPDATE SET
+        nombrePro = excluded.nombrePro,
+        precioVentaPro = excluded.precioVentaPro,
+        costoPro = excluded.costoPro,
+        existenciaPro = excluded.existenciaPro,
+        stockMinimoPro = excluded.stockMinimoPro,
+        tamanoPro = excluded.tamanoPro,
+        presentacionPro = excluded.presentacionPro,
+        tipoPro = excluded.tipoPro,
+        codigoQR = excluded.codigoQR,
+        skuPro = excluded.skuPro,
+        imagenPro = excluded.imagenPro,
+        idMarca = excluded.idMarca,
+        idCat = excluded.idCat,
+        pendienteSync = 1`,
+      [
+        idTemp,
+        producto.nombre || producto.nombrePro || '',
+        Number(producto.precio ?? producto.precioVentaPro ?? 0),
+        producto.costo !== null && producto.costo !== undefined ? Number(producto.costo ?? producto.costoPro) : null,
+        Number(producto.existencia ?? producto.existenciaPro ?? 0),
+        producto.stockMinimo !== null && producto.stockMinimo !== undefined ? Number(producto.stockMinimo ?? producto.stockMinimoPro) : null,
+        producto.tamano || producto.tamanoPro || null,
+        producto.presentacion || producto.presentacionPro || null,
+        producto.tipo || producto.tipoPro || null,
+        producto.codigoQR ? String(producto.codigoQR).trim() : null,
+        producto.sku || producto.skuPro || null,
+        fotoBase64 || producto.imagen || producto.imagenPro || null,
+        producto.idMarca ? Number(producto.idMarca) : null,
+        producto.idCat ? Number(producto.idCat) : null,
+      ],
+    );
+
+    await this.encolar('PRODUCTO_CREAR', uuid, {
+      tempId: idTemp,
+      dto: {
+        nombre: producto.nombre || producto.nombrePro,
+        precio: Number(producto.precio ?? producto.precioVentaPro ?? 0),
+        costo: producto.costo !== null && producto.costo !== undefined ? Number(producto.costo ?? producto.costoPro) : null,
+        existencia: Number(producto.existencia ?? producto.existenciaPro ?? 0),
+        stockMinimo: producto.stockMinimo !== null && producto.stockMinimo !== undefined ? Number(producto.stockMinimo ?? producto.stockMinimoPro) : null,
+        tamano: producto.tamano || producto.tamanoPro || null,
+        presentacion: producto.presentacion || producto.presentacionPro || null,
+        tipo: producto.tipo || producto.tipoPro || null,
+        codigoQR: producto.codigoQR ? String(producto.codigoQR).trim() : null,
+        sku: producto.sku || producto.skuPro || null,
+        idMarca: producto.idMarca ? Number(producto.idMarca) : null,
+        idCat: producto.idCat ? Number(producto.idCat) : null,
+      },
+      fotoBase64: fotoBase64 || null,
+      fotoNombre: fotoNombre || 'producto.jpg',
+      fotoMime: fotoMime || 'image/jpeg',
+    }, 5);
+
+    return { idProTemporal: idTemp, uuid };
+  }
+
+  async reconciliarProductoOffline(idTemporal: number, productoReal: any): Promise<void> {
+    if (!this.disponible) return;
+    const db = await this.getDB();
+    await db.run(`DELETE FROM productos WHERE idPro = ?`, [idTemporal]);
+    await db.run(
+      `INSERT INTO productos (
+        idPro, nombrePro, precioVentaPro, costoPro, existenciaPro, stockMinimoPro,
+        tamanoPro, presentacionPro, tipoPro, codigoQR, skuPro, imagenPro, idMarca, idCat, pendienteSync
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+      ON CONFLICT(idPro) DO UPDATE SET
+        nombrePro = excluded.nombrePro,
+        precioVentaPro = excluded.precioVentaPro,
+        costoPro = excluded.costoPro,
+        existenciaPro = excluded.existenciaPro,
+        stockMinimoPro = excluded.stockMinimoPro,
+        tamanoPro = excluded.tamanoPro,
+        presentacionPro = excluded.presentacionPro,
+        tipoPro = excluded.tipoPro,
+        codigoQR = excluded.codigoQR,
+        skuPro = excluded.skuPro,
+        imagenPro = excluded.imagenPro,
+        idMarca = excluded.idMarca,
+        idCat = excluded.idCat,
+        pendienteSync = 0`,
+      [
+        Number(productoReal.idPro),
+        productoReal.nombrePro,
+        Number(productoReal.precioVentaPro || 0),
+        productoReal.costoPro !== null && productoReal.costoPro !== undefined ? Number(productoReal.costoPro) : null,
+        Number(productoReal.existenciaPro || 0),
+        productoReal.stockMinimoPro !== null && productoReal.stockMinimoPro !== undefined ? Number(productoReal.stockMinimoPro) : null,
+        productoReal.tamanoPro || null,
+        productoReal.presentacionPro || null,
+        productoReal.tipoPro || null,
+        productoReal.codigoQR || null,
+        productoReal.skuPro || null,
+        productoReal.imagenPro || null,
+        productoReal.idMarca ? Number(productoReal.idMarca) : null,
+        productoReal.idCat ? Number(productoReal.idCat) : null,
+      ],
+    );
+  }
+
+  async reemplazarPorProductoOnline(codigoQR: string, productoOnline: any): Promise<void> {
+    if (!this.disponible) return;
+    const db = await this.getDB();
+    if (codigoQR) {
+      await db.run(`DELETE FROM productos WHERE codigoQR = ? AND (idPro < 0 OR pendienteSync = 1)`, [codigoQR]);
+    }
+    await this.reconciliarProductoOffline(productoOnline.idPro, productoOnline);
+  }
+
+  // =========================
+  // MARCAS
+  // =========================
+  async sincronizarMarcas(marcas: any[]): Promise<void> {
+    if (!this.disponible || !Array.isArray(marcas)) return;
+    const db = await this.getDB();
+    const idsValidos: number[] = [];
+
+    for (const m of marcas) {
+      const idMarca = Number(m.idMarca);
+      if (!Number.isInteger(idMarca) || idMarca <= 0) continue;
+      idsValidos.push(idMarca);
+
+      await db.run(
+        `INSERT INTO marcas (idMarca, nombreMarca, descripMarca, pendienteSync)
+         VALUES (?, ?, ?, 0)
+         ON CONFLICT(idMarca) DO UPDATE SET
+           nombreMarca = excluded.nombreMarca,
+           descripMarca = excluded.descripMarca,
+           pendienteSync = 0`,
+        [idMarca, m.nombreMarca || '', m.descripMarca || null],
+      );
+    }
+
+    if (idsValidos.length > 0) {
+      const placeholders = idsValidos.map(() => '?').join(',');
+      await db.run(`DELETE FROM marcas WHERE idMarca NOT IN (${placeholders}) AND pendienteSync = 0`, idsValidos);
+    }
+  }
+
+  async getMarcasLocales(): Promise<any[]> {
+    if (!this.disponible) return [];
+    const db = await this.getDB();
+    const r = await db.query(`SELECT * FROM marcas ORDER BY nombreMarca ASC`);
+    return r.values || [];
+  }
+
+  async guardarMarcaOffline(dto: { nombre: string; descripcion?: string }): Promise<any> {
+    if (!this.disponible) throw new Error('SQLite no disponible');
+    const db = await this.getDB();
+    const idTemp = -Math.floor(Date.now() / 1000);
+    const uuid = `MARCA-${Math.abs(idTemp)}-${Date.now()}`;
+
+    await db.run(
+      `INSERT INTO marcas (idMarca, nombreMarca, descripMarca, pendienteSync)
+       VALUES (?, ?, ?, 1)`,
+      [idTemp, dto.nombre.trim(), dto.descripcion?.trim() || null],
+    );
+
+    await this.encolar('MARCA_CREAR', uuid, {
+      tempId: idTemp,
+      nombre: dto.nombre.trim(),
+      descripcion: dto.descripcion?.trim() || '',
+    }, 2);
+
+    return {
+      idMarca: idTemp,
+      nombreMarca: dto.nombre.trim(),
+      descripMarca: dto.descripcion?.trim() || null,
+      pendienteSync: 1,
+    };
+  }
+
+  async reconciliarMarcaOffline(idTemporal: number, marcaReal: any): Promise<void> {
+    if (!this.disponible) return;
+    const db = await this.getDB();
+    await db.run(`DELETE FROM marcas WHERE idMarca = ?`, [idTemporal]);
+    await db.run(
+      `INSERT INTO marcas (idMarca, nombreMarca, descripMarca, pendienteSync)
+       VALUES (?, ?, ?, 0)
+       ON CONFLICT(idMarca) DO UPDATE SET
+         nombreMarca = excluded.nombreMarca,
+         descripMarca = excluded.descripMarca,
+         pendienteSync = 0`,
+      [Number(marcaReal.idMarca), marcaReal.nombreMarca, marcaReal.descripMarca || null],
+    );
+    await db.run(`UPDATE productos SET idMarca = ? WHERE idMarca = ?`, [Number(marcaReal.idMarca), idTemporal]);
+  }
+
+  // =========================
+  // CATEGORIAS
+  // =========================
+  async sincronizarCategorias(categorias: any[]): Promise<void> {
+    if (!this.disponible || !Array.isArray(categorias)) return;
+    const db = await this.getDB();
+    const idsValidos: number[] = [];
+
+    for (const c of categorias) {
+      const idCat = Number(c.idCat);
+      if (!Number.isInteger(idCat) || idCat <= 0) continue;
+      idsValidos.push(idCat);
+
+      await db.run(
+        `INSERT INTO categorias (idCat, nombreCat, descripCat, pendienteSync)
+         VALUES (?, ?, ?, 0)
+         ON CONFLICT(idCat) DO UPDATE SET
+           nombreCat = excluded.nombreCat,
+           descripCat = excluded.descripCat,
+           pendienteSync = 0`,
+        [idCat, c.nombreCat || '', c.descripCat || null],
+      );
+    }
+
+    if (idsValidos.length > 0) {
+      const placeholders = idsValidos.map(() => '?').join(',');
+      await db.run(`DELETE FROM categorias WHERE idCat NOT IN (${placeholders}) AND pendienteSync = 0`, idsValidos);
+    }
+  }
+
+  async getCategoriasLocales(): Promise<any[]> {
+    if (!this.disponible) return [];
+    const db = await this.getDB();
+    const r = await db.query(`SELECT * FROM categorias ORDER BY nombreCat ASC`);
+    return r.values || [];
+  }
+
+  async guardarCategoriaOffline(dto: { nombre: string; descripcion?: string }): Promise<any> {
+    if (!this.disponible) throw new Error('SQLite no disponible');
+    const db = await this.getDB();
+    const idTemp = -Math.floor(Date.now() / 1000);
+    const uuid = `CAT-${Math.abs(idTemp)}-${Date.now()}`;
+
+    await db.run(
+      `INSERT INTO categorias (idCat, nombreCat, descripCat, pendienteSync)
+       VALUES (?, ?, ?, 1)`,
+      [idTemp, dto.nombre.trim(), dto.descripcion?.trim() || null],
+    );
+
+    await this.encolar('CATEGORIA_CREAR', uuid, {
+      tempId: idTemp,
+      nombre: dto.nombre.trim(),
+      descripcion: dto.descripcion?.trim() || '',
+    }, 2);
+
+    return {
+      idCat: idTemp,
+      nombreCat: dto.nombre.trim(),
+      descripCat: dto.descripcion?.trim() || null,
+      pendienteSync: 1,
+    };
+  }
+
+  async reconciliarCategoriaOffline(idTemporal: number, categoriaReal: any): Promise<void> {
+    if (!this.disponible) return;
+    const db = await this.getDB();
+    await db.run(`DELETE FROM categorias WHERE idCat = ?`, [idTemporal]);
+    await db.run(
+      `INSERT INTO categorias (idCat, nombreCat, descripCat, pendienteSync)
+       VALUES (?, ?, ?, 0)
+       ON CONFLICT(idCat) DO UPDATE SET
+         nombreCat = excluded.nombreCat,
+         descripCat = excluded.descripCat,
+         pendienteSync = 0`,
+      [Number(categoriaReal.idCat), categoriaReal.nombreCat, categoriaReal.descripCat || null],
+    );
+    await db.run(`UPDATE productos SET idCat = ? WHERE idCat = ?`, [Number(categoriaReal.idCat), idTemporal]);
   }
 }

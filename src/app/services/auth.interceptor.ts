@@ -20,13 +20,14 @@ export class AuthInterceptor implements HttpInterceptor {
     const esFlujoCliente =
       req.url.includes('/auth/google/cliente') || req.url.includes('/auth/cliente/') || req.url.includes('/cliente/');
     const esInicioSesion = req.url.includes('/auth/login') || req.url.includes('/auth/google');
-    const token = esInicioSesion ? null : esFlujoCliente ? this.clienteAuth.token : this.auth.token;
-    const autenticada = token ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : req;
+    const rawToken = esInicioSesion ? null : esFlujoCliente ? this.clienteAuth.token : this.auth.token;
+    const tokenValido = rawToken && !rawToken.startsWith('offline-token-') ? rawToken : null;
+    const autenticada = tokenValido ? req.clone({ setHeaders: { Authorization: `Bearer ${tokenValido}` } }) : req;
     return next.handle(autenticada).pipe(
       catchError((error: unknown) => {
         if (error instanceof HttpErrorResponse && error.status === 401 && !esInicioSesion) {
           if (esFlujoCliente) this.clienteAuth.limpiar();
-          else this.auth.limpiar();
+          else if (rawToken && !rawToken.startsWith('offline-token-')) this.auth.limpiar();
         }
         return throwError(() => error);
       }),
