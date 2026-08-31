@@ -4,6 +4,7 @@ import { extensionesImagen, generarPresignedUpload, s3Bucket, s3Region } from '.
 import { tiendaUploadDir } from '../../middlewares/upload.middleware';
 import { eliminarUploadControlado } from '../productos/productos.service';
 import { texto, textoNullable, errorFuncional } from '../../utils/formatters';
+import { toMarcaDto, toCategoriaDto, toSucursalDto, toSucursalPublicaDto } from '../../dtos/catalogo.dto';
 
 export function validarSucursal(sucursal: any): string | null {
   if (!texto(sucursal.nombreSuc)) return 'El nombre de la sucursal es obligatorio';
@@ -41,9 +42,10 @@ export function validarSucursal(sucursal: any): string | null {
 export class CatalogosService {
   // MARCAS
   async listarMarcas() {
-    return await prisma.marca.findMany({
+    const marcas = await prisma.marca.findMany({
       orderBy: { nombreMarca: 'asc' },
     });
+    return marcas.map(toMarcaDto);
   }
 
   async crearMarca(nombre: string, descripcion?: string | null) {
@@ -51,12 +53,13 @@ export class CatalogosService {
     if (!nombreLimpio) {
       throw errorFuncional('El nombre de la marca es obligatorio', 400);
     }
-    return await prisma.marca.create({
+    const marca = await prisma.marca.create({
       data: {
         nombreMarca: nombreLimpio,
         descripMarca: textoNullable(descripcion),
       },
     });
+    return toMarcaDto(marca);
   }
 
   async actualizarMarca(idMarca: number, nombre: string, descripcion?: string | null) {
@@ -64,13 +67,14 @@ export class CatalogosService {
     if (!nombreLimpio) {
       throw errorFuncional('El nombre de la marca es obligatorio', 400);
     }
-    return await prisma.marca.update({
+    const marca = await prisma.marca.update({
       where: { idMarca },
       data: {
         nombreMarca: nombreLimpio,
         descripMarca: textoNullable(descripcion),
       },
     });
+    return toMarcaDto(marca);
   }
 
   async eliminarMarca(idMarca: number) {
@@ -84,9 +88,10 @@ export class CatalogosService {
 
   // CATEGORÍAS
   async listarCategorias() {
-    return await prisma.categoria.findMany({
+    const categorias = await prisma.categoria.findMany({
       orderBy: { nombreCat: 'asc' },
     });
+    return categorias.map(toCategoriaDto);
   }
 
   async crearCategoria(nombre: string, descripcion?: string | null) {
@@ -94,12 +99,13 @@ export class CatalogosService {
     if (!nombreLimpio) {
       throw errorFuncional('El nombre de la categoría es obligatorio', 400);
     }
-    return await prisma.categoria.create({
+    const categoria = await prisma.categoria.create({
       data: {
         nombreCat: nombreLimpio,
         descripCat: textoNullable(descripcion),
       },
     });
+    return toCategoriaDto(categoria);
   }
 
   async actualizarCategoria(idCat: number, nombre: string, descripcion?: string | null) {
@@ -107,13 +113,14 @@ export class CatalogosService {
     if (!nombreLimpio) {
       throw errorFuncional('El nombre de la categoría es obligatorio', 400);
     }
-    return await prisma.categoria.update({
+    const categoria = await prisma.categoria.update({
       where: { idCat },
       data: {
         nombreCat: nombreLimpio,
         descripCat: textoNullable(descripcion),
       },
     });
+    return toCategoriaDto(categoria);
   }
 
   async eliminarCategoria(idCat: number) {
@@ -131,26 +138,7 @@ export class CatalogosService {
       where: { idSuc },
       include: { direccion: true },
     });
-    if (!s) return null;
-    const d = s.direccion;
-    const direccionStr = d
-      ? [d.calle, [d.noExt, d.noInt].filter(Boolean).join(' '), d.colonia, d.municipio, d.estado, d.codPostal, d.pais]
-          .filter(Boolean)
-          .join(', ') || null
-      : null;
-
-    return {
-      idSuc: s.idSuc,
-      nombreSuc: s.nombreSuc,
-      descripcionSuc: s.descripcionSuc,
-      telefonoSuc: s.telefonoSuc,
-      correoSuc: s.correoSuc,
-      paginaWebSuc: s.paginaWebSuc,
-      redSocialSuc: s.redSocialSuc,
-      logoSuc: s.logoSuc,
-      idDir: s.idDir,
-      direccion: direccionStr,
-    };
+    return toSucursalDto(s);
   }
 
   async listarSucursales() {
@@ -158,26 +146,7 @@ export class CatalogosService {
       orderBy: [{ nombreSuc: 'asc' }, { idSuc: 'asc' }],
       include: { direccion: true },
     });
-    return sucursales.map((s) => {
-      const d = s.direccion;
-      const direccionStr = d
-        ? [d.calle, [d.noExt, d.noInt].filter(Boolean).join(' '), d.colonia, d.municipio, d.estado, d.codPostal, d.pais]
-            .filter(Boolean)
-            .join(', ') || null
-        : null;
-      return {
-        idSuc: s.idSuc,
-        nombreSuc: s.nombreSuc,
-        descripcionSuc: s.descripcionSuc,
-        telefonoSuc: s.telefonoSuc,
-        correoSuc: s.correoSuc,
-        paginaWebSuc: s.paginaWebSuc,
-        redSocialSuc: s.redSocialSuc,
-        logoSuc: s.logoSuc,
-        idDir: s.idDir,
-        direccion: direccionStr,
-      };
-    });
+    return sucursales.map(toSucursalDto);
   }
 
   async crearSucursal(body: any) {
@@ -243,8 +212,8 @@ export class CatalogosService {
 
     await prisma.sucursal.update({ where: { idSuc }, data: { logoSuc: rutaFinal } });
 
-    if (anterior.logoSuc && anterior.logoSuc !== rutaFinal) {
-      eliminarUploadControlado(anterior.logoSuc, tiendaUploadDir, '/uploads/tienda/');
+    if (anterior.logo && anterior.logo !== rutaFinal) {
+      eliminarUploadControlado(anterior.logo, tiendaUploadDir, '/uploads/tienda/');
     }
 
     return await this.obtenerSucursal(idSuc);
@@ -256,7 +225,7 @@ export class CatalogosService {
       throw errorFuncional('Sucursal no encontrada', 404);
     }
     await prisma.sucursal.update({ where: { idSuc }, data: { logoSuc: null } });
-    eliminarUploadControlado(anterior.logoSuc, tiendaUploadDir, '/uploads/tienda/');
+    eliminarUploadControlado(anterior.logo, tiendaUploadDir, '/uploads/tienda/');
     return await this.obtenerSucursal(idSuc);
   }
 
@@ -283,3 +252,6 @@ export class CatalogosService {
 }
 
 export const catalogosService = new CatalogosService();
+
+
+

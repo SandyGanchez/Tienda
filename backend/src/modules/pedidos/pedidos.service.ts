@@ -14,7 +14,8 @@ import {
   s3Region,
 } from '../../config/s3';
 import { comprobantesUploadDir } from '../../middlewares/upload.middleware';
-import { dineroCentavos, errorFuncional, idValido, texto, uuidValido } from '../../utils/formatters';
+import { dineroCentavos, errorFuncional, idValido,
+  encodeId, texto, uuidValido } from '../../utils/formatters';
 
 const HORAS_RESERVA_PEDIDO = 2;
 const MAX_TOTAL_PEDIDO_CENTAVOS = 9999999999;
@@ -45,7 +46,7 @@ export function normalizarConfiguracionTransferencia(row: any, incluirAdministra
 
 export function normalizarPedido(row: any) {
   return {
-    idPedido: Number(row.idPedido),
+    id: encodeId(Number(row.idPedido)),
     folio: folioPedido(row.idPedido),
     uuidPedido: row.uuidPedido,
     fechaPedido: row.fechaPedido,
@@ -55,7 +56,7 @@ export function normalizarPedido(row: any) {
     tieneComprobante: Boolean(row.comprobanteRuta),
     fechaComprobante: row.fechaComprobante || null,
     motivoRechazo: row.motivoRechazo || null,
-    idVenta: row.idVenta === null || row.idVenta === undefined ? null : Number(row.idVenta),
+    idVenta: row.idVenta === null || row.idVenta === undefined ? null : encodeId(Number(row.idVenta)),
     fechaRevision: row.fechaRevision || null,
   };
 }
@@ -64,7 +65,7 @@ export function normalizarPedidoAdmin(row: any) {
   return {
     ...normalizarPedido(row),
     cliente: {
-      idCliente: Number(row.cliente?.idCliente || row.idCliente),
+      id: encodeId(Number(row.cliente?.idCliente || row.idCliente)),
       nombre: [row.cliente?.nombreCliente, row.cliente?.apellidoPatCliente, row.cliente?.apellidoMatCliente]
         .filter(Boolean)
         .join(' '),
@@ -230,7 +231,7 @@ export class PedidosService {
     return {
       ...normalizarPedido(p),
       items: p.detalles.map((d) => ({
-        idPro: d.idPro,
+        productoId: encodeId(d.idPro),
         nombre: d.producto?.nombrePro || 'Producto',
         imagen: d.producto?.imagenPro || null,
         presentacion: [d.producto?.tamanoPro, d.producto?.presentacionPro].filter(Boolean).join(' · ') || null,
@@ -610,7 +611,7 @@ export class PedidosService {
           detalles: {
             create: pedido.detalles.map((d) => ({
               idPro: d.idPro,
-              cantidadDetVenta: d.cantidad,
+                cantidadDetVenta: d.cantidad,
               precioUnitarioDetVenta: Number(d.precioUnitario),
               subtotalDetVenta: Number(d.subtotal),
             })),
@@ -655,3 +656,7 @@ export class PedidosService {
 }
 
 export const pedidosService = new PedidosService();
+
+
+
+

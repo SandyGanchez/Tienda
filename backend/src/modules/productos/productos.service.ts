@@ -5,6 +5,7 @@ import { env } from '../../config/env';
 import { eliminarObjetoS3, esUrlS3, generarPresignedUpload } from '../../config/s3';
 import { productosUploadDir } from '../../middlewares/upload.middleware';
 import { idValido, texto, textoNullable, errorFuncional } from '../../utils/formatters';
+import { toProductoDto, toProductoListDto } from '../../dtos/producto.dto';
 
 export function validarProducto(producto: any): string | null {
   if (!texto(producto.nombre)) return 'El nombre del producto es obligatorio';
@@ -61,31 +62,13 @@ export class ProductosService {
       },
     });
     if (!p) return null;
-    return {
-      idPro: p.idPro,
-      nombrePro: p.nombrePro,
-      precioVentaPro: Number(p.precioVentaPro),
-      costoPro: p.costoPro !== null && p.costoPro !== undefined ? Number(p.costoPro) : null,
-      existenciaPro: p.existenciaPro,
-      stockMinimoPro: p.stockMinimoPro,
-      tamanoPro: p.tamanoPro,
-      presentacionPro: p.presentacionPro,
-      tipoPro: p.tipoPro,
-      codigoQR: p.codigoQR,
-      skuPro: p.skuPro,
-      imagenPro: p.imagenPro,
-      idMarca: p.idMarca,
-      idCat: p.idCat,
-      nombreMarca: p.marca?.nombreMarca || null,
-      nombreCat: p.categoria?.nombreCat || null,
-      activoPro: p.activoPro,
-    };
+    return toProductoDto(p);
   }
 
   async validarCatalogosProducto(producto: any): Promise<string | null> {
     const [marca, categoria] = await Promise.all([
-      producto.idMarca ? prisma.marca.findUnique({ where: { idMarca: Number(producto.idMarca) } }) : null,
-      producto.idCat ? prisma.categoria.findUnique({ where: { idCat: Number(producto.idCat) } }) : null,
+      producto.idMarca ? prisma.marca.findUnique({ where: { idMarca: idValido(producto.idMarca)! } }) : null,
+      producto.idCat ? prisma.categoria.findUnique({ where: { idCat: idValido(producto.idCat)! } }) : null,
     ]);
     if (producto.idMarca && !marca) return 'La marca seleccionada no existe';
     if (producto.idCat && !categoria) return 'La categoría seleccionada no existe';
@@ -113,25 +96,7 @@ export class ProductosService {
         categoria: true,
       },
     });
-    return productos.map((p) => ({
-      idPro: p.idPro,
-      nombrePro: p.nombrePro,
-      precioVentaPro: Number(p.precioVentaPro),
-      costoPro: p.costoPro !== null && p.costoPro !== undefined ? Number(p.costoPro) : null,
-      existenciaPro: p.existenciaPro,
-      stockMinimoPro: p.stockMinimoPro,
-      tamanoPro: p.tamanoPro,
-      presentacionPro: p.presentacionPro,
-      tipoPro: p.tipoPro,
-      codigoQR: p.codigoQR,
-      skuPro: p.skuPro,
-      imagenPro: p.imagenPro,
-      idMarca: p.idMarca,
-      idCat: p.idCat,
-      nombreMarca: p.marca?.nombreMarca || null,
-      nombreCat: p.categoria?.nombreCat || null,
-      activoPro: p.activoPro,
-    }));
+    return productos.map((p) => toProductoListDto(p));
   }
 
   async listarPos() {
@@ -143,19 +108,7 @@ export class ProductosService {
         categoria: true,
       },
     });
-    return productos.map((p) => ({
-      idPro: p.idPro,
-      nombrePro: p.nombrePro,
-      precioVentaPro: Number(p.precioVentaPro),
-      existenciaPro: p.existenciaPro || 0,
-      codigoQR: p.codigoQR,
-      skuPro: p.skuPro,
-      imagenPro: p.imagenPro,
-      tamanoPro: p.tamanoPro,
-      presentacionPro: p.presentacionPro,
-      nombreMarca: p.marca?.nombreMarca || null,
-      nombreCat: p.categoria?.nombreCat || null,
-    }));
+    return productos.map((p) => toProductoListDto(p));
   }
 
   async listarPublico() {
@@ -167,18 +120,7 @@ export class ProductosService {
         categoria: true,
       },
     });
-    return productos.map((p) => ({
-      idPro: p.idPro,
-      nombrePro: p.nombrePro,
-      precioVentaPro: Number(p.precioVentaPro),
-      existenciaPro: p.existenciaPro,
-      tamanoPro: p.tamanoPro,
-      presentacionPro: p.presentacionPro,
-      tipoPro: p.tipoPro,
-      imagenPro: p.imagenPro,
-      nombreMarca: p.marca?.nombreMarca || null,
-      nombreCat: p.categoria?.nombreCat || null,
-    }));
+    return productos.map((p) => toProductoListDto(p));
   }
 
   async buscarPorQR(codigoQR: string) {
@@ -190,25 +132,7 @@ export class ProductosService {
       },
     });
     if (!p) return null;
-    return {
-      idPro: p.idPro,
-      nombrePro: p.nombrePro,
-      precioVentaPro: Number(p.precioVentaPro),
-      costoPro: p.costoPro !== null && p.costoPro !== undefined ? Number(p.costoPro) : null,
-      existenciaPro: p.existenciaPro,
-      stockMinimoPro: p.stockMinimoPro,
-      tamanoPro: p.tamanoPro,
-      presentacionPro: p.presentacionPro,
-      tipoPro: p.tipoPro,
-      codigoQR: p.codigoQR,
-      skuPro: p.skuPro,
-      imagenPro: p.imagenPro,
-      idMarca: p.idMarca,
-      idCat: p.idCat,
-      nombreMarca: p.marca?.nombreMarca || null,
-      nombreCat: p.categoria?.nombreCat || null,
-      activoPro: p.activoPro,
-    };
+    return toProductoDto(p);
   }
 
   async consultarExterno(codigo: string) {
@@ -273,8 +197,8 @@ export class ProductosService {
         codigoQR: textoNullable(body.codigoQR),
         skuPro: textoNullable(body.sku),
         imagenPro: textoNullable(body.imagen),
-        idMarca: body.idMarca ? Number(body.idMarca) : null,
-        idCat: body.idCat ? Number(body.idCat) : null,
+        idMarca: body.idMarca ? idValido(body.idMarca) : null,
+        idCat: body.idCat ? idValido(body.idCat) : null,
       },
     });
 
@@ -314,8 +238,8 @@ export class ProductosService {
         codigoQR: textoNullable(body.codigoQR),
         skuPro: textoNullable(body.sku),
         imagenPro: textoNullable(body.imagen),
-        idMarca: body.idMarca ? Number(body.idMarca) : null,
-        idCat: body.idCat ? Number(body.idCat) : null,
+        idMarca: body.idMarca ? idValido(body.idMarca) : null,
+        idCat: body.idCat ? idValido(body.idCat) : null,
       },
     });
 
@@ -331,7 +255,7 @@ export class ProductosService {
       folder: 'productos',
       mimeType,
       extensionOriginal: extension,
-      nombreArchivoOriginal: producto.nombrePro,
+      nombreArchivoOriginal: producto.nombre,
     });
   }
 
@@ -377,8 +301,8 @@ export class ProductosService {
       throw error;
     }
 
-    if (producto.imagenPro) {
-      eliminarUploadControlado(producto.imagenPro, productosUploadDir, '/uploads/productos/');
+    if (producto.imagen) {
+      eliminarUploadControlado(producto.imagen, productosUploadDir, '/uploads/productos/');
     }
 
     await prisma.producto.delete({ where: { idPro } });
@@ -387,3 +311,9 @@ export class ProductosService {
 }
 
 export const productosService = new ProductosService();
+
+
+
+
+
+

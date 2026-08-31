@@ -1,5 +1,6 @@
 import { prisma, DbClient } from '../../config/prisma';
-import { errorFuncional, idValido, texto, dineroCentavos, uuidValido } from '../../utils/formatters';
+import { errorFuncional, idValido,
+  encodeId, texto, dineroCentavos, uuidValido } from '../../utils/formatters';
 
 export function normalizarCaja(caja: any) {
   if (!caja) return null;
@@ -16,6 +17,9 @@ export function normalizarCaja(caja: any) {
     'diferencia',
   ];
   const resultado: any = {
+    id: encodeId(caja.idSesionCaja),
+    empleadoId: encodeId(caja.idEmp),
+    sucursalId: encodeId(caja.idSuc),
     ...caja,
     empleado: caja.empleado
       ? [caja.empleado.nombreEmp, caja.empleado.apellidoPatEmp, caja.empleado.apellidoMatEmp].filter(Boolean).join(' ')
@@ -26,6 +30,10 @@ export function normalizarCaja(caja: any) {
     resultado[campo] = resultado[campo] === null || resultado[campo] === undefined ? null : Number(resultado[campo]);
   }
   resultado.numeroVentas = Number(resultado.numeroVentas) || 0;
+  
+  delete resultado.idSesionCaja;
+  delete resultado.idEmp;
+  delete resultado.idSuc;
   return resultado;
 }
 
@@ -304,6 +312,7 @@ export class CajaService {
       ...normalizada,
       movimientos: caja.movimientos.map((m) => ({
         ...m,
+        id: encodeId(m.idMovimientoCaja),
         monto: Number(m.monto),
       })),
     };

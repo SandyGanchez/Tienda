@@ -1,5 +1,6 @@
 import { prisma } from '../../config/prisma';
 import { hashPassword, empleadoSeguro } from '../../utils/security';
+import { toEmpleadoDto } from '../../dtos/usuario.dto';
 import { idValido, texto, textoNullable, errorFuncional } from '../../utils/formatters';
 
 export class EmpleadosService {
@@ -13,14 +14,7 @@ export class EmpleadosService {
       },
     });
 
-    return empleados.map((e) =>
-      empleadoSeguro({
-        ...e,
-        cargo: e.cargo?.nombreCargo,
-        idSuc: e.cargo?.idSuc,
-        nombreSuc: e.cargo?.sucursal?.nombreSuc,
-      }),
-    );
+    return empleados.map(toEmpleadoDto);
   }
 
   async crear(body: any) {
@@ -64,12 +58,7 @@ export class EmpleadosService {
       },
     });
 
-    return empleadoSeguro({
-      ...empleado,
-      cargo: empleado.cargo?.nombreCargo,
-      idSuc: empleado.cargo?.idSuc,
-      nombreSuc: empleado.cargo?.sucursal?.nombreSuc,
-    });
+    return toEmpleadoDto(empleado);
   }
 
   async actualizar(idEmp: number, body: any) {
@@ -123,12 +112,7 @@ export class EmpleadosService {
       },
     });
 
-    return empleadoSeguro({
-      ...empleado,
-      cargo: empleado.cargo?.nombreCargo,
-      idSuc: empleado.cargo?.idSuc,
-      nombreSuc: empleado.cargo?.sucursal?.nombreSuc,
-    });
+    return toEmpleadoDto(empleado);
   }
 
   async cambiarEstado(idEmp: number, idEmpSesion: number, estado: boolean) {
@@ -146,12 +130,7 @@ export class EmpleadosService {
       },
     });
 
-    return empleadoSeguro({
-      ...empleado,
-      cargo: empleado.cargo?.nombreCargo,
-      idSuc: empleado.cargo?.idSuc,
-      nombreSuc: empleado.cargo?.sucursal?.nombreSuc,
-    });
+    return toEmpleadoDto(empleado);
   }
 }
 

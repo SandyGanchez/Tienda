@@ -126,7 +126,7 @@ export class CatalogosController {
       const rutaPublica = `/uploads/tienda/${req.file.filename}`;
       await prisma.sucursal.update({ where: { idSuc }, data: { logoSuc: rutaPublica } });
       const sucursal = await catalogosService.obtenerSucursal(idSuc);
-      eliminarUploadControlado(anterior.logoSuc, tiendaUploadDir, '/uploads/tienda/');
+      eliminarUploadControlado(anterior.logo, tiendaUploadDir, '/uploads/tienda/');
       res.json(sucursal);
     } catch (error) {
       fs.unlink(req.file.path, () => undefined);
@@ -189,3 +189,5 @@ export class CatalogosController {
 }
 
 export const catalogosController = new CatalogosController();
+
+

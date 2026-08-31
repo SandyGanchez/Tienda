@@ -1,7 +1,20 @@
 import fs from 'fs';
 import path from 'path';
+import Hashids from 'hashids';
+import { env } from '../config/env';
+
+const hashids = new Hashids(env.JWT_SECRET || 'TiendaSecret123', 8);
+
+export function encodeId(id: number | null | undefined): string | null {
+  if (id === null || id === undefined) return null;
+  return hashids.encode(id);
+}
 
 export function idValido(id: unknown): number | null {
+  if (typeof id === 'string' && isNaN(Number(id))) {
+    const decoded = hashids.decode(id);
+    if (decoded.length > 0) return Number(decoded[0]);
+  }
   const n = Number(id);
   return Number.isInteger(n) && n > 0 ? n : null;
 }

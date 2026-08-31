@@ -7,8 +7,10 @@ import {
   idValido,
   texto,
   uuidValido,
+  encodeId,
 } from '../../utils/formatters';
 import { empleadoSeguro } from '../../utils/security';
+import { toVentaRegistradaDto, toVentaListDto, toVentaDetalleDto } from '../../dtos/venta.dto';
 
 export class VentasService {
   async obtenerVentaRegistrada(idVenta: number, empleado: any, client: DbClient = prisma) {
@@ -24,28 +26,7 @@ export class VentasService {
     });
     if (!v) return null;
 
-    return {
-      idVenta: v.idVenta,
-      uuidVenta: v.uuidVenta,
-      idSesionCaja: v.idSesionCaja,
-      fechaVenta: formatearFechaVenta(v.fechaVenta),
-      horaVenta: formatearHoraVenta(v.horaVenta),
-      total: Number(v.total),
-      metodoPago: v.metodoPago,
-      montoRecibido: v.montoRecibido !== null && v.montoRecibido !== undefined ? Number(v.montoRecibido) : null,
-      cambio: Number(v.cambio),
-      estadoVenta: v.estadoVenta,
-      idEmp: v.idEmp,
-      idSuc: v.idSuc,
-      cajero: { idEmp: Number(v.idEmp), nombre: empleadoSeguro(empleado).nombre },
-      items: v.detalles.map((d) => ({
-        idPro: d.idPro,
-        nombre: d.producto?.nombrePro || 'Producto',
-        cantidad: d.cantidadDetVenta,
-        precioUnitario: Number(d.precioUnitarioDetVenta),
-        subtotal: Number(d.subtotalDetVenta),
-      })),
-    };
+    return toVentaRegistradaDto(v, empleado);
   }
 
   async crearVenta(empleado: any, body: any) {
@@ -226,13 +207,7 @@ export class VentasService {
         },
       });
 
-      return {
-        idVenta: actualizada.idVenta,
-        estadoVenta: actualizada.estadoVenta,
-        fechaCancelacion: actualizada.fechaCancelacion?.toISOString() || null,
-        motivoCancelacion: actualizada.motivoCancelacion,
-        idEmpCancela: actualizada.idEmpCancela,
-      };
+      return { id: encodeId(actualizada.idVenta), estado: actualizada.estadoVenta, fechaCancelacion: actualizada.fechaCancelacion?.toISOString() || null, motivoCancelacion: actualizada.motivoCancelacion, cajeroCancelaId: encodeId(actualizada.idEmpCancela), };
     });
   }
 
@@ -248,26 +223,7 @@ export class VentasService {
       },
     });
 
-    return ventas.map((v) => {
-      const cajeroStr = v.empleado
-        ? [v.empleado.nombreEmp, v.empleado.apellidoPatEmp, v.empleado.apellidoMatEmp].filter(Boolean).join(' ')
-        : null;
-      const origenVenta = v.pedidos && v.pedidos.length > 0 ? 'ONLINE' : 'POS';
-
-      return {
-        idVenta: v.idVenta,
-        fechaVenta: formatearFechaVenta(v.fechaVenta),
-        horaVenta: formatearHoraVenta(v.horaVenta),
-        total: Number(v.total),
-        metodoPago: v.metodoPago,
-        estadoVenta: v.estadoVenta,
-        idEmp: v.idEmp,
-        idSesionCaja: v.idSesionCaja,
-        uuidVenta: v.uuidVenta,
-        origenVenta,
-        cajero: cajeroStr,
-      };
-    });
+    return ventas.map(toVentaListDto);
   }
 
   async detalleVenta(idVenta: number, empleado: { idEmp: number; idSuc: number; cargo: string }) {
@@ -302,37 +258,7 @@ export class VentasService {
       : null;
     const origenVenta = v.pedidos && v.pedidos.length > 0 ? 'ONLINE' : 'POS';
 
-    return {
-      idVenta: v.idVenta,
-      uuidVenta: v.uuidVenta,
-      idSesionCaja: v.idSesionCaja,
-      fechaVenta: formatearFechaVenta(v.fechaVenta),
-      horaVenta: formatearHoraVenta(v.horaVenta),
-      total: Number(v.total),
-      metodoPago: v.metodoPago,
-      montoRecibido: v.montoRecibido !== null && v.montoRecibido !== undefined ? Number(v.montoRecibido) : null,
-      cambio: Number(v.cambio),
-      estadoVenta: v.estadoVenta,
-      fechaCancelacion: v.fechaCancelacion?.toISOString() || null,
-      motivoCancelacion: v.motivoCancelacion,
-      idEmpCancela: v.idEmpCancela,
-      cajeroCancela: canceladorStr,
-      idEmp: v.idEmp,
-      idSuc: v.idSuc,
-      nombreSuc: v.sucursal?.nombreSuc || null,
-      origenVenta,
-      cajero: { idEmp: Number(v.idEmp), nombre: cajeroStr },
-      items: v.detalles.map((d) => ({
-        idDetVenta: d.idDetVenta,
-        idPro: d.idPro,
-        nombre: d.producto?.nombrePro || 'Producto',
-        codigoQR: d.producto?.codigoQR || null,
-        skuPro: d.producto?.skuPro || null,
-        cantidad: d.cantidadDetVenta,
-        precioUnitario: Number(d.precioUnitarioDetVenta),
-        subtotal: Number(d.subtotalDetVenta),
-      })),
-    };
+    return toVentaDetalleDto(v);
   }
 }
 
