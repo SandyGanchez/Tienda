@@ -1,41 +1,60 @@
-<app-cliente-shell
-  ><ion-content class="orders-page"
-    ><main class="orders-container">
-      <header>
-        <span>Tu actividad</span>
-        <h1>Mis pedidos</h1>
-        <p>Consulta tus reservas, pagos y el estado de cada pedido.</p>
-      </header>
-      <section class="loading-orders" *ngIf="cargando">
-        <ion-spinner name="crescent"></ion-spinner>
-        <p>Cargando pedidos…</p>
-      </section>
-      <section class="empty-orders" *ngIf="!cargando && pedidos.length === 0">
-        <span class="illustration"><ion-icon name="receipt-outline"></ion-icon></span>
-        <h2>Aún no tienes pedidos</h2>
-        <p>Cuando reserves productos, aquí podrás consultar su estado y detalle.</p>
-        <ion-button routerLink="/catalogo" shape="round">Explorar productos</ion-button>
-      </section>
-      <section class="orders-grid" *ngIf="!cargando && pedidos.length">
-        <article *ngFor="let pedido of pedidos">
-          <div class="order-top">
-            <div>
-              <span>Pedido</span>
-              <h2>{{ pedido.folio }}</h2>
-            </div>
-            <span class="status" [attr.data-status]="pedido.estado">{{ etiqueta(pedido.estado) }}</span>
+<app-cliente-shell>
+  <div class="px-container-margin py-md min-h-[calc(100vh-140px)] flex flex-col">
+    <!-- Header -->
+    <header class="mb-lg">
+      <span class="font-label-sm text-outline tracking-wider uppercase">Tu actividad</span>
+      <h1 class="font-display-lg-mobile text-primary font-bold">Mis pedidos</h1>
+      <p class="font-body-md text-on-surface-variant mt-1">Consulta tus reservas, pagos y el estado de cada pedido.</p>
+    </header>
+
+    <!-- Loading State -->
+    <section *ngIf="cargando" class="flex flex-col items-center justify-center py-12 gap-4 flex-1">
+      <ion-spinner name="crescent" color="primary"></ion-spinner>
+      <p class="text-on-surface-variant font-label-md">Cargando pedidos...</p>
+    </section>
+
+    <!-- Empty State -->
+    <section *ngIf="!cargando && pedidos.length === 0" class="flex flex-col items-center justify-center py-12 text-center flex-1">
+      <div class="w-24 h-24 bg-surface-variant rounded-full flex items-center justify-center mb-6 text-primary shadow-pastel">
+        <span class="material-symbols-outlined text-[48px]">receipt_long</span>
+      </div>
+      <h2 class="font-headline-md font-bold text-on-surface mb-2">Aún no tienes pedidos</h2>
+      <p class="font-body-md text-on-surface-variant mb-8 max-w-[280px]">Cuando reserves productos, aquí podrás consultar su estado y detalle.</p>
+      <button routerLink="/catalogo" class="bg-primary text-white font-label-md px-8 py-3 rounded-full hover:bg-primary-shade transition-colors shadow-pastel-lg active:scale-95">
+        Explorar productos
+      </button>
+    </section>
+
+    <!-- Orders List -->
+    <section class="flex flex-col gap-md pb-24" *ngIf="!cargando && pedidos.length">
+      
+      <article *ngFor="let pedido of pedidos" class="bg-surface-container-lowest rounded-[16px] shadow-pastel p-md border border-transparent hover:border-surface-variant transition-colors">
+        <div class="flex justify-between items-start mb-sm">
+          <div>
+            <h4 class="font-label-md text-on-surface font-bold text-[16px]">Pedido {{ pedido.folio }}</h4>
+            <p class="font-label-sm text-on-surface-variant mt-xs">{{ pedido.fechaPedido | date:'mediumDate' }}</p>
           </div>
-          <dl>
-            <div>
-              <dt>Fecha</dt>
-              <dd>{{ pedido.fechaPedido | date:'mediumDate' }}</dd>
-            </div>
-            <div>
-              <dt>Total</dt>
-              <dd>{{ pedido.total | currency:'MXN':'symbol-narrow':'1.2-2' }}</dd>
-            </div>
-          </dl>
-          <a [routerLink]="[pedido.id]">Ver pedido <ion-icon name="arrow-forward-outline"></ion-icon></a>
-        </article>
-      </section></main></ion-content
-></app-cliente-shell>
+          <!-- Etiqueta de estado -->
+          <span class="font-label-sm px-3 py-1 rounded-full flex items-center gap-1 font-bold"
+                [ngClass]="{
+                  'bg-[#d7bcec]/30 text-primary': pedido.estado === 'PENDIENTE_PAGO' || pedido.estado === 'LISTO' || pedido.estado === 'PAGADO',
+                  'text-secondary': pedido.estado === 'ENTREGADO',
+                  'text-outline bg-surface-variant': pedido.estado === 'CANCELADO' || pedido.estado === 'RECHAZADO'
+                }">
+            <span class="material-symbols-outlined text-[14px]">{{ pedido.estado === 'ENTREGADO' ? 'check_circle' : (pedido.estado === 'LISTO' ? 'storefront' : 'info') }}</span>
+            {{ etiqueta(pedido.estado) }}
+          </span>
+        </div>
+        
+        <div class="flex justify-between items-center border-t border-surface-variant/50 pt-md mt-sm">
+          <span class="font-label-md text-primary font-bold text-[18px]">{{ pedido.total | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+          <button [routerLink]="[pedido.id]" class="bg-surface-container-high text-primary px-4 py-2 rounded-lg font-label-sm hover:bg-surface-variant transition-colors flex items-center gap-2 active:scale-95">
+            Ver detalle
+            <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+          </button>
+        </div>
+      </article>
+
+    </section>
+  </div>
+</app-cliente-shell>

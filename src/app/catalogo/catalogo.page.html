@@ -1,112 +1,129 @@
 <app-cliente-shell>
-  <ion-content class="catalog-page">
-    <main class="catalog-container">
-      <section class="catalog-intro">
-        <div>
-          <span class="eyebrow">Compra fácil y cerca de ti</span>
-          <h1>{{ nombreCliente ? 'Hola, ' + nombreCliente : 'Nuestro catálogo' }}</h1>
-          <p>Explora los productos disponibles y arma tu carrito con tranquilidad.</p>
-        </div>
-        <div class="search-panel" aria-label="Filtros del catálogo">
-          <ion-searchbar
-            [(ngModel)]="busqueda"
-            placeholder="Buscar productos o marcas"
-            debounce="150"
-            aria-label="Buscar productos"
-          >
-          </ion-searchbar>
-          <ion-select [(ngModel)]="marca" interface="popover" aria-label="Filtrar por marca">
-            <ion-select-option value="todas">Todas las marcas</ion-select-option>
-            <ion-select-option *ngFor="let opcion of marcas" [value]="opcion">{{ opcion }}</ion-select-option>
-          </ion-select>
-        </div>
-      </section>
-
-      <nav class="category-strip" aria-label="Categorías de productos">
-        <button type="button" [class.active]="categoria === 'todas'" (click)="seleccionarCategoria('todas')">
-          Todo
+  <div class="px-container-margin pt-md flex flex-col gap-lg w-full">
+    <!-- Search -->
+    <div class="relative">
+      <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        <span class="material-symbols-outlined text-primary">search</span>
+      </div>
+      <input 
+        class="block w-full pl-10 pr-12 py-3 bg-[#F8F7F8] border-none rounded-xl focus:ring-1 focus:ring-primary focus:bg-white font-body-md text-on-surface placeholder:text-outline transition-colors duration-200" 
+        placeholder="Buscar por producto, marca o código..." 
+        type="text"
+        [(ngModel)]="busqueda"
+        (ngModelChange)="busqueda = $event"
+      />
+      <div class="absolute inset-y-0 right-0 pr-2 flex items-center">
+        <!-- Optional barcode scanner button (could be implemented later) -->
+        <button class="p-2 text-primary hover:bg-surface-variant/50 rounded-full transition-colors active:scale-95">
+          <span class="material-symbols-outlined">barcode_scanner</span>
         </button>
-        <button
-          type="button"
-          *ngFor="let opcion of categorias"
-          [class.active]="categoria === opcion"
-          (click)="seleccionarCategoria(opcion)"
-        >
-          {{ opcion }}
-        </button>
-      </nav>
+      </div>
+    </div>
 
-      <section *ngIf="cargando" class="state-card" aria-live="polite">
-        <ion-spinner name="crescent"></ion-spinner>
-        <p>Cargando productos…</p>
-      </section>
+    <!-- Promo Banner (Only show if no search/filters are active) -->
+    <div *ngIf="!busqueda && categoria === 'todas' && marca === 'todas'" class="relative rounded-2xl overflow-hidden shadow-pastel-lg group cursor-pointer active:scale-[0.98] transition-transform duration-300">
+      <div class="absolute inset-0 bg-gradient-to-r from-primary-container via-[#8F8598] to-primary-container opacity-90"></div>
+      <div class="absolute -top-10 -right-10 w-32 h-32 bg-[#F2BEAD] rounded-full mix-blend-overlay opacity-50 blur-xl"></div>
+      <div class="absolute -bottom-10 -left-10 w-24 h-24 bg-[#F2BEAD] rounded-full mix-blend-overlay opacity-50 blur-lg"></div>
+      
+      <div class="relative p-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-md z-10">
+        <div class="flex-1 text-white">
+          <span class="inline-block bg-white/20 backdrop-blur-sm text-white font-label-sm px-2 py-1 rounded-md mb-2 uppercase tracking-wider">Especial de la Semana</span>
+          <h2 class="font-headline-md font-bold mb-2 md:text-display-lg-mobile md:leading-tight">15% de descuento en Bebidas y Botanas</h2>
+          <button class="mt-2 bg-white text-primary-container font-label-md px-6 py-2 rounded-full hover:bg-surface-container-lowest transition-colors shadow-sm">Ver ofertas</button>
+        </div>
+      </div>
+    </div>
 
-      <section *ngIf="!cargando && errorCarga" class="state-card error-state">
-        <ion-icon name="cloud-offline-outline"></ion-icon>
-        <h2>No pudimos cargar el catálogo</h2>
-        <p>Comprueba tu conexión e inténtalo nuevamente.</p>
-        <ion-button (click)="cargarProductos()">Reintentar</ion-button>
-      </section>
+    <!-- Categories -->
+    <div class="flex overflow-x-auto no-scrollbar gap-3 pb-2 -mx-container-margin px-container-margin">
+      <button 
+        (click)="seleccionarCategoria('todas')"
+        [class]="categoria === 'todas' ? 'bg-primary-container text-white shadow-pastel' : 'bg-peach-light text-primary hover:bg-surface-variant border border-transparent hover:border-outline-variant/30'"
+        class="flex-shrink-0 flex items-center gap-1 font-label-md px-4 py-2 rounded-full transition-transform active:scale-95">
+        <span>✨</span> Todos
+      </button>
+      <button 
+        *ngFor="let opcion of categorias"
+        (click)="seleccionarCategoria(opcion)"
+        [class]="categoria === opcion ? 'bg-primary-container text-white shadow-pastel' : 'bg-peach-light text-primary hover:bg-surface-variant border border-transparent hover:border-outline-variant/30'"
+        class="flex-shrink-0 flex items-center gap-1 font-label-md px-4 py-2 rounded-full transition-transform active:scale-95">
+        {{ opcion }}
+      </button>
+    </div>
 
-      <section *ngIf="!cargando && !errorCarga && productos.length === 0" class="state-card">
-        <ion-icon name="basket-outline"></ion-icon>
-        <h2>El catálogo está vacío</h2>
-        <p>Los productos publicados aparecerán aquí.</p>
-      </section>
+    <!-- Brand Filter (Using ion-select or custom styling, for now a native select styled with Tailwind) -->
+    <div class="flex justify-between items-center -mt-2">
+      <h2 class="font-headline-md font-bold text-primary">Productos ({{ productosFiltrados.length }})</h2>
+      <select [(ngModel)]="marca" class="bg-surface-container-lowest border border-outline-variant/50 text-primary text-label-sm rounded-lg focus:ring-primary focus:border-primary block p-2">
+        <option value="todas">Todas las marcas</option>
+        <option *ngFor="let opcion of marcas" [value]="opcion">{{ opcion }}</option>
+      </select>
+    </div>
 
-      <ng-container *ngIf="!cargando && !errorCarga && productos.length > 0">
-        <header class="results-heading">
-          <div>
-            <h2>Productos</h2>
-            <p>{{ productosFiltrados.length }} {{ productosFiltrados.length === 1 ? 'resultado' : 'resultados' }}</p>
+    <!-- Loading State -->
+    <section *ngIf="cargando" class="flex flex-col items-center justify-center py-12 gap-4">
+      <ion-spinner name="crescent" color="primary"></ion-spinner>
+      <p class="text-on-surface-variant font-label-md">Cargando catálogo...</p>
+    </section>
+
+    <!-- Error State -->
+    <section *ngIf="!cargando && errorCarga" class="flex flex-col items-center justify-center py-12 gap-4 bg-error-container text-on-error-container rounded-2xl p-6 text-center">
+      <span class="material-symbols-outlined text-[48px]">cloud_off</span>
+      <h2 class="font-headline-md font-bold">Sin conexión</h2>
+      <p class="font-body-md opacity-80">No pudimos cargar el catálogo. Comprueba tu red.</p>
+      <button class="bg-error text-on-error font-label-md px-6 py-2 rounded-full shadow-sm hover:opacity-90 active:scale-95 transition-all" (click)="cargarProductos()">Reintentar</button>
+    </section>
+
+    <!-- Empty State -->
+    <section *ngIf="!cargando && !errorCarga && productosFiltrados.length === 0" class="flex flex-col items-center justify-center py-12 gap-4 text-center">
+      <span class="material-symbols-outlined text-[48px] text-outline">search_off</span>
+      <h2 class="font-headline-md font-bold text-on-surface">Sin coincidencias</h2>
+      <p class="text-on-surface-variant font-body-md">No encontramos productos para tu búsqueda.</p>
+      <button *ngIf="busqueda || categoria !== 'todas' || marca !== 'todas'" class="bg-primary text-on-primary font-label-md px-6 py-2 rounded-full shadow-pastel hover:opacity-90 active:scale-95 transition-all" (click)="limpiarFiltros()">Limpiar filtros</button>
+    </section>
+
+    <!-- Product Grid -->
+    <section *ngIf="!cargando && !errorCarga && productosFiltrados.length > 0" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      
+      <!-- Card -->
+      <div *ngFor="let producto of productosFiltrados" 
+           class="bg-surface-container-lowest rounded-[16px] shadow-pastel p-3 flex flex-col relative group cursor-pointer hover:shadow-pastel-lg transition-shadow duration-300">
+        
+        <div class="aspect-square w-full rounded-lg overflow-hidden bg-[#F8F7F8] mb-3 p-4 flex items-center justify-center relative">
+          <img *ngIf="imagen(producto.imagen) as src; else noImage" [src]="src" [alt]="producto.nombre" class="object-contain w-full h-full group-hover:scale-105 transition-transform duration-300" />
+          <ng-template #noImage>
+            <span class="material-symbols-outlined text-[40px] text-outline-variant">inventory_2</span>
+          </ng-template>
+          
+          <div *ngIf="!disponible(producto)" class="absolute inset-0 bg-surface/50 backdrop-blur-[2px] flex items-center justify-center">
+            <span class="bg-surface text-error font-label-sm px-2 py-1 rounded shadow-sm">Agotado</span>
           </div>
-          <button
-            type="button"
-            *ngIf="busqueda || categoria !== 'todas' || marca !== 'todas'"
-            (click)="limpiarFiltros()"
-          >
-            Limpiar filtros
-          </button>
-        </header>
+        </div>
 
-        <section *ngIf="productosFiltrados.length === 0" class="state-card compact-state">
-          <ion-icon name="search-outline"></ion-icon>
-          <h2>Sin coincidencias</h2>
-          <p>Prueba otra búsqueda o limpia los filtros.</p>
-        </section>
+        <div class="flex flex-col flex-grow">
+          <span class="font-label-sm text-[11px] text-outline mb-1 line-clamp-1">{{ producto.marca || 'Sin marca' }} &bull; {{ producto.categoria || 'Abarrotes' }}</span>
+          <h3 class="font-label-md text-on-surface leading-tight mb-1 line-clamp-2">{{ producto.nombre }}</h3>
+          <span *ngIf="producto.tamano || producto.presentacion" class="font-body-md text-[12px] text-on-surface-variant mb-2 line-clamp-1">
+            {{ producto.tamano }} {{ producto.presentacion }}
+          </span>
+          
+          <div class="mt-auto flex items-end justify-between pt-2">
+            <div class="flex flex-col">
+              <span class="font-label-md text-primary font-bold">{{ producto.precioVenta | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+            <button 
+              (click)="agregar(producto)" 
+              [disabled]="!disponible(producto)"
+              class="bg-coral text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-secondary-container active:scale-90 transition-all shadow-md disabled:opacity-50 disabled:bg-outline-variant">
+              <span class="material-symbols-outlined text-[18px]">add</span>
+            </button>
+          </div>
+        </div>
 
-        <section class="product-grid" *ngIf="productosFiltrados.length > 0">
-          <article class="product-card" *ngFor="let producto of productosFiltrados">
-            <div class="product-image">
-              <img
-                *ngIf="imagen(producto.imagen) as src; else imagePlaceholder"
-                [src]="src"
-                [alt]="producto.nombre"
-              />
-              <ng-template #imagePlaceholder><ion-icon name="cube-outline"></ion-icon></ng-template>
-              <span class="availability" [class.unavailable]="!disponible(producto)">
-                {{ disponible(producto) ? 'Disponible' : 'Agotado' }}
-              </span>
-            </div>
-            <div class="product-body">
-              <span class="category-label">{{ producto.categoria || 'Abarrotes' }}</span>
-              <h3>{{ producto.nombre }}</h3>
-              <p class="product-meta">{{ producto.marca || 'Sin marca' }}</p>
-              <p class="product-presentation" *ngIf="producto.tamano || producto.presentacion">
-                {{ producto.tamano }} {{ producto.presentacion }}
-              </p>
-              <div class="product-footer">
-                <strong>{{ producto.precioVenta | currency:'MXN':'symbol-narrow':'1.2-2' }}</strong>
-                <ion-button size="small" shape="round" [disabled]="!disponible(producto)" (click)="agregar(producto)">
-                  <ion-icon slot="start" name="add-outline"></ion-icon>
-                  Agregar
-                </ion-button>
-              </div>
-            </div>
-          </article>
-        </section>
-      </ng-container>
-    </main>
-  </ion-content>
+      </div>
+
+    </section>
+
+  </div>
 </app-cliente-shell>
-

@@ -1,73 +1,123 @@
-<app-cliente-shell>
-  <ion-content class="cart-page">
-    <main class="cart-container">
-      <header class="page-heading">
-        <div>
-          <span>Tu selección</span>
-          <h1>Carrito</h1>
-          <p>Revisa cantidades y productos antes de continuar.</p>
+<ion-header class="ion-no-border">
+  <div class="bg-surface-container-lowest sticky top-0 z-40 px-container-margin py-md flex items-center justify-between shadow-pastel">
+    <button class="w-10 h-10 flex items-center justify-center text-primary rounded-full hover:bg-surface-variant transition-colors"
+            routerLink="/catalogo">
+      <span class="material-symbols-outlined">arrow_back</span>
+    </button>
+    <h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim flex-1 ml-2">Mi Carrito</h1>
+    <button class="text-error font-label-md font-medium px-3 py-2 rounded-full hover:bg-error-container/50 active:scale-95 transition-all"
+            *ngIf="carrito.items.length" (click)="confirmarVaciar()">
+      Vaciar
+    </button>
+  </div>
+</ion-header>
+
+<ion-content class="bg-background">
+  <main class="w-full max-w-3xl mx-auto p-container-margin pb-32 flex flex-col gap-lg">
+    
+    <!-- Empty Cart -->
+    <section *ngIf="carrito.items.length === 0" class="flex flex-col items-center justify-center py-20 text-center">
+      <div class="w-24 h-24 bg-surface-variant rounded-full flex items-center justify-center mb-6 text-primary shadow-pastel">
+        <span class="material-symbols-outlined text-[48px]">shopping_cart</span>
+      </div>
+      <h2 class="font-headline-md text-display-lg-mobile font-bold text-on-surface mb-2">Tu carrito está vacío</h2>
+      <p class="font-body-md text-on-surface-variant mb-8 max-w-[280px]">Explora el catálogo y agrega los productos que necesitas para tu día.</p>
+      <button routerLink="/catalogo" class="bg-primary text-white font-label-md px-8 py-3 rounded-full hover:bg-primary-shade transition-colors shadow-pastel-lg active:scale-95">
+        Ir al catálogo
+      </button>
+    </section>
+
+    <ng-container *ngIf="carrito.items.length > 0">
+      <!-- Banner Recolección -->
+      <div class="bg-surface-container-high rounded-xl p-md flex items-start gap-sm shadow-pastel">
+        <span class="material-symbols-outlined text-primary mt-1" style="font-variation-settings: 'FILL' 1;">storefront</span>
+        <div class="flex flex-col">
+          <span class="font-label-md text-primary">Recolección en Tienda</span>
+          <span class="font-label-sm text-on-surface-variant">Puedes pasar por tu pedido en cuanto esté listo.</span>
         </div>
-        <button type="button" *ngIf="carrito.items.length" (click)="confirmarVaciar()">Vaciar carrito</button>
-      </header>
+      </div>
 
-      <section *ngIf="carrito.items.length === 0" class="empty-cart">
-        <span class="empty-icon"><ion-icon name="bag-handle-outline"></ion-icon></span>
-        <h2>Tu carrito está vacío</h2>
-        <p>Explora el catálogo y agrega los productos que necesitas.</p>
-        <ion-button routerLink="/catalogo" shape="round">Ver productos</ion-button>
-      </section>
+      <!-- Lista de Productos -->
+      <section class="flex flex-col gap-md">
+        <div *ngFor="let item of carrito.items" class="bg-surface-container-lowest rounded-xl p-md shadow-pastel flex gap-md relative">
+          <!-- Botón Eliminar -->
+          <button class="absolute top-2 right-2 w-8 h-8 flex items-center justify-center text-outline-variant hover:text-error hover:bg-error-container/30 rounded-full transition-colors"
+                  (click)="carrito.eliminar(item.id)">
+            <span class="material-symbols-outlined text-[20px]">close</span>
+          </button>
+          
+          <!-- Imagen -->
+          <div class="w-20 h-20 bg-surface-variant/30 flex items-center justify-center rounded-lg flex-shrink-0 relative overflow-hidden">
+            <img *ngIf="imagen(item.imagen) as src; else noImage" [src]="src" [alt]="item.nombre" class="object-contain w-full h-full" />
+            <ng-template #noImage>
+              <span class="material-symbols-outlined text-outline-variant text-[32px]">inventory_2</span>
+            </ng-template>
+          </div>
 
-      <div class="cart-layout" *ngIf="carrito.items.length > 0">
-        <section class="cart-items" aria-label="Productos del carrito">
-          <article class="cart-item" *ngFor="let item of carrito.items">
-            <div class="item-image">
-              <img *ngIf="imagen(item.imagen) as src; else itemPlaceholder" [src]="src" [alt]="item.nombre" />
-              <ng-template #itemPlaceholder><ion-icon name="cube-outline"></ion-icon></ng-template>
-            </div>
-            <div class="item-detail">
-              <h2>{{ item.nombre }}</h2>
-              <p *ngIf="item.presentacion">{{ item.presentacion }}</p>
-              <strong>{{ item.precioMostrado | currency:'MXN':'symbol-narrow':'1.2-2' }}</strong>
-            </div>
-            <div class="item-controls">
-              <div class="quantity" aria-label="Cantidad">
-                <button
-                  type="button"
-                  [disabled]="item.cantidad <= 1"
-                  (click)="carrito.decrementar(item.id)"
-                  [attr.aria-label]="'Reducir ' + item.nombre"
-                >
-                  <ion-icon name="remove-outline"></ion-icon>
+          <!-- Detalles -->
+          <div class="flex flex-col flex-grow py-1">
+            <h3 class="font-label-md text-on-surface leading-tight mb-1 pr-6">{{ item.nombre }}</h3>
+            <span class="font-label-sm text-[11px] text-on-surface-variant mb-2">{{ item.presentacion || 'Unidad' }}</span>
+            <span class="font-label-md text-primary font-bold mb-3">{{ item.precioMostrado | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            
+            <!-- Controles de cantidad -->
+            <div class="flex items-center gap-4 mt-auto">
+              <div class="flex items-center bg-surface-variant/30 rounded-full border border-surface-variant/50">
+                <button class="w-8 h-8 flex items-center justify-center text-primary rounded-full hover:bg-surface-variant disabled:opacity-30 transition-colors"
+                        [disabled]="item.cantidad <= 1" (click)="carrito.decrementar(item.id)">
+                  <span class="material-symbols-outlined text-[18px]">remove</span>
                 </button>
-                <span>{{ item.cantidad }}</span>
-                <button
-                  type="button"
-                  [disabled]="item.cantidad >= item.stockConocido"
-                  (click)="incrementar(item)"
-                  [attr.aria-label]="'Aumentar ' + item.nombre"
-                >
-                  <ion-icon name="add-outline"></ion-icon>
+                <span class="w-6 text-center font-label-md text-primary">{{ item.cantidad }}</span>
+                <button class="w-8 h-8 flex items-center justify-center text-primary rounded-full hover:bg-surface-variant disabled:opacity-30 transition-colors"
+                        [disabled]="item.cantidad >= item.stockConocido" (click)="incrementar(item)">
+                  <span class="material-symbols-outlined text-[18px]">add</span>
                 </button>
               </div>
-              <strong>{{ item.precioMostrado * item.cantidad | currency:'MXN':'symbol-narrow':'1.2-2' }}</strong>
-              <button class="remove-item" type="button" (click)="carrito.eliminar(item.id)">Quitar</button>
+              <div class="font-label-md text-on-surface-variant text-[12px] ml-auto">
+                Subtotal: <span class="font-bold text-on-surface">{{ item.precioMostrado * item.cantidad | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+              </div>
             </div>
-          </article>
-        </section>
-
-        <aside class="cart-summary">
-          <span>Resumen</span>
-          <h2>Tu compra</h2>
-          <div><span>Productos</span><strong>{{ carrito.cantidadTotal }}</strong></div>
-          <div class="summary-total">
-            <span>Total mostrado</span
-            ><strong>{{ carrito.totalMostrado | currency:'MXN':'symbol-narrow':'1.2-2' }}</strong>
           </div>
-          <p>Los precios y la disponibilidad se confirmarán al realizar el pedido.</p>
-          <ion-button expand="block" (click)="continuarCompra()">Continuar con la compra</ion-button>
-          <a routerLink="/catalogo">Continuar viendo productos</a>
-        </aside>
+        </div>
+      </section>
+
+      <!-- Resumen -->
+      <section class="bg-surface-container-lowest rounded-xl p-md shadow-pastel border border-surface-variant/50">
+          <!-- Resumen de Costos -->
+          <div class="space-y-sm mb-lg">
+            <div class="flex justify-between items-center">
+              <span class="font-body-md text-on-surface-variant">Productos ({{ carrito.cantidadTotal }})</span>
+              <span class="font-body-md text-on-surface">{{ carrito.totalMostrado | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="font-body-md text-on-surface-variant flex items-center gap-1">
+                Recolección en Tienda
+                <span class="material-symbols-outlined text-[16px] text-primary">info</span>
+              </span>
+              <span class="font-label-md text-secondary">Gratis</span>
+            </div>
+            <div class="flex justify-between items-center pt-md border-t border-surface-variant/30 mt-sm">
+              <span class="font-label-md text-on-surface">Total Estimado</span>
+              <span class="font-headline-md font-bold text-primary">{{ carrito.totalMostrado | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+          </div>
+      </section>
+    </ng-container>
+
+  </main>
+
+  <!-- Sticky Checkout Footer -->
+  <ion-footer *ngIf="carrito.items.length > 0" class="ion-no-border bg-surface-container-lowest border-t border-surface-variant/30 z-50">
+    <!-- Safe Area Padding for mobile bars -->
+    <div class="max-w-7xl mx-auto px-container-margin py-md pb-[env(safe-area-inset-bottom,20px)] flex justify-between items-center gap-4">
+      <div class="flex flex-col">
+        <span class="font-label-sm text-on-surface-variant">Total</span>
+        <span class="font-headline-md font-bold text-primary leading-none">{{ carrito.totalMostrado | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
       </div>
-    </main>
-  </ion-content>
-</app-cliente-shell>
+      <button routerLink="/checkout" class="flex-1 max-w-[200px] bg-primary-container text-on-primary-container hover:bg-primary hover:text-on-primary transition-colors active:scale-95 duration-200 rounded-xl py-3 px-4 font-label-md flex items-center justify-center gap-2 shadow-[0_4px_16px_rgba(88,67,107,0.15)] group">
+      Continuar
+      <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+    </button>
+  </div>
+</ion-footer>
+</ion-content>

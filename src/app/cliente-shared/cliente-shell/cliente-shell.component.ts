@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, inject, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import { CarritoService } from '../../services/carrito.service';
 import { ClienteAuthService } from '../../services/cliente-auth.service';
@@ -19,6 +20,7 @@ interface TiendaPublica {
 export class ClienteShellComponent implements OnInit {
   readonly clienteAuth = inject(ClienteAuthService);
   readonly carrito = inject(CarritoService);
+  readonly router = inject(Router);
   private readonly http = inject(HttpClient);
   private readonly imagenes = inject(ImagenesService);
   tienda: TiendaPublica | null = null;
@@ -38,5 +40,8 @@ export class ClienteShellComponent implements OnInit {
   }
   avatar(): string | null {
     return this.imagenes.resolver(this.clienteAuth.sesion?.cliente.fotoPerfil);
+  }
+  isActive(path: string): boolean {
+    return this.router.isActive(path, { paths: 'subset', queryParams: 'ignored', fragment: 'ignored', matrixParams: 'ignored' });
   }
 }

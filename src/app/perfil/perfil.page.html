@@ -1,55 +1,60 @@
 <app-cliente-shell>
-  <ion-content class="profile-page">
-    <main class="profile-container" *ngIf="clienteAuth.sesion as sesion">
-      <header>
-        <span>Tu cuenta</span>
-        <h1>Perfil</h1>
-        <p>Información asociada a tu inicio de sesión con Google.</p>
-      </header>
-
-      <section class="profile-card">
-        <div class="profile-identity">
-          <span class="profile-photo">
-            <img
-              *ngIf="foto(sesion.cliente.fotoPerfil) as src; else profilePlaceholder"
-              [src]="src"
-              alt="Foto de perfil"
-            />
-            <ng-template #profilePlaceholder><ion-icon name="person-outline"></ion-icon></ng-template>
-          </span>
-          <div>
-            <h2>{{ sesion.cliente.nombre }} {{ sesion.cliente.apellidoPat }} {{ sesion.cliente.apellidoMat }}</h2>
-            <p>{{ sesion.cliente.correo }}</p>
+  <div class="px-container-margin py-md min-h-[calc(100vh-140px)] flex flex-col" *ngIf="clienteAuth.sesion as sesion">
+    
+    <!-- Profile Header Card -->
+    <section class="bg-surface-container-lowest rounded-2xl shadow-pastel p-lg mb-md flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-md border border-surface-variant/30">
+      <div class="relative w-24 h-24 rounded-full overflow-hidden shadow-sm flex-shrink-0 border-4 border-surface">
+        <img *ngIf="foto(sesion.cliente.fotoPerfil) as src; else profilePlaceholder" [src]="src" alt="Foto de perfil" class="w-full h-full object-cover"/>
+        <ng-template #profilePlaceholder>
+          <div class="w-full h-full bg-primary-container text-white flex items-center justify-center">
+            <span class="material-symbols-outlined text-[40px]">person</span>
           </div>
+        </ng-template>
+      </div>
+      
+      <div class="flex-1 flex flex-col justify-center">
+        <h1 class="font-headline-md text-primary font-bold">{{ sesion.cliente.nombre }} {{ sesion.cliente.apellidoPat }}</h1>
+        <p class="font-label-sm text-on-surface-variant mt-1">{{ sesion.cliente.correo }}</p>
+        <span class="inline-flex w-fit mx-auto sm:mx-0 items-center gap-1 mt-3 px-3 py-1 bg-[#F2BEAD]/20 text-primary font-label-sm rounded-full">
+          <span class="material-symbols-outlined text-[14px]">calendar_today</span>
+          Cliente desde {{ sesion.cliente.fechaRegistro | date:'mediumDate' }}
+        </span>
+      </div>
+
+      <div class="flex gap-2 mt-4 sm:mt-0">
+        <!-- Google Badge / Info -->
+        <div class="flex items-center gap-2 text-on-surface-variant font-label-sm px-3 py-1 bg-surface-container-low rounded-lg">
+          <span class="material-symbols-outlined text-[16px]">g_translate</span> <!-- G Logo placeholder -->
+          Cuenta de Google
         </div>
+      </div>
+    </section>
 
-        <dl>
-          <div>
-            <dt>Nombre</dt>
-            <dd>{{ sesion.cliente.nombre }}</dd>
-          </div>
-          <div>
-            <dt>Apellidos</dt>
-            <dd>{{ sesion.cliente.apellidoPat || '—' }} {{ sesion.cliente.apellidoMat || '' }}</dd>
-          </div>
-          <div>
-            <dt>Correo</dt>
-            <dd>{{ sesion.cliente.correo }}</dd>
-          </div>
-          <div>
-            <dt>Cliente desde</dt>
-            <dd>{{ sesion.cliente.fechaRegistro | date:'longDate' }}</dd>
-          </div>
-        </dl>
-
-        <div class="profile-actions">
-          <p>La información de esta cuenta se administra desde Google.</p>
-          <ion-button fill="outline" color="danger" (click)="clienteAuth.logout()">
-            <ion-icon slot="start" name="log-out-outline"></ion-icon>
-            Cerrar sesión
-          </ion-button>
+    <!-- Details Card -->
+    <section class="bg-surface-container-lowest rounded-2xl shadow-pastel p-md border border-surface-variant/30">
+      <h2 class="font-label-md text-primary mb-4 pb-2 border-b border-surface-variant/50">Información Personal</h2>
+      <div class="space-y-4">
+        <div class="flex flex-col">
+          <span class="font-label-sm text-on-surface-variant">Nombre completo</span>
+          <span class="font-body-md text-on-surface">{{ sesion.cliente.nombre }} {{ sesion.cliente.apellidoPat || '' }} {{ sesion.cliente.apellidoMat || '' }}</span>
         </div>
-      </section>
-    </main>
-  </ion-content>
+        <div class="flex flex-col">
+          <span class="font-label-sm text-on-surface-variant">Correo electrónico</span>
+          <span class="font-body-md text-on-surface">{{ sesion.cliente.correo }}</span>
+        </div>
+      </div>
+      <div class="mt-6 pt-4 border-t border-surface-variant/50">
+        <p class="font-label-sm text-on-surface-variant mb-4 flex items-start gap-2">
+          <span class="material-symbols-outlined text-[16px] mt-0.5 text-primary">info</span>
+          La información de esta cuenta se administra desde tu proveedor de identidad (Google).
+        </p>
+        <button class="w-full sm:w-auto bg-error-container text-error font-label-md px-6 py-3 rounded-full hover:bg-error hover:text-white transition-colors active:scale-95 flex items-center justify-center gap-2"
+                (click)="clienteAuth.logout()">
+          <span class="material-symbols-outlined text-[20px]">logout</span>
+          Cerrar sesión
+        </button>
+      </div>
+    </section>
+
+  </div>
 </app-cliente-shell>

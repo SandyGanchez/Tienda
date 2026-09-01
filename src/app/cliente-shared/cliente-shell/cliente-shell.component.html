@@ -1,64 +1,111 @@
-<div class="client-layout">
-  <ion-header class="client-header">
-    <ion-toolbar>
-      <div class="client-toolbar">
-        <a class="client-brand" routerLink="/catalogo" aria-label="Ir al catálogo">
-          <span class="client-logo"
-            ><img *ngIf="logo() as src; else logoFallback" [src]="src" alt="Logo de la tienda" /><ng-template
-              #logoFallback
-              ><ion-icon name="storefront-outline"></ion-icon></ng-template
-          ></span>
-          <strong>{{ nombreTienda }}</strong>
-        </a>
+<div class="bg-background min-h-[100dvh] text-on-background font-body-md flex flex-col">
+  
+  <!-- TopAppBar -->
+  <ion-header class="ion-no-border z-40 bg-surface dark:bg-on-surface sticky top-0 shadow-sm">
+    <div class="flex justify-between items-center px-container-margin py-md w-full">
+      <!-- Perfil / Logo -->
+      <a class="flex items-center gap-sm cursor-pointer transition-all duration-200 active:scale-95 hover:bg-surface-variant/50 dark:hover:bg-surface-container-highest/20 rounded-full p-2 -ml-2"
+         routerLink="/catalogo">
+        <img *ngIf="logo() as src; else logoFallback" [src]="src" alt="Logo de la tienda" class="w-10 h-10 rounded-full object-cover border-2 border-surface-container"/>
+        <ng-template #logoFallback>
+          <div class="w-10 h-10 rounded-full bg-primary-container text-white flex items-center justify-center">
+            <span class="material-symbols-outlined">storefront</span>
+          </div>
+        </ng-template>
 
-        <nav class="desktop-client-nav" aria-label="Navegación de la tienda">
-          <a routerLink="/catalogo" routerLinkActive="active">Productos</a>
-          <a routerLink="/mis-pedidos" routerLinkActive="active">Mis pedidos</a>
-        </nav>
-
-        <div class="client-actions">
-          <a class="cart-link" routerLink="/carrito" routerLinkActive="active" aria-label="Abrir carrito">
-            <ion-icon name="bag-handle-outline"></ion-icon><span class="cart-label">Carrito</span>
-            <span class="cart-count" *ngIf="carrito.cantidadTotal$ | async as cantidad">{{ cantidad }}</span>
-          </a>
-          <a class="client-profile" *ngIf="clienteAuth.sesion as sesion; else loginLink" routerLink="/perfil">
-            <span
-              ><small>Hola,</small><strong>{{ sesion.cliente.nombre }}</strong></span
-            >
-            <span class="client-avatar"
-              ><img *ngIf="avatar() as src; else avatarFallback" [src]="src" alt="Foto de perfil" /><ng-template
-                #avatarFallback
-                ><ion-icon name="person-outline"></ion-icon></ng-template
-            ></span>
-          </a>
-          <ion-button
-            class="client-logout"
-            *ngIf="clienteAuth.estaAutenticado()"
-            fill="clear"
-            size="small"
-            title="Cerrar sesión"
-            aria-label="Cerrar sesión"
-            (click)="clienteAuth.logout()"
-          >
-            <ion-icon slot="icon-only" name="log-out-outline"></ion-icon>
-          </ion-button>
-          <ng-template #loginLink><a class="login-link" routerLink="/login">Iniciar sesión</a></ng-template>
+        <div class="flex flex-col">
+          <span class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim">{{ nombreTienda }}</span>
+          <span class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1" *ngIf="clienteAuth.sesion as sesion; else loginLink">
+            <span class="material-symbols-outlined text-[14px]">handshake</span> ¡Hola, {{ sesion.cliente.nombre }}!
+          </span>
+          <ng-template #loginLink>
+            <span class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1" routerLink="/login">
+              <span class="material-symbols-outlined text-[14px]">login</span> Iniciar sesión
+            </span>
+          </ng-template>
         </div>
+      </a>
+      
+      <!-- Botón Carrito / Logout -->
+      <div class="flex items-center gap-2">
+        <button class="relative transition-all duration-200 active:scale-95 hover:bg-surface-variant/50 dark:hover:bg-surface-container-highest/20 p-2 rounded-full text-primary dark:text-primary-fixed-dim"
+                routerLink="/carrito">
+          <span class="material-symbols-outlined">shopping_cart</span>
+          <span class="absolute top-0 right-0 bg-coral text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center" *ngIf="carrito.cantidadTotal$ | async as cantidad">{{ cantidad }}</span>
+        </button>
+
+        <!-- Botón Salir Desktop -->
+        <button class="hidden md:flex relative transition-all duration-200 active:scale-95 hover:bg-surface-variant/50 dark:hover:bg-surface-container-highest/20 p-2 rounded-full text-error"
+                *ngIf="clienteAuth.estaAutenticado()" (click)="clienteAuth.logout()">
+          <span class="material-symbols-outlined">logout</span>
+        </button>
       </div>
-    </ion-toolbar>
+    </div>
+    
+    <!-- Branch Selector -->
+    <div class="px-container-margin pb-sm">
+      <button class="w-full flex items-center justify-between bg-surface-container-low p-sm rounded-lg border border-surface-variant/50 active:scale-95 transition-transform duration-200">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary text-opacity-70">location_on</span>
+          <div class="flex flex-col text-left">
+            <span class="font-label-sm text-label-sm text-on-surface-variant">Entregar en:</span>
+            <span class="font-label-md text-label-md text-primary truncate max-w-[200px] md:max-w-md">Tienda Principal</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="bg-primary-container text-on-primary-container text-[10px] font-bold px-2 py-1 rounded-full whitespace-nowrap">Abierto</span>
+          <span class="material-symbols-outlined text-on-surface-variant">expand_more</span>
+        </div>
+      </button>
+    </div>
   </ion-header>
 
-  <main class="client-content"><ng-content></ng-content></main>
+  <!-- Router Outlet -->
+  <main class="flex-1 w-full max-w-7xl mx-auto pb-24">
+    <ng-content></ng-content>
+  </main>
 
-  <nav class="mobile-client-nav" aria-label="Navegación inferior">
-    <a routerLink="/catalogo" routerLinkActive="active"
-      ><ion-icon name="storefront-outline"></ion-icon><span>Productos</span></a
-    >
-    <a routerLink="/mis-pedidos" routerLinkActive="active"
-      ><ion-icon name="cube-outline"></ion-icon><span>Pedidos</span></a
-    >
-    <a [routerLink]="clienteAuth.estaAutenticado() ? '/perfil' : '/login'" routerLinkActive="active"
-      ><ion-icon name="person-outline"></ion-icon><span>Perfil</span></a
-    >
-  </nav>
+  <!-- BottomNavBar (Solo en móviles) -->
+  <ion-footer class="ion-no-border md:hidden z-50">
+    <nav class="bg-surface/80 dark:bg-inverse-surface/80 backdrop-blur-md flex justify-around items-center px-4 pb-4 pt-2 border-t border-surface-variant/30 dark:border-outline-variant/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] rounded-t-xl">
+      
+
+      <a routerLink="/catalogo" class="flex flex-col items-center justify-center text-on-surface-variant p-2 rounded-lg transition-colors group relative w-16" routerLinkActive="text-primary active-tab">
+        <div class="absolute inset-0 bg-primary-container rounded-full opacity-0 scale-50 transition-all duration-300 group-[.active-tab]:opacity-100 group-[.active-tab]:scale-100 -z-10"></div>
+        <span class="material-symbols-outlined mb-1 group-[.active-tab]:text-on-primary-container transition-all"
+              [style.font-variation-settings]="isActive('/catalogo') ? '\'FILL\' 1' : '\'FILL\' 0'">
+          storefront
+        </span>
+        <span class="font-label-sm text-[11px] group-[.active-tab]:font-bold group-[.active-tab]:text-on-surface">Inicio</span>
+      </a>
+
+      <!-- Cart Action Button -->
+      <a routerLink="/carrito" class="flex flex-col items-center justify-center text-on-surface-variant p-2 rounded-lg transition-colors relative -top-4 w-16">
+        <div class="w-14 h-14 bg-primary rounded-full shadow-[0_4px_12px_rgba(88,67,107,0.3)] flex items-center justify-center text-on-primary hover:bg-primary/90 active:scale-95 transition-all">
+          <span class="material-symbols-outlined text-[28px]">shopping_cart</span>
+          <span *ngIf="carrito.cantidadTotal > 0" class="absolute top-0 right-0 bg-error text-error-on font-label-sm text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-surface-container-lowest">{{ carrito.cantidadTotal }}</span>
+        </div>
+      </a>
+
+      <!-- Orders -->
+      <a routerLink="/mis-pedidos" class="flex flex-col items-center justify-center text-on-surface-variant p-2 rounded-lg transition-colors group relative w-16" routerLinkActive="text-primary active-tab">
+        <div class="absolute inset-0 bg-primary-container rounded-full opacity-0 scale-50 transition-all duration-300 group-[.active-tab]:opacity-100 group-[.active-tab]:scale-100 -z-10"></div>
+        <span class="material-symbols-outlined mb-1 group-[.active-tab]:text-on-primary-container transition-all"
+              [style.font-variation-settings]="isActive('/mis-pedidos') ? '\'FILL\' 1' : '\'FILL\' 0'">
+          receipt_long
+        </span>
+        <span class="font-label-sm text-[11px] group-[.active-tab]:font-bold group-[.active-tab]:text-on-surface">Pedidos</span>
+      </a>
+
+      <!-- Profile -->
+      <a routerLink="/perfil" class="flex flex-col items-center justify-center text-on-surface-variant p-2 rounded-lg transition-colors group relative w-16" routerLinkActive="text-primary active-tab">
+        <div class="absolute inset-0 bg-primary-container rounded-full opacity-0 scale-50 transition-all duration-300 group-[.active-tab]:opacity-100 group-[.active-tab]:scale-100 -z-10"></div>
+        <span class="material-symbols-outlined mb-1 group-[.active-tab]:text-on-primary-container transition-all"
+              [style.font-variation-settings]="isActive('/perfil') ? '\'FILL\' 1' : '\'FILL\' 0'">
+          person
+        </span>
+        <span class="font-label-sm text-[11px] group-[.active-tab]:font-bold group-[.active-tab]:text-on-surface">Perfil</span>
+      </a>
+    </nav>
+  </ion-footer>
 </div>

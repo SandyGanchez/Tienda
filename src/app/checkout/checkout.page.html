@@ -1,110 +1,185 @@
 <app-cliente-shell>
-  <ion-content class="checkout-page">
-    <main class="checkout-container">
-      <ng-container *ngIf="!pedido">
-        <header>
-          <span>Confirmación</span>
-          <h1>Finaliza tu pedido</h1>
-          <p>Verificaremos nuevamente los precios y la disponibilidad antes de reservar tus productos.</p>
-        </header>
-        <section class="empty-checkout" *ngIf="carrito.items.length === 0">
-          <ion-icon name="bag-handle-outline"></ion-icon>
-          <h2>No hay productos por confirmar</h2>
-          <p>Tu carrito está vacío o el pedido ya fue generado.</p>
-          <ion-button routerLink="/catalogo">Ver catálogo</ion-button>
-        </section>
-        <div class="checkout-layout" *ngIf="carrito.items.length > 0">
-          <section class="checkout-items">
-            <h2>Tu pedido</h2>
-            <article *ngFor="let item of carrito.items">
-              <span class="item-image"
-                ><img
-                  *ngIf="imagen(item.imagen) as src; else placeholder"
-                  [src]="src"
-                  [alt]="item.nombre" /><ng-template #placeholder><ion-icon name="cube-outline"></ion-icon></ng-template
-              ></span>
-              <div>
-                <strong>{{ item.nombre }}</strong><small>{{ item.presentacion }}</small>
-                <p>{{ item.cantidad }} × {{ item.precioMostrado | currency:'MXN':'symbol-narrow':'1.2-2' }}</p>
-              </div>
-              <strong>{{ item.cantidad * item.precioMostrado | currency:'MXN':'symbol-narrow':'1.2-2' }}</strong>
-            </article>
-          </section>
-          <aside class="checkout-summary">
-            <span>Resumen</span>
-            <h2>Reserva</h2>
-            <div><span>Productos</span><strong>{{ carrito.cantidadTotal }}</strong></div>
-            <div class="total">
-              <span>Total mostrado</span
-              ><strong>{{ carrito.totalMostrado | currency:'MXN':'symbol-narrow':'1.2-2' }}</strong>
-            </div>
-            <p>El backend recalculará precios, subtotales, total y stock real.</p>
-            <p class="transfer-error" *ngIf="!transferenciaDisponible">{{ mensajeTransferencia }}</p>
-            <ion-button expand="block" [disabled]="procesando || !transferenciaDisponible" (click)="generarPedido()">
-              {{ procesando ? 'Verificando...' : 'Generar pedido e instrucciones de pago' }}
-            </ion-button>
-          </aside>
+  <div class="w-full max-w-md mx-auto min-h-[calc(100vh-140px)] flex flex-col">
+    <ng-container *ngIf="!pedido">
+      
+      <!-- Transactional Header -->
+      <header class="px-container-margin pt-xl pb-md w-full">
+        <div class="flex items-center justify-between mb-lg">
+          <button aria-label="Volver" class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary active:scale-95 transition-transform hover:bg-surface-container-high"
+                  routerLink="/carrito">
+            <span class="material-symbols-outlined">arrow_back</span>
+          </button>
+          <span class="font-label-sm text-outline tracking-wider uppercase text-center flex-1">Confirmación</span>
+          <div class="w-10"></div>
         </div>
-      </ng-container>
-
-      <section class="payment-view" *ngIf="pedido as actual">
-        <header>
-          <span>Reserva confirmada</span>
-          <h1>Pedido {{ actual.folio }}</h1>
-          <p>Tus productos están reservados mientras realizas la transferencia.</p>
-        </header>
-        <div class="payment-layout">
-          <article class="payment-total">
-            <span>Total a transferir</span
-            ><strong>{{ actual.total | currency:'MXN':'symbol-narrow':'1.2-2' }} <small>MXN</small></strong>
-            <p>Reserva disponible hasta<br /><b>{{ actual.fechaLimitePago | date:'medium' }}</b></p>
-          </article>
-          <article class="bank-card" *ngIf="actual.configuracionTransferencia as banco">
-            <span>Transferencia bancaria</span>
-            <dl>
-              <div>
-                <dt>Banco</dt>
-                <dd>{{ banco.banco }}</dd>
-              </div>
-              <div>
-                <dt>Titular</dt>
-                <dd>{{ banco.titular }}</dd>
-              </div>
-              <div *ngIf="banco.clabe">
-                <dt>CLABE</dt>
-                <dd class="copy-value">
-                  {{ banco.clabe }} <button type="button" (click)="copiarClabe()">Copiar</button>
-                </dd>
-              </div>
-              <div *ngIf="banco.numeroCuenta">
-                <dt>Número de cuenta</dt>
-                <dd>{{ banco.numeroCuenta }}</dd>
-              </div>
-              <div>
-                <dt>Concepto sugerido</dt>
-                <dd>{{ actual.folio }}</dd>
-              </div>
-            </dl>
-            <p class="instructions" *ngIf="banco.instrucciones">{{ banco.instrucciones }}</p>
-          </article>
+      </header>
+      
+      <!-- Empty State -->
+      <section *ngIf="carrito.items.length === 0" class="flex flex-col items-center justify-center py-20 px-container-margin text-center flex-1">
+        <div class="w-24 h-24 bg-surface-variant rounded-full flex items-center justify-center mb-6 text-primary shadow-pastel">
+          <span class="material-symbols-outlined text-[48px]">remove_shopping_cart</span>
         </div>
-        <article class="proof-card">
-          <div>
-            <h2>Sube tu comprobante</h2>
-            <p>Después de realizar la transferencia, selecciona una imagen o PDF. El pago quedará en revisión.</p>
-          </div>
-          <label class="file-picker"
-            ><input
-              type="file"
-              accept="image/jpeg,image/png,image/webp,application/pdf"
-              (change)="seleccionarArchivo($event)"
-            /><ion-icon name="cloud-upload-outline"></ion-icon>{{ archivo?.name || 'Seleccionar comprobante' }}</label
-          >
-          <ion-button [disabled]="!archivo || subiendo" (click)="subirComprobante()"
-            >{{ subiendo ? 'Subiendo...' : 'Enviar a revisión' }}</ion-button
-          >
-        </article>
+        <h2 class="font-headline-md font-bold text-on-surface mb-2">Sin productos</h2>
+        <p class="font-body-md text-on-surface-variant mb-8 max-w-[280px]">Tu carrito está vacío o el pedido ya fue generado.</p>
+        <button routerLink="/catalogo" class="bg-primary text-white font-label-md px-8 py-3 rounded-full hover:bg-primary-shade transition-colors shadow-pastel-lg active:scale-95">
+          Ver catálogo
+        </button>
       </section>
-    </main>
-  </ion-content>
+
+      <!-- Main Content Area -->
+      <div *ngIf="carrito.items.length > 0" class="px-container-margin flex flex-col gap-lg pb-32">
+        <!-- Location Card -->
+        <section class="bg-surface-container-lowest rounded-xl p-md shadow-pastel flex gap-md items-start">
+          <div class="w-12 h-12 rounded-full bg-primary-fixed flex-shrink-0 flex items-center justify-center text-primary">
+            <span class="material-symbols-outlined">storefront</span>
+          </div>
+          <div class="flex flex-col">
+            <h2 class="font-label-md text-on-surface mb-xs">Recolección en Mostrador</h2>
+            <p class="font-body-md text-on-surface-variant mb-sm">Sucursal Doña Paty Centro (Av. Hidalgo #101, Toluca)</p>
+            <div class="flex items-center gap-sm text-primary font-label-sm bg-surface-container w-fit px-sm py-xs rounded-lg">
+              <span class="material-symbols-outlined" style="font-size: 14px;">schedule</span>
+              <span>Lunes a Domingo • 8:00 AM a 10:00 PM</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Order Summary Items -->
+        <section class="bg-surface-container-lowest rounded-xl p-md shadow-pastel flex flex-col">
+          <h3 class="font-label-md text-on-surface mb-md pb-xs border-b border-surface-variant">Tu Pedido ({{ carrito.cantidadTotal }})</h3>
+          <div class="flex flex-col gap-md mt-sm">
+            <div *ngFor="let item of carrito.items" class="flex items-center justify-between group">
+              <div class="flex items-center gap-md">
+                <div class="w-16 h-16 rounded-lg bg-surface-container-low overflow-hidden flex-shrink-0 border border-surface-variant group-hover:border-primary-fixed transition-colors">
+                  <img *ngIf="imagen(item.imagen) as src; else placeholder" [src]="src" [alt]="item.nombre" class="w-full h-full object-cover mix-blend-multiply" />
+                  <ng-template #placeholder><div class="w-full h-full flex items-center justify-center text-outline-variant"><span class="material-symbols-outlined text-[24px]">cube</span></div></ng-template>
+                </div>
+                <div class="flex flex-col pr-2">
+                  <span class="font-body-md text-on-surface line-clamp-1">{{ item.nombre }}</span>
+                  <span class="font-label-sm text-outline mt-xs">{{ item.cantidad }} {{ item.cantidad === 1 ? 'unidad' : 'unidades' }}</span>
+                </div>
+              </div>
+              <span class="font-label-md text-primary whitespace-nowrap">{{ item.cantidad * item.precioMostrado | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Financial Breakdown -->
+        <section class="bg-surface-container-lowest rounded-xl p-md shadow-pastel flex flex-col gap-sm">
+          <div class="flex justify-between items-center pb-md border-b border-surface-variant">
+            <span class="font-body-md text-on-surface-variant">Cargo por recolección</span>
+            <span class="font-label-md text-secondary">Gratis</span>
+          </div>
+          <div class="flex justify-between items-center pt-xs">
+            <span class="font-label-md text-on-surface">Total a Pagar</span>
+            <span class="font-headline-md text-primary-container font-bold">{{ carrito.totalMostrado | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+          </div>
+        </section>
+
+        <!-- Guarantee Note -->
+        <div class="border-2 border-primary-fixed bg-surface-container-low rounded-xl p-md flex gap-md items-start mt-sm">
+          <div class="flex-shrink-0 text-primary mt-xs">
+            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">shield</span>
+          </div>
+          <p class="font-label-sm text-primary leading-relaxed">
+            Al continuar, se generará tu folio de pedido y las instrucciones con la CLABE bancaria para realizar tu transferencia y subir tu comprobante. El backend recalculará el total exacto de acuerdo al stock real.
+          </p>
+        </div>
+        
+        <p class="text-error font-label-sm text-center" *ngIf="!transferenciaDisponible">{{ mensajeTransferencia }}</p>
+
+        <!-- Sticky Bottom CTA -->
+        <div class="fixed bottom-0 left-0 w-full bg-surface-container-lowest shadow-[0_-4px_20px_rgba(88,67,107,0.08)] border-t border-surface-variant z-50">
+          <div class="max-w-md mx-auto px-container-margin py-md pb-[env(safe-area-inset-bottom,20px)]">
+            <button class="w-full bg-primary-container hover:bg-primary transition-colors duration-200 active:scale-[0.98] rounded-xl py-lg flex items-center justify-center gap-sm shadow-[0px_4px_16px_rgba(88,67,107,0.15)] group disabled:opacity-50"
+                    [disabled]="procesando || !transferenciaDisponible" (click)="generarPedido()">
+              <ion-spinner *ngIf="procesando" name="dots" color="light"></ion-spinner>
+              <span *ngIf="!procesando" class="material-symbols-outlined text-on-primary group-hover:scale-110 transition-transform">receipt_long</span>
+              <span *ngIf="!procesando" class="font-label-md text-on-primary">Generar reserva de pago</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </ng-container>
+
+    <ng-container *ngIf="pedido as actual">
+      <!-- State 2: Instrucciones de Pago -->
+      <header class="px-container-margin pt-xl pb-md w-full flex justify-center">
+        <div class="inline-flex items-center bg-[#F2BEAD] bg-opacity-20 rounded-full px-4 py-1">
+          <span class="material-symbols-outlined text-[#FB7185] text-[18px] mr-2">info</span>
+          <span class="font-label-sm text-primary font-bold">Esperando Pago</span>
+        </div>
+      </header>
+
+      <div class="px-container-margin flex flex-col gap-md flex-1 pb-xl">
+        <!-- Summary Card -->
+        <section class="bg-[#F8F4F9] rounded-xl p-lg mb-2 shadow-pastel">
+          <div class="text-center">
+            <p class="font-body-md text-on-surface-variant mb-1">Total a transferir (Folio: {{ actual.folio }})</p>
+            <p class="font-display-lg-mobile text-primary mb-4">{{ actual.total | currency:'MXN':'symbol-narrow':'1.2-2' }} <span class="text-[20px] font-bold">MXN</span></p>
+            <div class="flex items-start justify-center text-sm text-on-surface-variant gap-2">
+              <span class="material-symbols-outlined text-[18px] text-primary">schedule</span>
+              <p class="text-left font-label-sm">
+                Reserva válida hasta:<br/>
+                <span class="font-label-md text-on-background">{{ actual.fechaLimitePago | date:'medium' }}</span><br/>
+                (Tus productos están apartados)
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Bank Details Card -->
+        <section class="bg-surface-container-lowest rounded-xl p-md shadow-pastel" *ngIf="actual.configuracionTransferencia as banco">
+          <h2 class="font-label-md text-on-background mb-4 flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">account_balance</span>
+            Transferencia Bancaria
+          </h2>
+          <div class="space-y-4">
+            <div class="flex flex-col">
+              <span class="font-label-sm text-on-surface-variant">Banco / Beneficiario</span>
+              <span class="font-body-md text-on-background">{{ banco.banco }} • {{ banco.titular }}</span>
+            </div>
+            
+            <div class="flex items-center justify-between bg-surface-container p-3 rounded-lg" *ngIf="banco.clabe">
+              <div class="flex flex-col">
+                <span class="font-label-sm text-on-surface-variant">CLABE Interbancaria</span>
+                <span class="font-label-md text-on-background font-mono tracking-wide">{{ banco.clabe }}</span>
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+              <div class="flex flex-col" *ngIf="banco.numeroCuenta">
+                <span class="font-label-sm text-on-surface-variant">Número de Cuenta</span>
+                <span class="font-body-md text-on-background">{{ banco.numeroCuenta }}</span>
+              </div>
+              <div class="flex flex-col">
+                <span class="font-label-sm text-on-surface-variant">Concepto</span>
+                <span class="font-label-md text-on-background">{{ actual.folio }}</span>
+              </div>
+            </div>
+            
+            <div class="bg-surface-bright border border-surface-variant rounded-lg p-3 mt-2">
+              <p class="font-label-sm text-on-surface-variant flex items-start gap-2">
+                <span class="material-symbols-outlined text-[16px] mt-0.5 text-primary">info</span>
+                Realiza la transferencia por el monto exacto usando el número de pedido ({{ actual.folio }}) como concepto.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Footer Actions -->
+        <div class="flex flex-col items-center gap-4 mb-xl mt-4">
+          <p class="font-label-sm text-center text-on-surface-variant px-4">
+            <span class="material-symbols-outlined text-[16px] inline-block align-text-bottom mr-1 text-green-600">check_circle</span>
+            Tu pedido ha sido generado. Puedes subir tu comprobante desde la sección de Mis Pedidos.
+          </p>
+          <button class="font-label-md text-label-md text-primary hover:opacity-80 active:scale-95 transition-all mt-4" routerLink="/mis-pedidos">
+              Ver mis pedidos
+          </button>
+        </div>
+
+      </div>
+    </ng-container>
+
+  </div>
 </app-cliente-shell>
