@@ -34,7 +34,7 @@
                 <button
                   type="button"
                   [disabled]="item.cantidad <= 1"
-                  (click)="carrito.decrementar(item.idPro)"
+                  (click)="carrito.decrementar(item.id)"
                   [attr.aria-label]="'Reducir ' + item.nombre"
                 >
                   <ion-icon name="remove-outline"></ion-icon>
@@ -50,7 +50,7 @@
                 </button>
               </div>
               <strong>{{ item.precioMostrado * item.cantidad | currency:'MXN':'symbol-narrow':'1.2-2' }}</strong>
-              <button class="remove-item" type="button" (click)="carrito.eliminar(item.idPro)">Quitar</button>
+              <button class="remove-item" type="button" (click)="carrito.eliminar(item.id)">Quitar</button>
             </div>
           </article>
         </section>

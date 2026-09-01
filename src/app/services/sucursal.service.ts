@@ -19,11 +19,11 @@ export class SucursalService {
     return this.http.post<Sucursal>(this.apiUrl, datos);
   }
 
-  actualizarSucursal(idSuc: number, datos: SucursalDto): Observable<Sucursal> {
+  actualizarSucursal(idSuc: string | number, datos: SucursalDto): Observable<Sucursal> {
     return this.http.put<Sucursal>(`${this.apiUrl}/${idSuc}`, datos);
   }
 
-  subirLogo(idSuc: number, imagen: Blob, nombre: string): Observable<Sucursal> {
+  subirLogo(idSuc: string | number, imagen: Blob, nombre: string): Observable<Sucursal> {
     const mimeType = imagen.type || 'image/jpeg';
     return this.http
       .post<{ uploadUrl: string; key: string; publicUrl: string }>(`${this.apiUrl}/${idSuc}/presign-logo`, {
@@ -48,7 +48,7 @@ export class SucursalService {
       );
   }
 
-  quitarLogo(idSuc: number): Observable<Sucursal> {
+  quitarLogo(idSuc: string | number): Observable<Sucursal> {
     return this.http.delete<Sucursal>(`${this.apiUrl}/${idSuc}/logo`);
   }
 

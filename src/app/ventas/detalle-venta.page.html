@@ -39,25 +39,25 @@
             <span
               class="detail-status-label"
               [class.cancelled]="
-              v.estadoVenta === 'CANCELADA'
+              v.estado === 'CANCELADA'
             "
             >
               <span class="state-dot"></span>
 
-              {{ v.estadoVenta === 'CANCELADA' ? 'Venta cancelada' : 'Venta completada' }}
+              {{ v.estado === 'CANCELADA' ? 'Venta cancelada' : 'Venta completada' }}
             </span>
 
-            <h1>Folio #{{ v.idVenta }}</h1>
+            <h1>Folio #{{ v.id }}</h1>
 
             <div class="detail-subtitle">
               <span>
                 <ion-icon name="calendar-outline"></ion-icon>
-                {{ v.fechaVenta }}
+                {{ v.fecha }}
               </span>
 
               <span>
                 <ion-icon name="time-outline"></ion-icon>
-                {{ v.horaVenta }}
+                {{ v.hora }}
               </span>
 
               <span>
@@ -82,11 +82,11 @@
           <div class="detail-meta">
             <article>
               <div class="meta-icon">
-                <ion-icon [name]="v.origenVenta==='ONLINE'?'bag-check-outline':'storefront-outline'"></ion-icon>
+                <ion-icon [name]="v.origen==='ONLINE'?'bag-check-outline':'storefront-outline'"></ion-icon>
               </div>
               <div>
-                <small>Origen</small><strong>{{v.origenVenta==='ONLINE'?'Venta online':'Punto de venta'}}</strong
-                ><small *ngIf="v.folioPedido">{{v.folioPedido}}</small>
+                <small>Origen</small><strong>{{v.origen==='ONLINE'?'Venta online':'Punto de venta'}}</strong
+                >
               </div>
             </article>
 
@@ -113,7 +113,7 @@
               <div class="meta-icon">
                 <ion-icon
                   [name]="
-                  v.estadoVenta === 'CANCELADA'
+                  v.estado === 'CANCELADA'
                     ? 'close-circle-outline'
                     : 'checkmark-circle-outline'
                 "
@@ -123,7 +123,7 @@
               <div>
                 <small>Estado</small>
 
-                <strong> {{ v.estadoVenta === 'CANCELADA' ? 'Cancelada' : 'Completada' }} </strong>
+                <strong> {{ v.estado === 'CANCELADA' ? 'Cancelada' : 'Completada' }} </strong>
               </div>
             </article>
 
@@ -159,7 +159,7 @@
           <section
             class="cancellation-info"
             *ngIf="
-            v.estadoVenta === 'CANCELADA'
+            v.estado === 'CANCELADA'
           "
           >
             <div class="cancellation-icon">
@@ -183,7 +183,7 @@
                 <div>
                   <small>Administrador</small>
 
-                  <strong> {{ v.nombreEmpleadoCancela || 'No disponible' }} </strong>
+                  <strong> {{ v.cajeroCancela || 'No disponible' }} </strong>
                 </div>
 
                 <div class="reason-row">
@@ -283,8 +283,8 @@
             class="admin-danger-zone"
             *ngIf="
             auth.tieneRol('ADMINISTRADOR') &&
-            v.estadoVenta === 'COMPLETADA' &&
-            v.origenVenta !== 'ONLINE'
+            v.estado === 'COMPLETADA' &&
+            v.origen !== 'ONLINE'
           "
           >
             <div>
@@ -307,15 +307,15 @@
         ========================================== -->
 
           <section class="print-ticket">
-            <img *ngIf="imagen(v.logoSuc) as logo" [src]="logo" alt="Logo de la tienda" />
+            
 
-            <h2>{{ v.nombreSuc || 'Tienda de abarrotes' }}</h2>
+            <h2>{{ v.sucursal || 'Tienda de abarrotes' }}</h2>
 
-            <p *ngIf="v.descripcionSuc">{{ v.descripcionSuc }}</p>
+            
 
-            <p *ngIf="v.telefonoSuc">Tel. {{ v.telefonoSuc }}</p>
+            
 
-            <p *ngIf="v.correoSuc">{{ v.correoSuc }}</p>
+            
 
             <div class="ticket-divider"></div>
 
@@ -324,15 +324,15 @@
             <h3
               class="ticket-cancelled"
               *ngIf="
-              v.estadoVenta === 'CANCELADA'
+              v.estado === 'CANCELADA'
             "
             >
               VENTA CANCELADA
             </h3>
 
-            <p>Folio #{{ v.idVenta }}</p>
+            <p>Folio #{{ v.id }}</p>
 
-            <p>{{ v.fechaVenta }} · {{ v.horaVenta }}</p>
+            <p>{{ v.fecha }} · {{ v.hora }}</p>
 
             <p>Cajero: {{ v.cajero }}</p>
 
@@ -386,7 +386,7 @@
     <ng-template>
       <ion-header>
         <ion-toolbar>
-          <ion-title> Cancelar venta #{{ venta?.idVenta }} </ion-title>
+          <ion-title> Cancelar venta #{{ venta?.id }} </ion-title>
 
           <ion-buttons slot="end">
             <ion-button [disabled]="cancelandoVenta" (click)="mostrarCancelacion = false"> Volver </ion-button>
@@ -445,3 +445,4 @@
     </ng-template>
   </ion-modal>
 </app-admin-shell>
+

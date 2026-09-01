@@ -1,4 +1,5 @@
 export interface EmpleadoSesion {
+  id?: string | null;
   idEmp: number;
   nombre: string;
   nombreEmp: string;
@@ -9,13 +10,16 @@ export interface EmpleadoSesion {
   fechaIngreso: Date | null;
   fotoPerfil: string | null;
   idCargo: number;
+  cargoId?: string | null;
   cargo: string | null;
   idSuc: number;
+  sucursalId?: string | null;
   nombreSuc: string | null;
   estadoEmp: boolean;
 }
 
 export interface ClienteSesion {
+  id?: string | null;
   idCliente: number;
   nombre: string;
   apellidoPat: string | null;

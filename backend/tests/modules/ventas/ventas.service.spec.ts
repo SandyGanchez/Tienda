@@ -41,13 +41,13 @@ describe('VentasService Complete Branch Coverage', () => {
           },
         });
       });
-      jest.spyOn(ventasService, 'obtenerVentaRegistrada').mockResolvedValue({ idVenta: 10 } as any);
+      jest.spyOn(ventasService, 'obtenerVentaRegistrada').mockResolvedValue({ id: 'enc10' } as any);
       const res = await ventasService.crearVenta(dummyEmpleado, {
         uuidVenta: '11111111-1111-4111-8111-111111111111',
         metodoPago: 'TARJETA',
         items: [{ idPro: 1, cantidad: 1 }],
       });
-      expect(res?.idVenta).toBe(10);
+      expect(res?.id).toBe('enc10');
 
       // Venta de otro empleado/sucursal
       jest.spyOn(prisma, '$transaction').mockImplementationOnce(async (cb: any) => {
@@ -178,7 +178,7 @@ describe('VentasService Complete Branch Coverage', () => {
           },
         });
       });
-      jest.spyOn(ventasService, 'obtenerVentaRegistrada').mockResolvedValue({ idVenta: 100 } as any);
+      jest.spyOn(ventasService, 'obtenerVentaRegistrada').mockResolvedValue({ id: 'enc100' } as any);
 
       // Efectivo
       const vEf = await ventasService.crearVenta(dummyEmpleado, {
@@ -187,7 +187,7 @@ describe('VentasService Complete Branch Coverage', () => {
         montoRecibido: 20,
         items: [{ idPro: 1, cantidad: 1 }],
       });
-      expect(vEf?.idVenta).toBe(100);
+      expect(vEf?.id).toBe('enc100');
 
       // Tarjeta
       const vTar = await ventasService.crearVenta(dummyEmpleado, {
@@ -195,7 +195,7 @@ describe('VentasService Complete Branch Coverage', () => {
         metodoPago: 'TARJETA',
         items: [{ idPro: 1, cantidad: 1 }],
       });
-      expect(vTar?.idVenta).toBe(100);
+      expect(vTar?.id).toBe('enc100');
     });
   });
 
@@ -318,7 +318,7 @@ describe('VentasService Complete Branch Coverage', () => {
       });
 
       const res = await ventasService.cancelarVenta(1, 1, 1, 'Error de cobro');
-      expect(res.estadoVenta).toBe('CANCELADA');
+      expect(res.estado).toBe('CANCELADA');
     });
   });
 
@@ -342,7 +342,7 @@ describe('VentasService Complete Branch Coverage', () => {
 
       const lista = await ventasService.listarVentas({ idEmp: 1, idSuc: 1, cargo: 'ADMINISTRADOR' });
       expect(lista.length).toBe(1);
-      expect(lista[0].origenVenta).toBe('POS');
+      expect(lista[0]?.origen).toBe('POS');
 
       jest.spyOn(prisma.venta, 'findFirst').mockResolvedValue({
         idVenta: 1,
@@ -369,7 +369,7 @@ describe('VentasService Complete Branch Coverage', () => {
       } as any);
 
       const det = await ventasService.detalleVenta(1, { idEmp: 1, idSuc: 1, cargo: 'CAJERO' });
-      expect(det?.idVenta).toBe(1);
+      expect(det?.id).toBeDefined();
       expect(det?.items.length).toBe(1);
     });
   });

@@ -100,7 +100,7 @@ export class SyncService {
               if (err instanceof HttpErrorResponse && err.status === 409) {
                 const marcas = await firstValueFrom(this.catalogos.getMarcas());
                 const encontrada = marcas.find(
-                  (m) => (m.nombreMarca || '').toLowerCase() === p.nombre.toLowerCase(),
+                  (m) => (m.nombre || '').toLowerCase() === p.nombre.toLowerCase(),
                 );
                 if (encontrada) marcaReal = encontrada;
                 else throw err;
@@ -118,7 +118,7 @@ export class SyncService {
             } catch (err: unknown) {
               if (err instanceof HttpErrorResponse && err.status === 409) {
                 const cats = await firstValueFrom(this.catalogos.getCategorias());
-                const encontrada = cats.find((c) => (c.nombreCat || '').toLowerCase() === p.nombre.toLowerCase());
+                const encontrada = cats.find((c) => (c.nombre || '').toLowerCase() === p.nombre.toLowerCase());
                 if (encontrada) catReal = encontrada;
                 else throw err;
               } else {
@@ -167,7 +167,7 @@ export class SyncService {
                 try {
                   const blob = this.base64ABlob(p.fotoBase64, p.fotoMime || 'image/jpeg');
                   productoFinal = await firstValueFrom(
-                    this.productos.subirImagen(productoCreado.idPro, blob, p.fotoNombre || 'producto.jpg'),
+                    this.productos.subirImagen(productoCreado.id, blob, p.fotoNombre || 'producto.jpg'),
                   );
                 } catch (fotoError) {
                   console.error('Error al subir foto a S3 durante sincronización:', fotoError);

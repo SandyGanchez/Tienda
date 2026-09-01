@@ -48,7 +48,7 @@ export class EmpleadosPage implements OnInit {
 
   guardando = false;
 
-  editando: number | null = null;
+  editando: string | null = null;
 
   form: EmpleadoDto = this.vacio();
 
@@ -121,7 +121,7 @@ export class EmpleadosPage implements OnInit {
   ========================================= */
 
   editar(empleado: EmpleadoSesion): void {
-    this.editando = empleado.idEmp;
+    this.editando = empleado.id;
 
     this.form = {
       nombre: empleado.nombreEmp || '',
@@ -138,7 +138,7 @@ export class EmpleadosPage implements OnInit {
 
       fotoPerfil: empleado.fotoPerfil || '',
 
-      idCargo: empleado.idCargo,
+      idCargo: (empleado.cargoId || empleado.idCargo) ?? null,
 
       password: '',
     };
@@ -200,8 +200,10 @@ export class EmpleadosPage implements OnInit {
   ========================================= */
 
   async cambiarEstado(empleado: EmpleadoSesion): Promise<void> {
+    const id = empleado.id || empleado.idEmp;
+    if (!id) return;
     try {
-      const actualizado = await firstValueFrom(this.api.estado(empleado.idEmp, !empleado.estadoEmp));
+      const actualizado = await firstValueFrom(this.api.estado(id, !empleado.estadoEmp));
 
       this.empleados = this.upsert(actualizado);
 
@@ -220,10 +222,10 @@ export class EmpleadosPage implements OnInit {
   ========================================= */
 
   private upsert(empleado: EmpleadoSesion): EmpleadoSesion[] {
-    const existe = this.empleados.some((item) => item.idEmp === empleado.idEmp);
+    const existe = this.empleados.some((item) => item.id === empleado.id);
 
     if (existe) {
-      return this.empleados.map((item) => (item.idEmp === empleado.idEmp ? empleado : item));
+      return this.empleados.map((item) => (item.id === empleado.id ? empleado : item));
     }
 
     return [...this.empleados, empleado];
@@ -273,3 +275,4 @@ export class EmpleadosPage implements OnInit {
     await toast.present();
   }
 }
+

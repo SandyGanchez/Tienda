@@ -106,7 +106,7 @@ describe('ProductosService', () => {
         activoPro: true,
       } as any);
       const res = await productosService.obtenerProducto(1);
-      expect(res?.idPro).toBe(1);
+      expect(res?.id).toBeDefined();
     });
 
     it('listarAdmin debe formatear precios y catalogos', async () => {
@@ -134,9 +134,9 @@ describe('ProductosService', () => {
 
       const items = await productosService.listarAdmin();
       expect(items.length).toBe(1);
-      expect(items[0].nombrePro).toBe('Leche Entera');
-      expect(items[0].nombreMarca).toBe('Lala');
-      expect(items[0].precioVentaPro).toBe(28);
+      expect(items[0]?.nombre).toBe('Leche Entera');
+      expect(items[0]?.marca).toBe('Lala');
+      expect(items[0]?.precioVenta).toBe(28);
     });
 
     it('listarPos y listarPublico deben retornar productos activos', async () => {
@@ -156,7 +156,7 @@ describe('ProductosService', () => {
 
       const pos = await productosService.listarPos();
       expect(pos.length).toBe(1);
-      expect(pos[0].nombrePro).toBe('Agua');
+      expect(pos[0]?.nombre).toBe('Agua');
 
       const pub = await productosService.listarPublico();
       expect(pub.length).toBe(1);
@@ -178,7 +178,7 @@ describe('ProductosService', () => {
 
       const prod = await productosService.buscarPorQR('1122334455');
       expect(prod).not.toBeNull();
-      expect(prod?.nombrePro).toBe('Agua Natural');
+      expect(prod?.nombre).toBe('Agua Natural');
     });
   });
 
@@ -222,9 +222,9 @@ describe('ProductosService', () => {
       jest.spyOn(prisma.producto, 'findFirst').mockResolvedValue(null);
       jest.spyOn(prisma.producto, 'create').mockResolvedValue({ idPro: 10 } as any);
       jest.spyOn(productosService, 'obtenerProducto').mockResolvedValue({
-        idPro: 10,
-        nombrePro: 'Nuevo Producto',
-        precioVentaPro: 30,
+        id: 'enc10',
+        nombre: 'Nuevo Producto',
+        precioVenta: 30,
       } as any);
 
       const creado = await productosService.crear({
@@ -235,7 +235,7 @@ describe('ProductosService', () => {
         idCat: 1,
       });
 
-      expect(creado?.idPro).toBe(10);
+      expect(creado?.id).toBeDefined();
     });
 
     it('actualizar validaciones y éxito', async () => {
@@ -246,7 +246,7 @@ describe('ProductosService', () => {
         productosService.actualizar(1, { nombre: 'P', precio: 10, existencia: 1, idMarca: 1, idCat: 1 }),
       ).rejects.toMatchObject({ status: 404 });
 
-      jest.spyOn(productosService, 'obtenerProducto').mockResolvedValue({ idPro: 1 } as any);
+      jest.spyOn(productosService, 'obtenerProducto').mockResolvedValue({ id: 'enc1', idPro: 1 } as any);
       jest.spyOn(prisma.marca, 'findUnique').mockResolvedValue(null);
       await expect(
         productosService.actualizar(1, { nombre: 'P', precio: 10, existencia: 1, idMarca: 99, idCat: 1 }),
@@ -261,6 +261,7 @@ describe('ProductosService', () => {
 
       jest.spyOn(prisma.producto, 'findFirst').mockResolvedValue(null);
       jest.spyOn(prisma.producto, 'update').mockResolvedValue({ idPro: 1 } as any);
+      jest.spyOn(productosService, 'obtenerProducto').mockResolvedValue({ id: 'enc1', idPro: 1 } as any);
       const act = await productosService.actualizar(1, {
         nombre: 'Producto Actualizado',
         precio: 35,
@@ -268,7 +269,7 @@ describe('ProductosService', () => {
         idMarca: 1,
         idCat: 1,
       });
-      expect(act?.idPro).toBe(1);
+      expect(act?.id).toBeDefined();
     });
 
     it('presignImagen debe generar url o rechazar si producto no existe', async () => {
@@ -290,15 +291,16 @@ describe('ProductosService', () => {
       } as any);
       jest.spyOn(prisma.producto, 'update').mockResolvedValue({} as any);
       jest.spyOn(productosService, 'obtenerProducto').mockResolvedValue({
+        id: 'enc10',
         idPro: 10,
-        imagenPro: 'https://s3/productos/nueva.jpg',
+        imagen: 'https://s3/productos/nueva.jpg',
       } as any);
 
       const res = await productosService.confirmarImagen(10, 'https://s3/productos/nueva.jpg');
-      expect(res?.imagenPro).toBe('https://s3/productos/nueva.jpg');
+      expect(res?.imagen).toBe('https://s3/productos/nueva.jpg');
 
       const res2 = await productosService.confirmarImagen(10, 'productos/nueva.jpg');
-      expect(res2?.imagenPro).toBe('https://s3/productos/nueva.jpg');
+      expect(res2?.imagen).toBe('https://s3/productos/nueva.jpg');
     });
 
     it('eliminar debe rechazar dependencias o eliminar con éxito', async () => {

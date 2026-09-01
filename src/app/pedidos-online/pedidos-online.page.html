@@ -74,7 +74,7 @@
               <td class="amount">{{p.total|currency:'MXN':'symbol-narrow':'1.2-2'}}</td>
               <td><span class="status" [attr.data-status]="p.estado">{{etiqueta(p.estado)}}</span></td>
               <td>
-                <a [routerLink]="['/pedidos-online',p.idPedido]"
+                <a [routerLink]="['/pedidos-online',p.id]"
                   >Ver pedido <ion-icon name="arrow-forward-outline"></ion-icon
                 ></a>
               </td>
@@ -92,7 +92,7 @@
             <span>{{p.fechaPedido|date:'mediumDate'}}</span
             ><strong>{{p.total|currency:'MXN':'symbol-narrow':'1.2-2'}}</strong>
           </div>
-          <ion-button expand="block" fill="outline" [routerLink]="['/pedidos-online',p.idPedido]"
+          <ion-button expand="block" fill="outline" [routerLink]="['/pedidos-online',p.id]"
             >Ver pedido</ion-button
           >
         </article>

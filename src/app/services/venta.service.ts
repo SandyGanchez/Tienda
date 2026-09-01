@@ -27,9 +27,10 @@ export class VentaService {
   detalle(idVenta: number): Observable<VentaDetalle> {
     return this.http.get<VentaDetalle>(`${this.api}/ventas/${idVenta}`);
   }
-  cancelarVenta(idVenta: number, motivo: string): Observable<{ message: string; venta: VentaCancelada }> {
+  cancelarVenta(idVenta: string, motivo: string): Observable<{ message: string; venta: VentaCancelada }> {
     return this.http.post<{ message: string; venta: VentaCancelada }>(`${this.api}/ventas/${idVenta}/cancelar`, {
       motivo,
     });
   }
 }
+

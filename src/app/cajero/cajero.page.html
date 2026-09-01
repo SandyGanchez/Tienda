@@ -327,40 +327,40 @@
                 class="pos-product"
                 *ngFor="let producto of resultados"
                 (click)="agregar(producto)"
-                [disabled]="producto.existenciaPro <= 0"
-                [class.out-of-stock]="producto.existenciaPro <= 0"
+                [disabled]="producto.existencia <= 0"
+                [class.out-of-stock]="producto.existencia <= 0"
               >
                 <div class="product-image">
                   <ion-icon name="cube-outline"></ion-icon>
 
                   <img
-                    *ngIf="imagen(producto.imagenPro) as src"
+                    *ngIf="imagen(producto.imagen) as src"
                     [src]="src"
-                    [alt]="producto.nombrePro"
+                    [alt]="producto.nombre"
                     (load)="mostrarImagen($event)"
                     (error)="ocultarImagen($event)"
                   />
                 </div>
 
                 <div class="product-copy">
-                  <strong> {{ producto.nombrePro }} </strong>
+                  <strong> {{ producto.nombre }} </strong>
 
-                  <small> {{ producto.nombreMarca || 'Sin marca' }} </small>
+                  <small> {{ producto.marca || 'Sin marca' }} </small>
 
-                  <small *ngIf="producto.tamanoPro || producto.presentacionPro">
-                    {{ producto.tamanoPro || '' }} {{ producto.presentacionPro || '' }}
+                  <small *ngIf="producto.tamano || producto.presentacion">
+                    {{ producto.tamano || '' }} {{ producto.presentacion || '' }}
                   </small>
 
                   <div class="product-bottom">
-                    <b> {{ producto.precioVentaPro | currency:'MXN' }} </b>
+                    <b> {{ producto.precioVenta | currency:'MXN' }} </b>
 
-                    <span class="stock-chip" [class.empty]="producto.existenciaPro <= 0">
-                      {{ producto.existenciaPro > 0 ? 'Stock: ' + producto.existenciaPro : 'Agotado' }}
+                    <span class="stock-chip" [class.empty]="producto.existencia <= 0">
+                      {{ producto.existencia > 0 ? 'Stock: ' + producto.existencia : 'Agotado' }}
                     </span>
                   </div>
                 </div>
 
-                <div class="add-product" *ngIf="producto.existenciaPro > 0">
+                <div class="add-product" *ngIf="producto.existencia > 0">
                   <ion-icon name="add-outline"></ion-icon>
                 </div>
               </button>
@@ -788,3 +788,4 @@
     </ion-content>
   </ng-template>
 </ion-modal>
+

@@ -35,3 +35,4 @@ export class CajaPage implements OnInit {
     return d === 0 ? 'CAJA CUADRADA' : d > 0 ? 'SOBRANTE' : 'FALTANTE';
   }
 }
+

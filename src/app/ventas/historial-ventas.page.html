@@ -135,7 +135,7 @@
             *ngFor="let venta of ventas"
             [routerLink]="[
             '/ventas',
-            venta.idVenta
+            venta.id
           ]"
           >
             <!-- FOLIO -->
@@ -147,9 +147,9 @@
 
               <div>
                 <small>Folio</small>
-                <strong>#{{ venta.idVenta }}</strong>
-                <span class="origin-badge" [class.online]="venta.origenVenta==='ONLINE'"
-                  >{{venta.origenVenta==='ONLINE'?'Online':'Punto de venta'}}</span
+                <strong>#{{ venta.id }}</strong>
+                <span class="origin-badge" [class.online]="venta.origen==='ONLINE'"
+                  >{{venta.origen==='ONLINE'?'Online':'Punto de venta'}}</span
                 >
               </div>
             </div>
@@ -159,15 +159,15 @@
             <div class="sale-data">
               <small>Fecha y hora</small>
 
-              <span> {{ venta.fechaVenta }} </span>
+              <span> {{ venta.fecha }} </span>
 
-              <small class="secondary-value"> {{ venta.horaVenta }} </small>
+              <small class="secondary-value"> {{ venta.hora }} </small>
             </div>
 
             <!-- CAJERO -->
 
             <div class="sale-data">
-              <small>{{venta.origenVenta==='ONLINE'?'Revisó':'Cajero'}}</small>
+              <small>{{venta.origen==='ONLINE'?'Revisó':'Cajero'}}</small>
 
               <span> {{ venta.cajero || 'Sin nombre' }} </span>
             </div>
@@ -200,12 +200,12 @@
               <span
                 class="sale-state"
                 [class.cancelled]="
-                venta.estadoVenta === 'CANCELADA'
+                venta.estado === 'CANCELADA'
               "
               >
                 <span class="state-dot"></span>
 
-                {{ venta.estadoVenta === 'CANCELADA' ? 'Cancelada' : 'Completada' }}
+                {{ venta.estado === 'CANCELADA' ? 'Cancelada' : 'Completada' }}
               </span>
             </div>
 
@@ -244,3 +244,4 @@
     </main>
   </ion-content>
 </app-admin-shell>
+

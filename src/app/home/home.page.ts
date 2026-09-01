@@ -33,8 +33,8 @@ interface FormularioProducto {
   codigoQR: string;
   sku: string;
   imagen: string;
-  idMarca: number | null;
-  idCat: number | null;
+  idMarca: string | null;
+  idCat: string | null;
 }
 
 interface DatosProductoFormulario {
@@ -49,8 +49,8 @@ interface DatosProductoFormulario {
   codigoQR: string;
   sku: string;
   imagen: string;
-  idMarca: number;
-  idCat: number;
+  idMarca: string;
+  idCat: string;
 }
 
 interface FormularioCatalogo {
@@ -87,12 +87,12 @@ export class HomePage implements OnInit {
   mostrarModalProducto = false;
   mostrarOpcionesAgregar = false;
   modoProducto: ModoProducto = 'crear';
-  productoEditandoId: number | null = null;
+  productoEditandoId: string | null = null;
   formProducto: FormularioProducto = this.formularioProductoVacio();
 
   mostrarModalCatalogo = false;
   tipoCatalogo: TipoCatalogo = 'marca';
-  catalogoEditandoId: number | null = null;
+  catalogoEditandoId: string | null = null;
   formCatalogo: FormularioCatalogo = { nombre: '', descripcion: '' };
   guardandoProducto = false;
   buscandoProducto = false;
@@ -160,11 +160,11 @@ export class HomePage implements OnInit {
     return this.productos.filter((producto) => {
       const coincideTexto =
         !termino ||
-        [producto.nombrePro, producto.codigoQR, producto.skuPro].some((valor) =>
+        [producto.nombre, producto.codigoQR, producto.sku].some((valor) =>
           (valor || '').toLowerCase().includes(termino),
         );
-      const coincideCategoria = !this.filtroCategoria || Number(producto.idCat) === this.filtroCategoria;
-      const coincideMarca = !this.filtroMarca || Number(producto.idMarca) === this.filtroMarca;
+      const coincideCategoria = !this.filtroCategoria || Number(producto.categoria?.id) === this.filtroCategoria;
+      const coincideMarca = !this.filtroMarca || Number(producto.marca?.id) === this.filtroMarca;
       const coincideStock = this.filtroStock === 'todos' || this.estadoStock(producto) === this.filtroStock;
       return coincideTexto && coincideCategoria && coincideMarca && coincideStock;
     });
@@ -174,14 +174,14 @@ export class HomePage implements OnInit {
     const termino = this.busquedaCategoria.trim().toLowerCase();
     return this.categorias.filter(
       (categoria) =>
-        !termino || `${categoria.nombreCat || ''} ${categoria.descripCat || ''}`.toLowerCase().includes(termino),
+        !termino || `${categoria.nombre || ''} ${categoria.descripcion || ''}`.toLowerCase().includes(termino),
     );
   }
 
   get marcasFiltradas(): Marca[] {
     const termino = this.busquedaMarca.trim().toLowerCase();
     return this.marcas.filter(
-      (marca) => !termino || `${marca.nombreMarca || ''} ${marca.descripMarca || ''}`.toLowerCase().includes(termino),
+      (marca) => !termino || `${marca.nombre || ''} ${marca.descripcion || ''}`.toLowerCase().includes(termino),
     );
   }
 
@@ -213,9 +213,9 @@ export class HomePage implements OnInit {
   get totalStockBajo(): number {
     return this.productos.filter(
       (producto) =>
-        producto.stockMinimoPro !== null &&
-        producto.existenciaPro !== null &&
-        producto.existenciaPro <= producto.stockMinimoPro,
+        producto.stockMinimo !== null &&
+        producto.existencia !== null &&
+        producto.existencia <= producto.stockMinimo,
     ).length;
   }
 
@@ -223,9 +223,9 @@ export class HomePage implements OnInit {
     return this.productos
       .filter(
         (producto) =>
-          producto.stockMinimoPro !== null &&
-          producto.existenciaPro !== null &&
-          producto.existenciaPro <= producto.stockMinimoPro,
+          producto.stockMinimo !== null &&
+          producto.existencia !== null &&
+          producto.existencia <= producto.stockMinimo,
       )
       .slice(0, 6);
   }
@@ -274,9 +274,9 @@ export class HomePage implements OnInit {
   }
 
   estadoStock(producto: Producto): EstadoStock {
-    const existencia = Number(producto.existenciaPro ?? 0);
+    const existencia = Number(producto.existencia ?? 0);
     if (existencia <= 0) return 'sin-stock';
-    if (producto.stockMinimoPro !== null && existencia <= Number(producto.stockMinimoPro)) return 'bajo';
+    if (producto.stockMinimo !== null && existencia <= Number(producto.stockMinimo)) return 'bajo';
     return 'disponible';
   }
 
@@ -392,21 +392,21 @@ export class HomePage implements OnInit {
 
   editarProducto(producto: Producto): void {
     this.modoProducto = 'editar';
-    this.productoEditandoId = producto.idPro;
+    this.productoEditandoId = producto.id;
     this.formProducto = {
-      nombre: producto.nombrePro || '',
-      precio: producto.precioVentaPro ?? null,
-      costo: producto.costoPro ?? null,
-      existencia: producto.existenciaPro ?? null,
-      stockMinimo: producto.stockMinimoPro ?? null,
-      tamano: producto.tamanoPro || '',
-      presentacion: producto.presentacionPro || '',
-      tipo: producto.tipoPro || '',
+      nombre: producto.nombre || '',
+      precio: producto.precioVenta ?? null,
+      costo: producto.costo ?? null,
+      existencia: producto.existencia ?? null,
+      stockMinimo: producto.stockMinimo ?? null,
+      tamano: producto.tamano || '',
+      presentacion: producto.presentacion || '',
+      tipo: producto.tipo || '',
       codigoQR: producto.codigoQR || '',
-      sku: producto.skuPro || '',
-      imagen: producto.imagenPro || '',
-      idMarca: producto.idMarca,
-      idCat: producto.idCat,
+      sku: producto.sku || '',
+      imagen: producto.imagen || '',
+      idMarca: producto.marca?.id ?? null,
+      idCat: producto.categoria?.id ?? null,
     };
     this.reiniciarFotoPendiente();
     this.erroresProducto = {};
@@ -445,20 +445,21 @@ export class HomePage implements OnInit {
               this.fotoProductoPendiente?.type,
             );
             const productoOffline: Producto = {
-              idPro: idProTemporal,
-              nombrePro: datos.nombre,
-              precioVentaPro: datos.precio,
-              costoPro: datos.costo,
-              existenciaPro: datos.existencia,
-              stockMinimoPro: datos.stockMinimo,
-              tamanoPro: datos.tamano,
-              presentacionPro: datos.presentacion,
-              tipoPro: datos.tipo,
+              id: String(idProTemporal),
+              nombre: datos.nombre,
+              precioVenta: datos.precio,
+              costo: datos.costo,
+              existencia: datos.existencia,
+              stockMinimo: datos.stockMinimo,
+              tamano: datos.tamano,
+              presentacion: datos.presentacion,
+              tipo: datos.tipo,
               codigoQR: datos.codigoQR,
-              skuPro: datos.sku,
-              imagenPro: base64Foto || datos.imagen,
-              idMarca: datos.idMarca,
-              idCat: datos.idCat,
+              sku: datos.sku,
+              imagen: base64Foto || datos.imagen,
+              activo: true,
+              marca: datos.idMarca ? { id: datos.idMarca, nombre: this.marcas.find((m) => m.id === datos.idMarca)?.nombre || null } : null,
+              categoria: datos.idCat ? { id: datos.idCat, nombre: this.categorias.find((c) => c.id === datos.idCat)?.nombre || null } : null,
               pendienteSync: 1,
             };
             this.actualizarProductoEnLista(productoOffline);
@@ -488,7 +489,7 @@ export class HomePage implements OnInit {
       if (this.fotoProductoPendiente) {
         try {
           productoFinal = await firstValueFrom(
-            this.api.subirImagen(guardadoRemoto.idPro, this.fotoProductoPendiente, this.nombreFotoPendiente),
+            this.api.subirImagen(guardadoRemoto.id, this.fotoProductoPendiente, this.nombreFotoPendiente),
           );
         } catch (error: unknown) {
           fotoFallo = true;
@@ -648,13 +649,13 @@ export class HomePage implements OnInit {
     if (sugerencia.presentacion) this.formProducto.presentacion = sugerencia.presentacion;
     if (sugerencia.imagenUrl) this.formProducto.imagen = sugerencia.imagenUrl;
     const marca = this.marcas.find(
-      (item) => (item.nombreMarca || '').toLowerCase() === (sugerencia.marca || '').toLowerCase(),
+      (item) => (item.nombre || '').toLowerCase() === (sugerencia.marca || '').toLowerCase(),
     );
     const categoria = this.categorias.find(
-      (item) => (item.nombreCat || '').toLowerCase() === (sugerencia.categoria || '').toLowerCase(),
+      (item) => (item.nombre || '').toLowerCase() === (sugerencia.categoria || '').toLowerCase(),
     );
-    if (marca) this.formProducto.idMarca = marca.idMarca;
-    if (categoria) this.formProducto.idCat = categoria.idCat;
+    if (marca && marca.id) this.formProducto.idMarca = marca.id;
+    if (categoria && categoria.id) this.formProducto.idCat = categoria.id;
     this.mensajeBusqueda = 'Información sugerida aplicada. Revisa los datos antes de guardar.';
     this.sugerenciaPublica = null;
   }
@@ -699,17 +700,17 @@ export class HomePage implements OnInit {
     if (
       !(await this.confirmarAccion(
         'Eliminar producto',
-        `¿Quieres eliminar “${producto.nombrePro}”? Solo podrá eliminarse si no tiene movimientos relacionados.`,
+        `¿Quieres eliminar “${producto.nombre}”? Solo podrá eliminarse si no tiene movimientos relacionados.`,
         'Eliminar',
       ))
     )
       return;
     try {
-      const respuesta = await firstValueFrom(this.api.deleteProducto(producto.idPro));
-      this.productos = this.productos.filter((item) => item.idPro !== producto.idPro);
+      const respuesta = await firstValueFrom(this.api.deleteProducto(producto.id));
+      this.productos = this.productos.filter((item) => item.id !== producto.id);
       if (this.sqlite.disponible) {
         try {
-          await this.sqlite.eliminarProductoLocal(producto.idPro);
+          await this.sqlite.eliminarProductoLocal(producto.id);
         } catch (error: unknown) {
           console.error('Producto eliminado en servidor, pero falló SQLite', error);
         }
@@ -735,16 +736,16 @@ export class HomePage implements OnInit {
   editarMarca(marca: Marca): void {
     this.catalogoDesdeProducto = false;
     this.tipoCatalogo = 'marca';
-    this.catalogoEditandoId = marca.idMarca;
-    this.formCatalogo = { nombre: marca.nombreMarca || '', descripcion: marca.descripMarca || '' };
+    this.catalogoEditandoId = marca.id;
+    this.formCatalogo = { nombre: marca.nombre || '', descripcion: marca.descripcion || '' };
     this.mostrarModalCatalogo = true;
   }
 
   editarCategoria(categoria: Categoria): void {
     this.catalogoDesdeProducto = false;
     this.tipoCatalogo = 'categoria';
-    this.catalogoEditandoId = categoria.idCat;
-    this.formCatalogo = { nombre: categoria.nombreCat || '', descripcion: categoria.descripCat || '' };
+    this.catalogoEditandoId = categoria.id;
+    this.formCatalogo = { nombre: categoria.nombre || '', descripcion: categoria.descripcion || '' };
     this.mostrarModalCatalogo = true;
   }
 
@@ -771,15 +772,15 @@ export class HomePage implements OnInit {
 
     this.guardandoCatalogo = true;
     try {
-      let nuevoId: number;
+      let nuevoId: string;
       try {
         if (this.tipoCatalogo === 'marca') {
           const marca =
             this.catalogoEditandoId === null
               ? await firstValueFrom(this.catalogosApi.crearMarca(dto))
               : await firstValueFrom(this.catalogosApi.actualizarMarca(this.catalogoEditandoId, dto));
-          this.marcas = this.reemplazarPorId(this.marcas, marca, 'idMarca');
-          nuevoId = marca.idMarca;
+          this.marcas = this.reemplazarPorId(this.marcas, marca, 'id');
+          nuevoId = marca.id;
           if (this.sqlite.disponible) {
             void this.sqlite.sincronizarMarcas(this.marcas);
           }
@@ -788,8 +789,8 @@ export class HomePage implements OnInit {
             this.catalogoEditandoId === null
               ? await firstValueFrom(this.catalogosApi.crearCategoria(dto))
               : await firstValueFrom(this.catalogosApi.actualizarCategoria(this.catalogoEditandoId, dto));
-          this.categorias = this.reemplazarPorId(this.categorias, categoria, 'idCat');
-          nuevoId = categoria.idCat;
+          this.categorias = this.reemplazarPorId(this.categorias, categoria, 'id');
+          nuevoId = categoria.id;
           if (this.sqlite.disponible) {
             void this.sqlite.sincronizarCategorias(this.categorias);
           }
@@ -800,12 +801,12 @@ export class HomePage implements OnInit {
         if (esErrorConexion && this.sqlite.disponible && this.catalogoEditandoId === null) {
           if (this.tipoCatalogo === 'marca') {
             const marcaOffline = await this.sqlite.guardarMarcaOffline(dto);
-            this.marcas = this.reemplazarPorId(this.marcas, marcaOffline, 'idMarca');
-            nuevoId = marcaOffline.idMarca;
+            this.marcas = this.reemplazarPorId(this.marcas, marcaOffline, 'id');
+            nuevoId = marcaOffline.id;
           } else {
             const categoriaOffline = await this.sqlite.guardarCategoriaOffline(dto);
-            this.categorias = this.reemplazarPorId(this.categorias, categoriaOffline, 'idCat');
-            nuevoId = categoriaOffline.idCat;
+            this.categorias = this.reemplazarPorId(this.categorias, categoriaOffline, 'id');
+            nuevoId = categoriaOffline.id;
           }
           this.mostrarModalCatalogo = false;
           if (this.catalogoDesdeProducto) {
@@ -851,11 +852,11 @@ export class HomePage implements OnInit {
     return 'Buenas noches';
   }
   async eliminarMarca(marca: Marca): Promise<void> {
-    if (!(await this.confirmarAccion('Eliminar marca', `¿Quieres eliminar “${marca.nombreMarca}”?`, 'Eliminar')))
+    if (!(await this.confirmarAccion('Eliminar marca', `¿Quieres eliminar “${marca.nombre}”?`, 'Eliminar')))
       return;
     try {
-      const respuesta = await firstValueFrom(this.catalogosApi.eliminarMarca(marca.idMarca));
-      this.marcas = this.marcas.filter((item) => item.idMarca !== marca.idMarca);
+      const respuesta = await firstValueFrom(this.catalogosApi.eliminarMarca(marca.id));
+      this.marcas = this.marcas.filter((item) => item.id !== marca.id);
       await this.mostrarFeedback(respuesta.message, 'success');
     } catch (error: unknown) {
       await this.mostrarFeedback(this.mensajeErrorHttp(error, 'No se pudo eliminar la marca.'), 'danger');
@@ -863,11 +864,11 @@ export class HomePage implements OnInit {
   }
 
   async eliminarCategoria(categoria: Categoria): Promise<void> {
-    if (!(await this.confirmarAccion('Eliminar categoría', `¿Quieres eliminar “${categoria.nombreCat}”?`, 'Eliminar')))
+    if (!(await this.confirmarAccion('Eliminar categoría', `¿Quieres eliminar “${categoria.nombre}”?`, 'Eliminar')))
       return;
     try {
-      const respuesta = await firstValueFrom(this.catalogosApi.eliminarCategoria(categoria.idCat));
-      this.categorias = this.categorias.filter((item) => item.idCat !== categoria.idCat);
+      const respuesta = await firstValueFrom(this.catalogosApi.eliminarCategoria(categoria.id));
+      this.categorias = this.categorias.filter((item) => item.id !== categoria.id);
       await this.mostrarFeedback(respuesta.message, 'success');
     } catch (error: unknown) {
       await this.mostrarFeedback(this.mensajeErrorHttp(error, 'No se pudo eliminar la categoría.'), 'danger');
@@ -1017,7 +1018,7 @@ export class HomePage implements OnInit {
       sku: f.sku.trim(),
       imagen: f.imagen.trim(),
       idMarca: f.idMarca!,
-      idCat: f.idCat!,
+      idCat: f.idMarca!,
     };
   }
 
@@ -1035,7 +1036,7 @@ export class HomePage implements OnInit {
     if (f.stockMinimo !== null && (!Number.isInteger(Number(f.stockMinimo)) || Number(f.stockMinimo) < 0))
       errores.stockMinimo = 'El stock mínimo debe ser un entero mayor o igual a cero.';
     if (f.idCat === null) errores.idCat = 'Selecciona una categoría.';
-    if (f.idMarca === null) errores.idMarca = 'Selecciona una marca.';
+    if (f.idCat === null) errores.idCat = 'Selecciona una marca.';
     return errores;
   }
 
@@ -1091,12 +1092,12 @@ export class HomePage implements OnInit {
   }
 
   private actualizarProductoEnLista(producto: Producto): void {
-    this.productos = this.productosUnicos(this.reemplazarPorId(this.productos, producto, 'idPro'));
+    this.productos = this.productosUnicos(this.reemplazarPorId(this.productos, producto, 'id'));
   }
 
   private productosUnicos(productos: Producto[]): Producto[] {
-    const porId = new Map<number, Producto>();
-    for (const producto of productos) porId.set(Number(producto.idPro), producto);
+    const porId = new Map<string, Producto>();
+    for (const producto of productos) porId.set(String(producto.id), producto);
     return [...porId.values()];
   }
 
@@ -1140,3 +1141,8 @@ export class HomePage implements OnInit {
     return predeterminado;
   }
 }
+
+
+
+
+

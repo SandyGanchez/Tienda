@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
+import { encodeId } from './formatters';
 import { ClienteSesion, EmpleadoSesion, JwtPayloadCliente, JwtPayloadEmpleado } from '../types/auth.types';
 
 export async function hashPassword(password: string): Promise<string> {
@@ -11,17 +12,19 @@ export async function comparePassword(password: string, hash: string): Promise<b
   return bcrypt.compare(password, hash);
 }
 
-export function emitirSesionEmpleado(empleado: { idEmp: number }): string {
+export function emitirSesionEmpleado(empleado: { id?: string | null; idEmp?: number }): string {
   if (!env.JWT_SECRET) throw new Error('JWT_SECRET no está configurado');
-  return jwt.sign({ sub: String(empleado.idEmp), tipo: 'EMPLEADO' }, env.JWT_SECRET, {
+  const sub = String(empleado.id || empleado.idEmp);
+  return jwt.sign({ sub, tipo: 'EMPLEADO' }, env.JWT_SECRET, {
     expiresIn: '12h',
     issuer: 'tienda-api',
   });
 }
 
-export function emitirSesionCliente(cliente: { idCliente: number }): string {
+export function emitirSesionCliente(cliente: { id?: string | null; idCliente?: number }): string {
   if (!env.JWT_SECRET) throw new Error('JWT_SECRET no está configurado');
-  return jwt.sign({ sub: String(cliente.idCliente), tipo: 'CLIENTE' }, env.JWT_SECRET, {
+  const sub = String(cliente.id || cliente.idCliente);
+  return jwt.sign({ sub, tipo: 'CLIENTE' }, env.JWT_SECRET, {
     expiresIn: '12h',
     issuer: 'tienda-api',
   });
@@ -33,8 +36,12 @@ export function verificarToken(token: string): JwtPayloadEmpleado | JwtPayloadCl
 }
 
 export function empleadoSeguro(empleado: any): EmpleadoSesion {
+  const idEmp = Number(empleado.idEmp);
+  const idCargo = Number(empleado.idCargo);
+  const idSuc = Number(empleado.cargo?.idSuc || empleado.idSuc || 1);
   return {
-    idEmp: Number(empleado.idEmp),
+    id: encodeId(idEmp),
+    idEmp,
     nombre: [empleado.nombreEmp, empleado.apellidoPatEmp, empleado.apellidoMatEmp].filter(Boolean).join(' '),
     nombreEmp: empleado.nombreEmp || '',
     apellidoPatEmp: empleado.apellidoPatEmp || null,
@@ -43,17 +50,21 @@ export function empleadoSeguro(empleado: any): EmpleadoSesion {
     telefono: empleado.telefono || null,
     fechaIngreso: empleado.fechaIngreso ? new Date(empleado.fechaIngreso) : null,
     fotoPerfil: empleado.fotoPerfil || null,
-    idCargo: Number(empleado.idCargo),
+    idCargo,
+    cargoId: encodeId(idCargo),
     cargo: empleado.cargo?.nombreCargo || empleado.cargo || null,
-    idSuc: Number(empleado.cargo?.idSuc || empleado.idSuc || 1),
+    idSuc,
+    sucursalId: encodeId(idSuc),
     nombreSuc: empleado.cargo?.sucursal?.nombreSuc || empleado.nombreSuc || null,
     estadoEmp: Boolean(empleado.estadoEmp),
   };
 }
 
 export function clienteSeguro(cliente: any): ClienteSesion {
+  const idCliente = Number(cliente.idCliente);
   return {
-    idCliente: Number(cliente.idCliente),
+    id: encodeId(idCliente),
+    idCliente,
     nombre: cliente.nombreCliente || '',
     apellidoPat: cliente.apellidoPatCliente || null,
     apellidoMat: cliente.apellidoMatCliente || null,

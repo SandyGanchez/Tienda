@@ -211,8 +211,8 @@
               </div>
               <div class="stock-list" *ngIf="productosStockBajo.length; else stockEmpty">
                 <article *ngFor="let producto of productosStockBajo">
-                  <span>{{ producto.nombrePro }}</span
-                  ><strong>{{ producto.existenciaPro }} / mínimo {{ producto.stockMinimoPro }}</strong>
+                  <span>{{ producto.nombre }}</span
+                  ><strong>{{ producto.existencia }} / mínimo {{ producto.stockMinimo }}</strong>
                 </article>
               </div>
               <ng-template #stockEmpty><p class="dashboard-empty">No hay productos con stock bajo.</p></ng-template>
@@ -286,7 +286,7 @@
               [(ngModel)]="filtroCategoria"
             >
               <ion-select-option [value]="0">Todas las categorías</ion-select-option>
-              <ion-select-option *ngFor="let c of categorias" [value]="c.idCat">{{ c.nombreCat }}</ion-select-option>
+              <ion-select-option *ngFor="let c of categorias" [value]="c.id">{{ c.nombre }}</ion-select-option>
             </ion-select>
             <ion-select
               interface="popover"
@@ -296,7 +296,7 @@
               [(ngModel)]="filtroMarca"
             >
               <ion-select-option [value]="0">Todas las marcas</ion-select-option>
-              <ion-select-option *ngFor="let m of marcas" [value]="m.idMarca">{{ m.nombreMarca }}</ion-select-option>
+              <ion-select-option *ngFor="let m of marcas" [value]="m.id">{{ m.nombre }}</ion-select-option>
             </ion-select>
             <ion-select
               interface="popover"
@@ -357,28 +357,28 @@
                       <div class="inventory-thumb">
                         <ion-icon name="cube-outline"></ion-icon
                         ><img
-                          *ngIf="resolverImagenProducto(p.imagenPro) as imagen"
+                          *ngIf="resolverImagenProducto(p.imagen) as imagen"
                           [src]="imagen"
-                          [alt]="p.nombrePro || 'Producto'"
+                          [alt]="p.nombre || 'Producto'"
                           (load)="mostrarImagen($event)"
                           (error)="ocultarImagen($event)"
                         />
                       </div>
                       <div>
-                        <strong>{{ p.nombrePro }}</strong
+                        <strong>{{ p.nombre }}</strong
                         ><small
-                          >{{ p.tamanoPro || 'Sin tamaño' }}<ng-container *ngIf="p.presentacionPro">
-                            · {{ p.presentacionPro }}</ng-container
+                          >{{ p.tamano || 'Sin tamaño' }}<ng-container *ngIf="p.presentacion">
+                            · {{ p.presentacion }}</ng-container
                           ></small
                         >
                       </div>
                     </div>
                   </td>
-                  <td class="column-code"><span class="code-value">{{ p.codigoQR || p.skuPro || '—' }}</span></td>
-                  <td>{{ p.nombreCat || 'Sin categoría' }}</td>
-                  <td>{{ p.nombreMarca || 'Sin marca' }}</td>
-                  <td><strong>{{ p.precioVentaPro | currency:'MXN' }}</strong></td>
-                  <td>{{ p.existenciaPro ?? 0 }} unidades</td>
+                  <td class="column-code"><span class="code-value">{{ p.codigoQR || p.sku || '—' }}</span></td>
+                  <td>{{ p.categoria?.nombre || 'Sin categoría' }}</td>
+                  <td>{{ p.marca?.nombre || 'Sin marca' }}</td>
+                  <td><strong>{{ p.precioVenta | currency:'MXN' }}</strong></td>
+                  <td>{{ p.existencia }} unidades</td>
                   <td>
                     <span class="stock-badge" [class]="'stock-badge ' + estadoStock(p)">{{ etiquetaStock(p) }}</span>
                   </td>
@@ -406,27 +406,27 @@
                 <div class="inventory-thumb">
                   <ion-icon name="cube-outline"></ion-icon
                   ><img
-                    *ngIf="resolverImagenProducto(p.imagenPro) as imagen"
+                    *ngIf="resolverImagenProducto(p.imagen) as imagen"
                     [src]="imagen"
-                    [alt]="p.nombrePro || 'Producto'"
+                    [alt]="p.nombre || 'Producto'"
                     (load)="mostrarImagen($event)"
                     (error)="ocultarImagen($event)"
                   />
                 </div>
                 <div>
-                  <h2>{{ p.nombrePro }}</h2>
-                  <p>{{ p.nombreCat || 'Sin categoría' }} · {{ p.nombreMarca || 'Sin marca' }}</p>
-                  <small>{{ p.tamanoPro || '' }} {{ p.presentacionPro || '' }}</small>
+                  <h2>{{ p.nombre }}</h2>
+                  <p>{{ p.categoria?.nombre || 'Sin categoría' }} · {{ p.marca?.nombre || 'Sin marca' }}</p>
+                  <small>{{ p.tamano || '' }} {{ p.presentacion || '' }}</small>
                 </div>
               </div>
               <dl>
                 <div>
                   <dt>Precio</dt>
-                  <dd>{{ p.precioVentaPro | currency:'MXN' }}</dd>
+                  <dd>{{ p.precioVenta | currency:'MXN' }}</dd>
                 </div>
                 <div>
                   <dt>Existencia</dt>
-                  <dd>{{ p.existenciaPro ?? 0 }} unidades</dd>
+                  <dd>{{ p.existencia }} unidades</dd>
                 </div>
                 <div>
                   <dt>Estado</dt>
@@ -476,8 +476,8 @@
               </thead>
               <tbody>
                 <tr *ngFor="let c of categoriasFiltradas">
-                  <td><strong>{{ c.nombreCat }}</strong></td>
-                  <td>{{ c.descripCat || 'Sin descripción' }}</td>
+                  <td><strong>{{ c.nombre }}</strong></td>
+                  <td>{{ c.descripcion || 'Sin descripción' }}</td>
                   <td>
                     <div class="row-actions">
                       <ion-button fill="clear" (click)="editarCategoria(c)" aria-label="Editar categoría"
@@ -498,8 +498,8 @@
           <div class="catalog-cards" *ngIf="categoriasFiltradas.length">
             <article *ngFor="let c of categoriasFiltradas">
               <div>
-                <h2>{{ c.nombreCat }}</h2>
-                <p>{{ c.descripCat || 'Sin descripción' }}</p>
+                <h2>{{ c.nombre }}</h2>
+                <p>{{ c.descripcion || 'Sin descripción' }}</p>
               </div>
               <div class="row-actions">
                 <ion-button fill="clear" (click)="editarCategoria(c)">Editar</ion-button
@@ -549,8 +549,8 @@
               </thead>
               <tbody>
                 <tr *ngFor="let m of marcasFiltradas">
-                  <td><strong>{{ m.nombreMarca }}</strong></td>
-                  <td>{{ m.descripMarca || 'Sin descripción' }}</td>
+                  <td><strong>{{ m.nombre }}</strong></td>
+                  <td>{{ m.descripcion || 'Sin descripción' }}</td>
                   <td>
                     <div class="row-actions">
                       <ion-button fill="clear" (click)="editarMarca(m)" aria-label="Editar marca"
@@ -567,8 +567,8 @@
           <div class="catalog-cards" *ngIf="marcasFiltradas.length">
             <article *ngFor="let m of marcasFiltradas">
               <div>
-                <h2>{{ m.nombreMarca }}</h2>
-                <p>{{ m.descripMarca || 'Sin descripción' }}</p>
+                <h2>{{ m.nombre }}</h2>
+                <p>{{ m.descripcion || 'Sin descripción' }}</p>
               </div>
               <div class="row-actions">
                 <ion-button fill="clear" (click)="editarMarca(m)">Editar</ion-button
@@ -708,18 +708,18 @@
           <div class="product-photo">
             <ion-icon name="cube-outline"></ion-icon>
             <img
-              *ngIf="resolverImagenProducto(productoEncontrado.imagenPro) as imagen"
+              *ngIf="resolverImagenProducto(productoEncontrado.imagen) as imagen"
               [src]="imagen"
-              [alt]="productoEncontrado.nombrePro || 'Producto'"
+              [alt]="productoEncontrado.nombre || 'Producto'"
               (load)="mostrarImagen($event)"
               (error)="ocultarImagen($event)"
             />
           </div>
           <div>
             <h2>Este producto ya está registrado</h2>
-            <h3>{{ productoEncontrado.nombrePro }}</h3>
+            <h3>{{ productoEncontrado.nombre }}</h3>
             <p>
-              {{ productoEncontrado.precioVentaPro | currency:'MXN' }} · Stock: {{ productoEncontrado.existenciaPro }}
+              {{ productoEncontrado.precioVenta | currency:'MXN' }} · Stock: {{ productoEncontrado.existencia }}
             </p>
           </div>
           <ion-button expand="block" (click)="editarProductoEncontrado()">Ver / Editar producto</ion-button>
@@ -797,8 +797,8 @@
               labelPlacement="stacked"
               [(ngModel)]="formProducto.idCat"
             >
-              <ion-select-option *ngFor="let c of categorias" [value]="c.idCat"
-                >{{ c.nombreCat }}</ion-select-option
+              <ion-select-option *ngFor="let c of categorias" [value]="c.id"
+                >{{ c.nombre }}</ion-select-option
               > </ion-select
             ><small *ngIf="erroresProducto.idCat">{{ erroresProducto.idCat }}</small>
           </div>
@@ -813,8 +813,8 @@
               labelPlacement="stacked"
               [(ngModel)]="formProducto.idMarca"
             >
-              <ion-select-option *ngFor="let m of marcas" [value]="m.idMarca"
-                >{{ m.nombreMarca }}</ion-select-option
+              <ion-select-option *ngFor="let m of marcas" [value]="m.id"
+                >{{ m.nombre }}</ion-select-option
               > </ion-select
             ><small *ngIf="erroresProducto.idMarca">{{ erroresProducto.idMarca }}</small>
           </div>

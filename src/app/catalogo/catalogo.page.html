@@ -79,9 +79,9 @@
           <article class="product-card" *ngFor="let producto of productosFiltrados">
             <div class="product-image">
               <img
-                *ngIf="imagen(producto.imagenPro) as src; else imagePlaceholder"
+                *ngIf="imagen(producto.imagen) as src; else imagePlaceholder"
                 [src]="src"
-                [alt]="producto.nombrePro"
+                [alt]="producto.nombre"
               />
               <ng-template #imagePlaceholder><ion-icon name="cube-outline"></ion-icon></ng-template>
               <span class="availability" [class.unavailable]="!disponible(producto)">
@@ -89,14 +89,14 @@
               </span>
             </div>
             <div class="product-body">
-              <span class="category-label">{{ producto.nombreCat || 'Abarrotes' }}</span>
-              <h3>{{ producto.nombrePro }}</h3>
-              <p class="product-meta">{{ producto.nombreMarca || 'Sin marca' }}</p>
-              <p class="product-presentation" *ngIf="producto.tamanoPro || producto.presentacionPro">
-                {{ producto.tamanoPro }} {{ producto.presentacionPro }}
+              <span class="category-label">{{ producto.categoria || 'Abarrotes' }}</span>
+              <h3>{{ producto.nombre }}</h3>
+              <p class="product-meta">{{ producto.marca || 'Sin marca' }}</p>
+              <p class="product-presentation" *ngIf="producto.tamano || producto.presentacion">
+                {{ producto.tamano }} {{ producto.presentacion }}
               </p>
               <div class="product-footer">
-                <strong>{{ producto.precioVentaPro | currency:'MXN':'symbol-narrow':'1.2-2' }}</strong>
+                <strong>{{ producto.precioVenta | currency:'MXN':'symbol-narrow':'1.2-2' }}</strong>
                 <ion-button size="small" shape="round" [disabled]="!disponible(producto)" (click)="agregar(producto)">
                   <ion-icon slot="start" name="add-outline"></ion-icon>
                   Agregar
@@ -109,3 +109,4 @@
     </main>
   </ion-content>
 </app-cliente-shell>
+
