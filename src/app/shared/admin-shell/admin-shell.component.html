@@ -1,119 +1,81 @@
-<ion-split-pane [contentId]="contentId" when="(min-width: 992px)">
-  <ion-menu side="start" [contentId]="contentId" [menuId]="menuId" type="overlay" class="admin-menu">
-    <ion-header class="admin-menu-header">
-      <ion-toolbar>
-        <div class="store-brand">
-          <div class="brand-logo">
-            <img *ngIf="resolverLogo() as logo; else logoFallback" [src]="logo" alt="Logo de la tienda" />
-            <ng-template #logoFallback><ion-icon name="storefront-outline"></ion-icon></ng-template>
-          </div>
-          <div class="brand-copy">
-            <strong>{{ nombreTienda }}</strong
-            ><small>Administración</small>
-          </div>
-        </div>
-      </ion-toolbar>
+<ion-split-pane [contentId]="contentId" when="(min-width: 992px)" class="bg-surface">
+  <ion-menu side="start" [contentId]="contentId" [menuId]="menuId" type="overlay" class="border-r border-surface-variant z-40 bg-surface-container-low max-w-[280px]">
+    
+    <ion-header class="ion-no-border bg-surface-container-low">
+      <div class="px-lg pt-lg pb-4">
+        <h2 class="font-display-lg text-display-sm text-primary dark:text-primary-fixed">{{ nombreTienda }}</h2>
+      </div>
     </ion-header>
 
-    <ion-content class="admin-menu-content">
-      <ion-list lines="none">
+    <ion-content class="bg-surface-container-low --background:transparent">
+      <nav class="flex-1 flex flex-col gap-2 py-4">
         <ion-menu-toggle [autoHide]="false">
           <ng-container *ngIf="esAdministrador">
-            <div class="menu-section-label">Inicio</div>
-            <ion-item
-              button
-              detail="false"
-              routerLink="/home"
-              [queryParams]="{ seccion: 'inicio' }"
-              [class.menu-active]="activeSection === 'inicio'"
-            >
-              <ion-icon slot="start" name="home-outline"></ion-icon><ion-label>Inicio</ion-label>
-            </ion-item>
+            <a routerLink="/home" [queryParams]="{ seccion: 'inicio' }" [ngClass]="activeSection === 'inicio' ? 'bg-secondary-container text-on-secondary-container font-bold' : 'text-on-surface-variant hover:bg-surface-container-highest'" class="flex items-center gap-3 rounded-full mx-sm px-md py-sm transition-all duration-200 ease-in-out font-label-md cursor-pointer no-underline">
+              <span class="material-symbols-outlined" [style.font-variation-settings]="activeSection === 'inicio' ? '\'FILL\' 1' : '\'FILL\' 0'">dashboard</span>
+              Dashboard
+            </a>
 
-            <div class="menu-section-label">Gestión</div>
-            <ion-item
-              button
-              detail="false"
-              routerLink="/home"
-              [queryParams]="{ seccion: 'productos' }"
-              [class.menu-active]="activeSection === 'productos'"
-            >
-              <ion-icon slot="start" name="cube-outline"></ion-icon><ion-label>Productos</ion-label>
-            </ion-item>
-            <ion-item
-              button
-              detail="false"
-              routerLink="/home"
-              [queryParams]="{ seccion: 'categorias' }"
-              [class.menu-active]="activeSection === 'categorias'"
-            >
-              <ion-icon slot="start" name="grid-outline"></ion-icon><ion-label>Categorías</ion-label>
-            </ion-item>
-            <ion-item
-              button
-              detail="false"
-              routerLink="/home"
-              [queryParams]="{ seccion: 'marcas' }"
-              [class.menu-active]="activeSection === 'marcas'"
-            >
-              <ion-icon slot="start" name="pricetag-outline"></ion-icon><ion-label>Marcas</ion-label>
-            </ion-item>
+            <a routerLink="/home" [queryParams]="{ seccion: 'productos' }" [ngClass]="activeSection === 'productos' ? 'bg-secondary-container text-on-secondary-container font-bold' : 'text-on-surface-variant hover:bg-surface-container-highest'" class="flex items-center gap-3 rounded-full mx-sm px-md py-sm transition-all duration-200 ease-in-out font-label-md cursor-pointer no-underline">
+              <span class="material-symbols-outlined" [style.font-variation-settings]="activeSection === 'productos' ? '\'FILL\' 1' : '\'FILL\' 0'">inventory_2</span>
+              Inventario
+            </a>
 
-            <div class="menu-section-label">Personal</div>
-            <ion-item button detail="false" routerLink="/empleados" [class.menu-active]="activeSection === 'empleados'">
-              <ion-icon slot="start" name="people-outline"></ion-icon><ion-label>Empleados</ion-label>
-            </ion-item>
+            <a routerLink="/home" [queryParams]="{ seccion: 'categorias' }" [ngClass]="activeSection === 'categorias' || activeSection === 'marcas' ? 'bg-secondary-container text-on-secondary-container font-bold' : 'text-on-surface-variant hover:bg-surface-container-highest'" class="flex items-center gap-3 rounded-full mx-sm px-md py-sm transition-all duration-200 ease-in-out font-label-md cursor-pointer no-underline">
+              <span class="material-symbols-outlined" [style.font-variation-settings]="activeSection === 'categorias' || activeSection === 'marcas' ? '\'FILL\' 1' : '\'FILL\' 0'">category</span>
+              Catálogos
+            </a>
           </ng-container>
 
-          <div class="menu-section-label">Operación</div>
-          <ion-item button detail="false" routerLink="/cajero" [class.menu-active]="activeSection === 'cajero'">
-            <ion-icon slot="start" name="cart-outline"></ion-icon><ion-label>Punto de venta</ion-label>
-          </ion-item>
-          <ion-item button detail="false" routerLink="/ventas" [class.menu-active]="activeSection === 'ventas'">
-            <ion-icon slot="start" name="receipt-outline"></ion-icon><ion-label>Ventas</ion-label>
-          </ion-item>
-          <ion-item
-            *ngIf="esAdministrador"
-            button
-            detail="false"
-            routerLink="/pedidos-online"
-            [class.menu-active]="activeSection === 'pedidos-online'"
-          >
-            <ion-icon slot="start" name="bag-check-outline"></ion-icon><ion-label>Pedidos online</ion-label>
-          </ion-item>
+          <a routerLink="/ventas" [ngClass]="activeSection === 'ventas' ? 'bg-secondary-container text-on-secondary-container font-bold' : 'text-on-surface-variant hover:bg-surface-container-highest'" class="flex items-center gap-3 rounded-full mx-sm px-md py-sm transition-all duration-200 ease-in-out font-label-md cursor-pointer no-underline">
+            <span class="material-symbols-outlined" [style.font-variation-settings]="activeSection === 'ventas' ? '\'FILL\' 1' : '\'FILL\' 0'">receipt_long</span>
+            Historial de Ventas
+          </a>
+
+          <a *ngIf="esAdministrador" routerLink="/pedidos-online" [ngClass]="activeSection === 'pedidos-online' ? 'bg-secondary-container text-on-secondary-container font-bold' : 'text-on-surface-variant hover:bg-surface-container-highest'" class="flex items-center gap-3 rounded-full mx-sm px-md py-sm transition-all duration-200 ease-in-out font-label-md cursor-pointer no-underline">
+            <span class="material-symbols-outlined" [style.font-variation-settings]="activeSection === 'pedidos-online' ? '\'FILL\' 1' : '\'FILL\' 0'">local_mall</span>
+            Pedidos Online
+          </a>
+
+          <a routerLink="/cajero" [ngClass]="activeSection === 'cajero' ? 'bg-secondary-container text-on-secondary-container font-bold' : 'text-on-surface-variant hover:bg-surface-container-highest'" class="flex items-center gap-3 rounded-full mx-sm px-md py-sm transition-all duration-200 ease-in-out font-label-md cursor-pointer no-underline">
+            <span class="material-symbols-outlined" [style.font-variation-settings]="activeSection === 'cajero' ? '\'FILL\' 1' : '\'FILL\' 0'">point_of_sale</span>
+            POS Terminal
+          </a>
 
           <ng-container *ngIf="esAdministrador">
-            <div class="menu-section-label">Sistema</div>
-            <ion-item
-              button
-              detail="false"
-              routerLink="/home"
-              [queryParams]="{ seccion: 'configuracion' }"
-              [class.menu-active]="activeSection === 'configuracion'"
-            >
-              <ion-icon slot="start" name="settings-outline"></ion-icon><ion-label>Configuración</ion-label>
-            </ion-item>
+            <a routerLink="/empleados" [ngClass]="activeSection === 'empleados' ? 'bg-secondary-container text-on-secondary-container font-bold' : 'text-on-surface-variant hover:bg-surface-container-highest'" class="flex items-center gap-3 rounded-full mx-sm px-md py-sm transition-all duration-200 ease-in-out font-label-md cursor-pointer no-underline mt-4">
+              <span class="material-symbols-outlined" [style.font-variation-settings]="activeSection === 'empleados' ? '\'FILL\' 1' : '\'FILL\' 0'">badge</span>
+              Personal
+            </a>
+
+            <a routerLink="/home" [queryParams]="{ seccion: 'configuracion' }" [ngClass]="activeSection === 'configuracion' ? 'bg-secondary-container text-on-secondary-container font-bold' : 'text-on-surface-variant hover:bg-surface-container-highest'" class="flex items-center gap-3 rounded-full mx-sm px-md py-sm transition-all duration-200 ease-in-out font-label-md cursor-pointer no-underline">
+              <span class="material-symbols-outlined" [style.font-variation-settings]="activeSection === 'configuracion' ? '\'FILL\' 1' : '\'FILL\' 0'">settings</span>
+              Configuración
+            </a>
           </ng-container>
         </ion-menu-toggle>
-      </ion-list>
-
-      <div class="admin-user">
-        <div class="admin-avatar">
-          <img *ngIf="resolverAvatar() as avatar; else avatarFallback" [src]="avatar" alt="Foto del empleado" />
-          <ng-template #avatarFallback><ion-icon name="person-outline"></ion-icon></ng-template>
-        </div>
-        <div class="admin-user-copy">
-          <strong>{{ auth.sesion?.empleado?.nombre || 'Usuario' }}</strong>
-          <small>{{ auth.sesion?.empleado?.cargo || 'EMPLEADO' }}</small>
-        </div>
-        <ion-button fill="clear" aria-label="Cerrar sesión" title="Cerrar sesión" (click)="auth.logout()">
-          <ion-icon slot="icon-only" name="log-out-outline"></ion-icon>
-        </ion-button>
-      </div>
+      </nav>
     </ion-content>
+
+    <!-- User Section -->
+    <div class="p-md border-t border-surface-variant/50 bg-surface-container-lowest mx-3 mb-4 rounded-xl shadow-sm flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center overflow-hidden">
+          <img *ngIf="resolverAvatar() as avatar" [src]="avatar" alt="Foto del empleado" class="w-full h-full object-cover" />
+          <span *ngIf="!resolverAvatar()" class="material-symbols-outlined">person</span>
+        </div>
+        <div class="flex flex-col">
+          <strong class="font-label-sm text-on-surface line-clamp-1">{{ auth.sesion?.empleado?.nombre || 'Usuario' }}</strong>
+          <small class="text-[10px] text-on-surface-variant uppercase">{{ auth.sesion?.empleado?.cargo || 'EMPLEADO' }}</small>
+        </div>
+      </div>
+      <button (click)="auth.logout()" class="w-8 h-8 rounded-full hover:bg-error-container text-on-surface-variant hover:text-error flex items-center justify-center transition-colors">
+        <span class="material-symbols-outlined text-[18px]">logout</span>
+      </button>
+    </div>
   </ion-menu>
 
-  <div class="ion-page admin-shell-content" [id]="contentId">
+  <div class="ion-page bg-surface" [id]="contentId">
     <ng-content></ng-content>
   </div>
 </ion-split-pane>

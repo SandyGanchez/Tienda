@@ -1,193 +1,148 @@
-<section class="store-settings">
-  <header>
-    <span>Configuración</span>
-    <h1>Mi tienda</h1>
-    <p>Personaliza la información que identifica tu negocio.</p>
+<section class="max-w-4xl mx-auto py-lg px-container-margin min-h-screen pb-32">
+  <header class="mb-lg">
+    <span class="font-label-sm text-on-surface-variant uppercase tracking-widest">Configuración</span>
+    <h1 class="font-display-sm text-[32px] text-on-surface mt-1 mb-2">Mi Tienda</h1>
+    <p class="font-body-md text-on-surface-variant">Personaliza la información que identifica tu negocio.</p>
   </header>
-  <p class="loading-copy" *ngIf="cargando">Cargando información...</p>
 
-  <ion-select
-    *ngIf="sucursales.length > 1"
-    label="Sucursal a configurar"
-    labelPlacement="stacked"
-    [value]="sucursalActual?.id || sucursalActual?.sucursalId || sucursalActual?.idSuc"
-    (ionChange)="seleccionar($event.detail.value)"
-  >
-    <ion-select-option *ngFor="let sucursal of sucursales" [value]="sucursal.id || sucursal.sucursalId || sucursal.idSuc">{{
-      sucursal.nombre || sucursal.nombreSuc || 'Sucursal ' + (sucursal.id || sucursal.sucursalId || sucursal.idSuc)
-    }}</ion-select-option>
-  </ion-select>
-  <div class="selection-notice" *ngIf="sucursales.length > 1 && !sucursalActual">
-    Selecciona explícitamente la sucursal que quieres editar.
+  <div *ngIf="cargando" class="flex items-center gap-3 bg-surface-container-low p-md rounded-xl mb-md">
+    <ion-spinner name="dots" color="primary"></ion-spinner>
+    <span class="font-label-md text-on-surface-variant">Cargando información...</span>
+  </div>
+
+  <div *ngIf="sucursales.length > 1" class="bg-surface-container-lowest rounded-2xl p-md shadow-pastel border border-surface-variant mb-lg">
+    <label class="font-label-sm text-on-surface-variant block mb-2">Sucursal a configurar</label>
+    <select [value]="sucursalActual?.id || sucursalActual?.sucursalId || sucursalActual?.idSuc" (change)="seleccionar($any($event.target).value)" class="w-full bg-surface-container border border-surface-variant rounded-xl px-4 h-12 font-body-md focus:border-primary outline-none">
+      <option *ngFor="let sucursal of sucursales" [value]="sucursal.id || sucursal.sucursalId || sucursal.idSuc">
+        {{ sucursal.nombre || sucursal.nombreSuc || 'Sucursal ' + (sucursal.id || sucursal.sucursalId || sucursal.idSuc) }}
+      </option>
+    </select>
+  </div>
+  
+  <div *ngIf="sucursales.length > 1 && !sucursalActual" class="bg-secondary-container text-on-secondary-container p-md rounded-xl flex items-center gap-3">
+    <span class="material-symbols-outlined">info</span>
+    <span class="font-body-md">Selecciona explícitamente la sucursal que quieres editar.</span>
   </div>
 
   <ng-container *ngIf="sucursales.length <= 1 || sucursalActual">
-    <section class="settings-card logo-card">
-      <div class="store-logo">
-        <img *ngIf="resolverLogo() as logo; else logoFallback" [src]="logo" alt="Logo de la tienda" /><ng-template
-          #logoFallback
-          ><ion-icon name="storefront-outline"></ion-icon
-        ></ng-template>
-      </div>
-      <div>
-        <h2>Logo</h2>
-        <p>JPEG, PNG o WEBP de hasta 5 MB.</p>
-      </div>
-      <div class="logo-actions">
-        <ion-button fill="outline" (click)="tomarLogo()">Tomar foto</ion-button>
-        <ion-button fill="outline" (click)="elegirLogo()">Elegir imagen</ion-button>
-        <ion-button *ngIf="logoPendiente" fill="clear" color="danger" (click)="quitarPreview()"
-          >Descartar cambio</ion-button
-        >
-        <ion-button
-          *ngIf="!logoPendiente && sucursalActual?.logoSuc"
-          fill="clear"
-          color="danger"
-          [disabled]="guardando"
-          (click)="quitarLogoActual()"
-          >Quitar logo</ion-button
-        >
-      </div>
-    </section>
-
-    <section class="settings-card settings-grid">
-      <div class="wide"><h2>Información de la tienda</h2></div>
-      <div>
-        <ion-input
-          fill="outline"
-          label="Nombre"
-          labelPlacement="stacked"
-          maxlength="100"
-          [(ngModel)]="form.nombreSuc"
-        ></ion-input
-        ><small *ngIf="errores.nombreSuc">{{ errores.nombreSuc }}</small>
-      </div>
-      <div class="wide">
-        <ion-textarea
-          fill="outline"
-          label="Descripción"
-          labelPlacement="stacked"
-          maxlength="255"
-          [counter]="true"
-          [autoGrow]="true"
-          [(ngModel)]="form.descripcionSuc"
-        ></ion-textarea
-        ><small *ngIf="errores.descripcionSuc">{{ errores.descripcionSuc }}</small>
-      </div>
-      <div class="wide"><h2>Contacto</h2></div>
-      <div>
-        <ion-input
-          fill="outline"
-          label="Teléfono"
-          labelPlacement="stacked"
-          maxlength="15"
-          type="tel"
-          [(ngModel)]="form.telefonoSuc"
-        ></ion-input
-        ><small *ngIf="errores.telefonoSuc">{{ errores.telefonoSuc }}</small>
-      </div>
-      <div>
-        <ion-input
-          fill="outline"
-          label="Correo"
-          labelPlacement="stacked"
-          maxlength="100"
-          type="email"
-          [(ngModel)]="form.correoSuc"
-        ></ion-input
-        ><small *ngIf="errores.correoSuc">{{ errores.correoSuc }}</small>
-      </div>
-      <div class="wide"><h2>Presencia online</h2></div>
-      <div>
-        <ion-input
-          fill="outline"
-          label="Página web"
-          labelPlacement="stacked"
-          maxlength="100"
-          type="url"
-          placeholder="https://"
-          [(ngModel)]="form.paginaWebSuc"
-        ></ion-input
-        ><small *ngIf="errores.paginaWebSuc">{{ errores.paginaWebSuc }}</small>
-      </div>
-      <div>
-        <ion-input
-          fill="outline"
-          label="Red social"
-          labelPlacement="stacked"
-          maxlength="100"
-          [(ngModel)]="form.redSocialSuc"
-        ></ion-input>
-      </div>
-      <div class="wide address" *ngIf="sucursalActual?.direccion">
-        <strong>Dirección registrada</strong><span>{{ sucursalActual?.direccion }}</span>
-      </div>
-    </section>
-    <ion-button class="save-settings" expand="block" [disabled]="guardando" (click)="guardar()">{{
-      guardando ? 'Guardando...' : sucursalActual ? 'Guardar cambios' : 'Crear configuración de tienda'
-    }}</ion-button>
-
-    <section class="settings-card transfer-card">
-      <div class="transfer-heading">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-lg">
+      
+      <!-- Logo Section -->
+      <section class="bg-surface-container-lowest rounded-2xl p-lg shadow-pastel border border-surface-variant flex flex-col gap-md">
         <div>
-          <span>Pagos</span>
-          <h2>Pagos por transferencia</h2>
-          <p>Configura los datos bancarios que recibirán los clientes al reservar un pedido.</p>
+          <h2 class="font-headline-md text-[20px] text-on-surface">Logo de la Tienda</h2>
+          <p class="font-body-sm text-on-surface-variant mt-1">JPEG, PNG o WEBP de hasta 5 MB.</p>
         </div>
-        <ion-toggle [(ngModel)]="transferencia.activo" [disabled]="cargandoTransferencia || guardandoTransferencia"
-          >Transferencias habilitadas</ion-toggle
-        >
+        
+        <div class="flex items-center gap-md">
+          <div class="w-24 h-24 rounded-2xl bg-surface-container-high border-2 border-surface-variant overflow-hidden flex items-center justify-center flex-shrink-0 shadow-sm">
+            <img *ngIf="resolverLogo() as logo; else logoFallback" [src]="logo" alt="Logo de la tienda" class="w-full h-full object-cover" />
+            <ng-template #logoFallback><span class="material-symbols-outlined text-4xl text-on-surface-variant">storefront</span></ng-template>
+          </div>
+          
+          <div class="flex flex-col gap-2">
+            <div class="flex gap-2">
+              <button (click)="tomarLogo()" class="bg-surface-container hover:bg-surface-variant text-on-surface-variant px-4 py-2 rounded-xl font-label-sm transition-colors border border-surface-variant flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px]">photo_camera</span> Cámara
+              </button>
+              <button (click)="elegirLogo()" class="bg-surface-container hover:bg-surface-variant text-on-surface-variant px-4 py-2 rounded-xl font-label-sm transition-colors border border-surface-variant flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px]">image</span> Galería
+              </button>
+            </div>
+            <button *ngIf="logoPendiente" (click)="quitarPreview()" class="text-error font-label-sm text-left hover:underline">Descartar cambio</button>
+            <button *ngIf="!logoPendiente && sucursalActual?.logoSuc" [disabled]="guardando" (click)="quitarLogoActual()" class="text-error font-label-sm text-left hover:underline disabled:opacity-50">Quitar logo</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Store Details Section -->
+      <section class="bg-surface-container-lowest rounded-2xl p-lg shadow-pastel border border-surface-variant flex flex-col gap-md lg:row-span-2">
+        <div>
+          <h2 class="font-headline-md text-[20px] text-on-surface">Datos Generales</h2>
+          <p class="font-body-sm text-on-surface-variant mt-1">Información visible para los clientes.</p>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label class="font-label-sm text-on-surface-variant block mb-1">Nombre de la sucursal *</label>
+            <input type="text" [(ngModel)]="form.nombreSuc" class="w-full bg-surface-container border border-surface-variant rounded-xl px-4 h-12 font-body-md focus:border-primary outline-none" />
+            <span *ngIf="errores.nombreSuc" class="text-error text-xs mt-1 block">{{ errores.nombreSuc }}</span>
+          </div>
+
+          <div>
+            <label class="font-label-sm text-on-surface-variant block mb-1">Dirección *</label>
+            <input type="text" [(ngModel)]="form.descripcionSuc" class="w-full bg-surface-container border border-surface-variant rounded-xl px-4 h-12 font-body-md focus:border-primary outline-none" />
+            <span *ngIf="errores.descripcionSuc" class="text-error text-xs mt-1 block">{{ errores.descripcionSuc }}</span>
+          </div>
+
+          <div>
+            <label class="font-label-sm text-on-surface-variant block mb-1">Teléfono</label>
+            <input type="tel" [(ngModel)]="form.telefonoSuc" class="w-full bg-surface-container border border-surface-variant rounded-xl px-4 h-12 font-body-md focus:border-primary outline-none" />
+            <span *ngIf="errores.telefonoSuc" class="text-error text-xs mt-1 block">{{ errores.telefonoSuc }}</span>
+          </div>
+
+          <div>
+            <label class="font-label-sm text-on-surface-variant block mb-1">Correo de contacto</label>
+            <input type="email" [(ngModel)]="form.correoSuc" class="w-full bg-surface-container border border-surface-variant rounded-xl px-4 h-12 font-body-md focus:border-primary outline-none" />
+            <span *ngIf="errores.correoSuc" class="text-error text-xs mt-1 block">{{ errores.correoSuc }}</span>
+          </div>
+          
+          <div>
+            <label class="font-label-sm text-on-surface-variant block mb-1">Costo de envío estándar (MXN) *</label>
+            <input type="number" [(ngModel)]="form.paginaWebSuc" class="w-full bg-surface-container border border-surface-variant rounded-xl px-4 h-12 font-body-md focus:border-primary outline-none" />
+            <span *ngIf="errores.paginaWebSuc" class="text-error text-xs mt-1 block">{{ errores.paginaWebSuc }}</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Payment Settings -->
+      <section class="bg-surface-container-lowest rounded-2xl p-lg shadow-pastel border border-surface-variant flex flex-col gap-md">
+        <div>
+          <h2 class="font-headline-md text-[20px] text-on-surface flex items-center gap-2"><span class="material-symbols-outlined text-primary">account_balance</span> Datos Bancarios</h2>
+          <p class="font-body-sm text-on-surface-variant mt-1">Configuración para recibir transferencias de clientes en pedidos online.</p>
+        </div>
+
+        <div class="space-y-4">
+          <label class="flex items-center gap-3 p-3 rounded-xl border border-surface-variant bg-surface cursor-pointer hover:bg-surface-container-low transition-colors">
+            <input type="checkbox" [(ngModel)]="transferencia.activo" class="w-5 h-5 text-primary rounded border-outline-variant focus:ring-primary" />
+            <span class="font-label-md text-on-surface">Habilitar cobro por transferencia</span>
+          </label>
+
+          <ng-container *ngIf="transferencia.activo">
+            <div>
+              <label class="font-label-sm text-on-surface-variant block mb-1">Banco *</label>
+              <input type="text" [(ngModel)]="transferencia.banco" class="w-full bg-surface-container border border-surface-variant rounded-xl px-4 h-12 font-body-md focus:border-primary outline-none" />
+            </div>
+            
+            <div>
+              <label class="font-label-sm text-on-surface-variant block mb-1">Titular de la cuenta *</label>
+              <input type="text" [(ngModel)]="transferencia.titular" class="w-full bg-surface-container border border-surface-variant rounded-xl px-4 h-12 font-body-md focus:border-primary outline-none" />
+            </div>
+
+            <div>
+              <label class="font-label-sm text-on-surface-variant block mb-1">Número de cuenta o CLABE *</label>
+              <input type="text" [(ngModel)]="transferencia.clabe" class="w-full bg-surface-container border border-surface-variant rounded-xl px-4 h-12 font-body-md focus:border-primary outline-none" />
+            </div>
+          </ng-container>
+          
+          <button (click)="guardarTransferencia()" [disabled]="guardandoTransferencia" class="w-full py-3 bg-secondary text-on-secondary font-label-md rounded-xl mt-4 active:scale-[0.98] transition-transform flex items-center justify-center gap-2 disabled:opacity-50">
+            <ion-spinner *ngIf="guardandoTransferencia" name="dots"></ion-spinner>
+            <span *ngIf="!guardandoTransferencia" class="material-symbols-outlined">save</span>
+            <span *ngIf="!guardandoTransferencia">Guardar Banco</span>
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <!-- Floating Save Button -->
+    <div class="fixed bottom-0 left-0 lg:left-64 right-0 p-container-margin bg-surface-container-lowest border-t border-surface-variant z-40">
+      <div class="max-w-4xl mx-auto">
+        <button (click)="guardar()" [disabled]="guardando" class="w-full bg-primary text-on-primary h-14 rounded-xl font-label-md shadow-pastel active:scale-[0.98] transition-transform flex items-center justify-center gap-2 disabled:opacity-50">
+          <ion-spinner *ngIf="guardando" name="dots"></ion-spinner>
+          <span *ngIf="!guardando" class="material-symbols-outlined">save</span>
+          <span *ngIf="!guardando">Guardar Tienda</span>
+        </button>
       </div>
-      <p class="loading-copy" *ngIf="cargandoTransferencia">Cargando configuración bancaria...</p>
-      <div class="settings-grid" *ngIf="!cargandoTransferencia">
-        <ion-input
-          fill="outline"
-          label="Banco"
-          labelPlacement="stacked"
-          maxlength="100"
-          [(ngModel)]="transferencia.banco"
-        ></ion-input>
-        <ion-input
-          fill="outline"
-          label="Titular"
-          labelPlacement="stacked"
-          maxlength="150"
-          [(ngModel)]="transferencia.titular"
-        ></ion-input>
-        <ion-input
-          fill="outline"
-          label="CLABE"
-          labelPlacement="stacked"
-          inputmode="numeric"
-          maxlength="18"
-          [(ngModel)]="transferencia.clabe"
-        ></ion-input>
-        <ion-input
-          fill="outline"
-          label="Número de cuenta"
-          labelPlacement="stacked"
-          maxlength="50"
-          [(ngModel)]="transferencia.numeroCuenta"
-        ></ion-input>
-        <ion-textarea
-          class="wide"
-          fill="outline"
-          label="Instrucciones"
-          labelPlacement="stacked"
-          maxlength="1000"
-          [counter]="true"
-          [autoGrow]="true"
-          [(ngModel)]="transferencia.instrucciones"
-        ></ion-textarea>
-      </div>
-      <ion-button
-        class="save-transfer"
-        expand="block"
-        [disabled]="cargandoTransferencia || guardandoTransferencia"
-        (click)="guardarTransferencia()"
-      >
-        {{ guardandoTransferencia ? 'Guardando...' : 'Guardar configuración' }}
-      </ion-button>
-    </section>
+    </div>
   </ng-container>
 </section>

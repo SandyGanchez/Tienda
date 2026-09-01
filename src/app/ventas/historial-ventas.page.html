@@ -1,247 +1,160 @@
 <app-admin-shell menuId="admin-sales-menu" contentId="sales-main" activeSection="ventas">
-  <ion-header class="sales-header">
-    <ion-toolbar>
-      <ion-buttons slot="start">
-        <ion-menu-button class="mobile-menu-button" menu="admin-sales-menu"></ion-menu-button>
-        <ion-back-button defaultHref="/cajero"></ion-back-button>
-      </ion-buttons>
-
-      <ion-title> {{ auth.tieneRol('CAJERO') ? 'Mis ventas' : 'Ventas' }} </ion-title>
-
-      <ion-buttons slot="end">
-        <ion-button routerLink="/cajero">
-          <ion-icon slot="start" name="cart-outline"></ion-icon>
-          <span class="desktop-action">Punto de venta</span>
-        </ion-button>
-
-        <ion-button (click)="auth.logout()">
-          <ion-icon slot="icon-only" name="log-out-outline"></ion-icon>
-        </ion-button>
-      </ion-buttons>
-    </ion-toolbar>
-  </ion-header>
-
-  <ion-content class="sales-content">
-    <main class="sales-shell">
-      <!-- =========================================
-         CABECERA
-    ========================================== -->
-
-      <header class="sales-heading">
-        <div>
-          <span class="sales-eyebrow"> Historial </span>
-
-          <h1>{{ auth.tieneRol('CAJERO') ? 'Mis ventas' : 'Ventas de la sucursal' }}</h1>
-
-          <p>Consulta los cobros registrados y abre cualquier venta para revisar sus productos, pago y comprobante.</p>
+  <div id="sales-main" class="flex h-screen overflow-hidden bg-[#FAFAF9]">
+    <main class="flex-1 overflow-y-auto w-full pb-24 md:pb-lg text-on-surface font-body-md antialiased">
+      
+      <!-- Desktop Header -->
+      <div class="hidden md:flex justify-between items-center px-lg py-lg bg-surface sticky top-0 z-30 shadow-sm">
+        <div class="flex items-center gap-md">
+          <button routerLink="/cajero" class="text-on-surface-variant active:scale-95 duration-150 p-sm rounded-full hover:bg-surface-container-high transition-colors bg-surface-container-lowest pastel-shadow">
+            <span class="material-symbols-outlined">arrow_back</span>
+          </button>
+          <h2 class="font-headline-md text-headline-md text-primary">{{ auth.tieneRol('CAJERO') ? 'Mis ventas' : 'Historial de Ventas' }}</h2>
         </div>
-
-        <ion-button class="new-sale-button" routerLink="/cajero">
-          <ion-icon slot="start" name="add-circle-outline"></ion-icon>
-
-          Nueva venta
-        </ion-button>
-      </header>
-
-      <!-- =========================================
-         RESUMEN
-    ========================================== -->
-
-      <section class="sales-stats" *ngIf="!cargando">
-        <article class="sales-stat">
-          <div class="stat-icon">
-            <ion-icon name="receipt-outline"></ion-icon>
+        <div class="flex items-center gap-md">
+          <div class="bg-surface-container-high text-on-surface rounded-full px-md py-sm flex items-center gap-sm font-label-md text-label-md border border-outline-variant">
+            <span class="material-symbols-outlined text-primary text-[20px]">calendar_today</span>
+            Ventas recientes
           </div>
-
-          <div>
-            <small>Ventas registradas</small>
-            <strong>{{ ventas.length }}</strong>
-          </div>
-        </article>
-
-        <article class="sales-stat">
-          <div class="stat-icon">
-            <ion-icon name="checkmark-circle-outline"></ion-icon>
-          </div>
-
-          <div>
-            <small>Completadas</small>
-            <strong>{{ ventasCompletadas }}</strong>
-          </div>
-        </article>
-
-        <article class="sales-stat">
-          <div class="stat-icon">
-            <ion-icon name="close-circle-outline"></ion-icon>
-          </div>
-
-          <div>
-            <small>Canceladas</small>
-            <strong>{{ ventasCanceladas }}</strong>
-          </div>
-        </article>
-
-        <article class="sales-stat total-stat">
-          <div class="stat-icon">
-            <ion-icon name="cash-outline"></ion-icon>
-          </div>
-
-          <div>
-            <small>Total vendido</small>
-            <strong> {{ totalVendido | currency:'MXN' }} </strong>
-          </div>
-        </article>
-      </section>
-
-      <!-- =========================================
-         CARGANDO
-    ========================================== -->
-
-      <div class="sales-loading" *ngIf="cargando">
-        <ion-spinner></ion-spinner>
-        <p>Cargando ventas...</p>
+          <button routerLink="/cajero" class="flex items-center gap-sm bg-primary border border-primary text-on-primary px-md py-sm rounded-full font-label-md text-label-md hover:brightness-110 transition-colors active:scale-95">
+            <span class="material-symbols-outlined">add</span>
+            Nueva venta
+          </button>
+        </div>
       </div>
 
-      <!-- =========================================
-         LISTA
-    ========================================== -->
+      <!-- Mobile Top Header -->
+      <header class="bg-surface sticky top-0 z-50 px-container-margin py-md flex items-center justify-between border-b border-surface-variant md:hidden">
+        <div class="flex items-center gap-md">
+          <ion-menu-button class="text-on-surface-variant active:scale-95 duration-150 p-sm rounded-full hover:bg-surface-container-high transition-colors" menu="admin-sales-menu">
+          </ion-menu-button>
+          <h1 class="font-headline-md text-headline-md text-primary truncate max-w-[200px]">{{ auth.tieneRol('CAJERO') ? 'Mis ventas' : 'Historial de Ventas' }}</h1>
+        </div>
+        <div class="flex items-center gap-sm">
+          <button routerLink="/cajero" class="text-on-surface-variant active:scale-95 duration-150 p-sm rounded-full hover:bg-surface-container-high transition-colors">
+            <span class="material-symbols-outlined">add</span>
+          </button>
+        </div>
+      </header>
 
-      <section class="sales-list-section" *ngIf="!cargando">
-        <div class="list-heading" *ngIf="ventas.length">
+      <!-- Mobile Date Pill (shown below header on mobile) -->
+      <div class="md:hidden px-container-margin pt-md flex justify-between items-center" *ngIf="!cargando && ventas.length">
+        <div class="bg-surface-container-high text-on-surface rounded-full px-md py-sm flex items-center gap-sm font-label-md text-label-md border border-outline-variant w-fit">
+          <span class="material-symbols-outlined text-primary text-[20px]">calendar_today</span>
+          Ventas recientes
+        </div>
+      </div>
+
+      <div class="p-container-margin md:p-lg max-w-7xl mx-auto space-y-lg">
+        
+        <!-- Summary Card -->
+        <section *ngIf="!cargando && ventas.length" class="bg-surface-container-high rounded-[16px] p-lg md:p-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-lg border border-surface-variant/50 relative overflow-hidden">
+          <div class="absolute -right-12 -top-12 w-48 h-48 bg-primary-container opacity-5 rounded-full blur-2xl"></div>
           <div>
-            <span class="sales-eyebrow"> Movimientos </span>
-
-            <h2>Ventas recientes</h2>
+            <p class="font-label-md text-label-md text-on-surface-variant mb-base uppercase tracking-wider">Total Vendido</p>
+            <h3 class="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg text-primary">{{ totalVendido | currency:'MXN' }}</h3>
           </div>
-
-          <span class="results-count"> {{ ventas.length }} {{ ventas.length === 1 ? 'registro' : 'registros' }} </span>
-        </div>
-
-        <!-- CABECERA ESCRITORIO -->
-
-        <div class="sales-table-header" *ngIf="ventas.length">
-          <span>Venta</span>
-          <span>Fecha</span>
-          <span>Cajero</span>
-          <span>Pago</span>
-          <span>Estado</span>
-          <span class="right">Total</span>
-          <span></span>
-        </div>
-
-        <div class="sales-list">
-          <a
-            class="sale-row"
-            *ngFor="let venta of ventas"
-            [routerLink]="[
-            '/ventas',
-            venta.id
-          ]"
-          >
-            <!-- FOLIO -->
-
-            <div class="sale-folio">
-              <div class="sale-icon">
-                <ion-icon name="receipt-outline"></ion-icon>
+          <div class="flex flex-wrap gap-md md:gap-lg bg-surface-container-lowest p-md rounded-xl pastel-shadow z-10 w-full md:w-auto">
+            <div class="flex items-center gap-sm">
+              <div class="bg-surface-container p-xs rounded-lg text-primary">
+                <span class="material-symbols-outlined text-[20px]">receipt_long</span>
               </div>
-
               <div>
-                <small>Folio</small>
-                <strong>#{{ venta.id }}</strong>
-                <span class="origin-badge" [class.online]="venta.origen==='ONLINE'"
-                  >{{venta.origen==='ONLINE'?'Online':'Punto de venta'}}</span
-                >
+                <p class="font-label-sm text-label-sm text-on-surface-variant">Completadas</p>
+                <p class="font-label-md text-label-md text-on-surface">{{ ventasCompletadas }}</p>
               </div>
             </div>
-
-            <!-- FECHA -->
-
-            <div class="sale-data">
-              <small>Fecha y hora</small>
-
-              <span> {{ venta.fecha }} </span>
-
-              <small class="secondary-value"> {{ venta.hora }} </small>
+            <div class="w-px bg-outline-variant/30 hidden md:block"></div>
+            <div class="flex items-center gap-sm">
+              <div class="bg-surface-container p-xs rounded-lg text-error">
+                <span class="material-symbols-outlined text-[20px]">cancel</span>
+              </div>
+              <div>
+                <p class="font-label-sm text-label-sm text-on-surface-variant">Canceladas</p>
+                <p class="font-label-md text-label-md text-on-surface">{{ ventasCanceladas }}</p>
+              </div>
             </div>
-
-            <!-- CAJERO -->
-
-            <div class="sale-data">
-              <small>{{venta.origen==='ONLINE'?'Revisó':'Cajero'}}</small>
-
-              <span> {{ venta.cajero || 'Sin nombre' }} </span>
+            <div class="w-px bg-outline-variant/30 hidden md:block"></div>
+            <div class="flex items-center gap-sm">
+              <div class="bg-surface-container p-xs rounded-lg text-primary">
+                <span class="material-symbols-outlined text-[20px]">list</span>
+              </div>
+              <div>
+                <p class="font-label-sm text-label-sm text-on-surface-variant">Total Registros</p>
+                <p class="font-label-md text-label-md text-on-surface">{{ ventas.length }}</p>
+              </div>
             </div>
-
-            <!-- MÉTODO -->
-
-            <div class="sale-data">
-              <small>Método</small>
-
-              <span class="payment-badge">
-                <ion-icon
-                  [name]="
-                  venta.metodoPago === 'EFECTIVO'
-                    ? 'cash-outline'
-                    : venta.metodoPago === 'TARJETA'
-                    ? 'card-outline'
-                    : 'phone-portrait-outline'
-                "
-                ></ion-icon>
-
-                {{ venta.metodoPago }}
-              </span>
-            </div>
-
-            <!-- ESTADO -->
-
-            <div class="sale-data">
-              <small>Estado</small>
-
-              <span
-                class="sale-state"
-                [class.cancelled]="
-                venta.estado === 'CANCELADA'
-              "
-              >
-                <span class="state-dot"></span>
-
-                {{ venta.estado === 'CANCELADA' ? 'Cancelada' : 'Completada' }}
-              </span>
-            </div>
-
-            <!-- TOTAL -->
-
-            <div class="sale-total">
-              <small>Total</small>
-
-              <strong> {{ venta.total | currency:'MXN' }} </strong>
-            </div>
-
-            <div class="sale-arrow">
-              <ion-icon name="chevron-forward-outline"></ion-icon>
-            </div>
-          </a>
-        </div>
-
-        <!-- VACÍO -->
-
-        <div class="sales-empty" *ngIf="!ventas.length">
-          <div class="empty-icon">
-            <ion-icon name="receipt-outline"></ion-icon>
           </div>
+        </section>
 
-          <h2>Aún no hay ventas</h2>
-
-          <p>Las ventas registradas desde el punto de venta aparecerán aquí.</p>
-
-          <ion-button routerLink="/cajero">
-            <ion-icon slot="start" name="cart-outline"></ion-icon>
-
-            Ir al punto de venta
-          </ion-button>
+        <!-- Loading State -->
+        <div *ngIf="cargando" class="flex flex-col items-center justify-center py-20 text-on-surface-variant">
+          <ion-spinner name="crescent" class="w-10 h-10"></ion-spinner>
+          <p class="mt-4 font-label-md text-lg">Cargando ventas...</p>
         </div>
-      </section>
-    </main>
-  </ion-content>
-</app-admin-shell>
 
+        <!-- Tabs -->
+        <div *ngIf="!cargando && ventas.length > 0" class="flex gap-sm overflow-x-auto pb-sm snap-x snap-mandatory hide-scrollbar">
+          <button class="snap-start shrink-0 bg-primary-container text-on-primary-container px-lg py-sm rounded-full font-label-md text-label-md shadow-sm border border-primary-container/20 transition-all active:scale-95">
+            Tickets de Venta ({{ ventas.length }})
+          </button>
+        </div>
+
+        <!-- Tickets List -->
+        <div *ngIf="!cargando && ventas.length > 0" class="space-y-md">
+          <div *ngFor="let venta of ventas" class="bg-surface-container-lowest rounded-[16px] p-md md:p-lg pastel-shadow border border-surface-variant/30 transition-transform hover:-translate-y-1 duration-200">
+            <div class="flex flex-col md:flex-row justify-between gap-md mb-md">
+              <div class="flex gap-md items-start cursor-pointer" [routerLink]="['/ventas', venta.id]">
+                <div class="bg-surface-container-high p-sm rounded-xl text-primary hidden sm:block">
+                  <span class="material-symbols-outlined">receipt_long</span>
+                </div>
+                <div>
+                  <div class="flex items-center gap-sm mb-xs">
+                    <h4 class="font-headline-md text-[18px] text-primary">Ticket #{{ venta.id }}</h4>
+                    <span class="text-on-surface-variant text-label-sm font-label-sm">{{ venta.fecha }} {{ venta.hora }}</span>
+                    <span *ngIf="venta.origen === 'ONLINE'" class="bg-primary text-on-primary text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Online</span>
+                  </div>
+                  <p class="font-body-md text-on-surface-variant text-[14px]">{{ venta.origen === 'ONLINE' ? 'Revisó:' : 'Cajero:' }} {{ venta.cajero || 'Sin nombre' }}</p>
+                </div>
+              </div>
+              <div class="text-left md:text-right">
+                <p class="font-headline-md text-headline-md" [class.line-through]="venta.estado === 'CANCELADA'" [class.text-error]="venta.estado === 'CANCELADA'" [class.text-primary]="venta.estado !== 'CANCELADA'">{{ venta.total | currency:'MXN' }}</p>
+              </div>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-sm mt-md md:mt-0">
+              <div class="bg-surface-container px-md py-sm rounded-lg flex items-center gap-sm w-fit font-label-sm text-label-sm text-primary">
+                <span class="material-symbols-outlined text-[16px]">
+                  {{ venta.metodoPago === 'EFECTIVO' ? 'payments' : (venta.metodoPago === 'TARJETA' ? 'credit_card' : 'smartphone') }}
+                </span>
+                {{ venta.metodoPago }}
+              </div>
+              <div *ngIf="venta.estado === 'CANCELADA'" class="bg-error-container text-on-error-container px-md py-sm rounded-lg flex items-center gap-sm w-fit font-label-sm text-label-sm">
+                <span class="material-symbols-outlined text-[16px]">cancel</span>
+                Cancelada
+              </div>
+              <div class="flex-1 flex justify-end">
+                <button [routerLink]="['/ventas', venta.id]" class="bg-surface-container-high text-primary px-lg py-sm rounded-full font-label-md text-label-md hover:bg-primary-container hover:text-on-primary-container transition-colors active:scale-95">
+                  Ver Ticket / Detalles
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div *ngIf="!cargando && !ventas.length" class="text-center py-20 bg-surface-container-lowest rounded-[16px] pastel-shadow border border-surface-variant/30">
+          <div class="text-primary opacity-50 mb-6 flex justify-center">
+            <span class="material-symbols-outlined text-6xl">receipt_long</span>
+          </div>
+          <h2 class="font-headline-md text-display-lg-mobile text-primary mb-2">Aún no hay ventas</h2>
+          <p class="font-body-lg text-on-surface-variant mb-8 max-w-md mx-auto">Las ventas registradas desde el punto de venta aparecerán aquí.</p>
+          <button routerLink="/cajero" class="inline-flex items-center gap-2 bg-primary text-on-primary px-xl py-md rounded-full font-label-md text-label-md shadow-md hover:brightness-110 transition-all active:scale-95">
+            <span class="material-symbols-outlined">add_shopping_cart</span>
+            Ir al punto de venta
+          </button>
+        </div>
+        
+      </div>
+    </main>
+  </div>
+</app-admin-shell>

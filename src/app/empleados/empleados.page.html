@@ -1,549 +1,177 @@
 <app-admin-shell menuId="admin-employees-menu" contentId="employees-main" activeSection="empleados">
-  <ion-menu *ngIf="false" contentId="employees-main" menuId="admin-employees-menu" type="overlay">
-    <ion-header class="admin-menu-header">
-      <ion-toolbar>
-        <div class="menu-brand">
-          <div class="menu-brand-icon">
-            <ion-icon name="storefront-outline"></ion-icon>
-          </div>
-
-          <div class="menu-brand-copy">
-            <strong> Doña Paty </strong>
-
-            <small> Administración </small>
-          </div>
+  <ion-header class="ion-no-border shadow-sm relative z-40 bg-surface dark:bg-surface-container-highest">
+    <ion-toolbar class="bg-surface dark:bg-surface-container-highest">
+      <div class="flex items-center px-container-margin py-sm w-full gap-4 justify-between">
+        <div class="flex items-center gap-4">
+          <ion-menu-button class="text-on-surface lg:hidden"></ion-menu-button>
+          <h1 class="font-headline-md text-label-md text-on-surface">Gestión de Personal</h1>
         </div>
-      </ion-toolbar>
-    </ion-header>
-
-    <!-- CONTENIDO DEL MENÚ -->
-
-    <ion-content class="admin-menu-content">
-      <div class="menu-section-label">Menú principal</div>
-
-      <ion-list lines="none">
-        <ion-menu-toggle [autoHide]="false">
-          <!-- INICIO -->
-
-          <ion-item button detail="false" routerLink="/home">
-            <ion-icon slot="start" name="home-outline"></ion-icon>
-
-            <ion-label> Inicio </ion-label>
-          </ion-item>
-
-          <!-- PRODUCTOS -->
-
-          <ion-item button detail="false" routerLink="/home">
-            <ion-icon slot="start" name="cube-outline"></ion-icon>
-
-            <ion-label> Productos </ion-label>
-          </ion-item>
-
-          <!-- CATEGORÍAS -->
-
-          <ion-item button detail="false" routerLink="/home">
-            <ion-icon slot="start" name="folder-outline"></ion-icon>
-
-            <ion-label> Categorías </ion-label>
-          </ion-item>
-
-          <!-- MARCAS -->
-
-          <ion-item button detail="false" routerLink="/home">
-            <ion-icon slot="start" name="pricetag-outline"></ion-icon>
-
-            <ion-label> Marcas </ion-label>
-          </ion-item>
-
-          <!-- CONFIGURACIÓN -->
-
-          <ion-item button detail="false" routerLink="/home" routerDirection="root">
-            <ion-icon slot="start" name="settings-outline"></ion-icon>
-
-            <ion-label> Configuración </ion-label>
-          </ion-item>
-
-          <!-- EMPLEADOS -->
-
-          <ion-item detail="false" class="menu-active">
-            <ion-icon slot="start" name="people-outline"></ion-icon>
-
-            <ion-label> Empleados </ion-label>
-          </ion-item>
-
-          <!-- PUNTO DE VENTA -->
-
-          <ion-item button detail="false" routerLink="/cajero">
-            <ion-icon slot="start" name="calculator-outline"></ion-icon>
-
-            <ion-label> Punto de venta </ion-label>
-          </ion-item>
-
-          <!-- VENTAS -->
-
-          <ion-item button detail="false" routerLink="/ventas">
-            <ion-icon slot="start" name="receipt-outline"></ion-icon>
-
-            <ion-label> Ventas </ion-label>
-          </ion-item>
-        </ion-menu-toggle>
-      </ion-list>
-
-      <!-- =================================================
-           USUARIO ADMINISTRADOR
-      ================================================== -->
-
-      <div class="admin-user">
-        <div class="admin-user-icon">
-          <ion-icon name="person-circle-outline"></ion-icon>
-        </div>
-
-        <div class="admin-user-copy">
-          <strong> {{ auth.sesion?.empleado?.nombre || 'Administrador' }} </strong>
-
-          <small> {{ auth.sesion?.empleado?.cargo || 'ADMINISTRADOR' }} </small>
-        </div>
-
-        <ion-button fill="clear" aria-label="Cerrar sesión" (click)="auth.logout()">
-          <ion-icon slot="icon-only" name="log-out-outline"></ion-icon>
-        </ion-button>
+        <button (click)="nuevo()" class="bg-primary text-on-primary h-10 px-4 rounded-full font-label-md shadow-pastel active:scale-[0.98] transition-transform flex items-center gap-2">
+          <span class="material-symbols-outlined text-[20px]">person_add</span>
+          <span class="hidden sm:inline">Nuevo Empleado</span>
+        </button>
       </div>
-    </ion-content>
-  </ion-menu>
+    </ion-toolbar>
+  </ion-header>
 
-  <!-- =====================================================
-       CONTENIDO PRINCIPAL
-  ====================================================== -->
-
-  <ng-container>
-    <!-- =================================================
-         HEADER
-    ================================================== -->
-
-    <ion-header>
-      <ion-toolbar>
-        <!-- ☰ SOLO TABLET / CELULAR -->
-
-        <ion-buttons slot="start">
-          <ion-menu-button class="mobile-menu-button" menu="admin-employees-menu"></ion-menu-button>
-        </ion-buttons>
-
-        <ion-title> Empleados </ion-title>
-
-        <ion-buttons slot="end">
-          <ion-button class="toolbar-new" (click)="nuevo()">
-            <ion-icon slot="start" name="person-add-outline"></ion-icon>
-
-            <span class="desktop-label"> Nuevo empleado </span>
-          </ion-button>
-        </ion-buttons>
-      </ion-toolbar>
-    </ion-header>
-
-    <!-- =================================================
-         CONTENIDO
-    ================================================== -->
-
-    <ion-content class="employees-content">
-      <main class="employees">
-        <!-- =============================================
-             CABECERA
-        ============================================== -->
-
-        <header class="employees-heading">
-          <div>
-            <span class="employees-eyebrow"> Personal </span>
-
-            <h1>Empleados</h1>
-
-            <p>Administra las cuentas del personal, sus roles y el acceso al sistema.</p>
+  <ion-content class="bg-surface">
+    <main class="max-w-[1280px] mx-auto px-container-margin py-xl space-y-lg h-full">
+      
+      <!-- Listado -->
+      <section *ngIf="!cargando && empleados.length" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-gutter">
+        <article *ngFor="let e of empleados" class="bg-surface-container-lowest rounded-2xl p-md shadow-pastel border relative overflow-hidden flex flex-col transition-colors" [ngClass]="e.estadoEmp ? 'border-surface-variant' : 'border-error/30 opacity-75'">
+          <!-- Status Badge -->
+          <div class="absolute top-0 right-0 px-3 py-1 rounded-bl-xl font-label-sm font-bold text-white z-10 shadow-sm" [ngClass]="e.estadoEmp ? 'bg-[#16a34a]' : 'bg-error'">
+            {{ e.estadoEmp ? 'Activo' : 'Inactivo' }}
           </div>
-
-          <ion-button class="new-employee-button" (click)="nuevo()">
-            <ion-icon slot="start" name="person-add-outline"></ion-icon>
-
-            Agregar empleado
-          </ion-button>
-        </header>
-
-        <!-- =============================================
-             ESTADÍSTICAS
-        ============================================== -->
-
-        <section class="employee-stats" *ngIf="!cargando">
-          <!-- TOTAL -->
-
-          <article>
-            <div class="stat-icon">
-              <ion-icon name="people-outline"></ion-icon>
+          
+          <div class="flex flex-col items-center text-center mt-2 mb-4">
+            <div class="w-16 h-16 rounded-full bg-surface-container-high border-2 border-surface mb-3 overflow-hidden shadow-sm">
+              <img *ngIf="e.fotoPerfil" [src]="e.fotoPerfil" [alt]="e.nombre" class="w-full h-full object-cover" />
+              <div *ngIf="!e.fotoPerfil" class="w-full h-full flex items-center justify-center bg-primary-container text-on-primary-container">
+                <span class="material-symbols-outlined text-3xl">person</span>
+              </div>
             </div>
-
-            <div>
-              <small> Total empleados </small>
-
-              <strong> {{ totalEmpleados }} </strong>
-            </div>
-          </article>
-
-          <!-- ACTIVOS -->
-
-          <article>
-            <div class="stat-icon active">
-              <ion-icon name="checkmark-circle-outline"></ion-icon>
-            </div>
-
-            <div>
-              <small> Activos </small>
-
-              <strong> {{ empleadosActivos }} </strong>
-            </div>
-          </article>
-
-          <!-- INACTIVOS -->
-
-          <article>
-            <div class="stat-icon inactive">
-              <ion-icon name="pause-circle-outline"></ion-icon>
-            </div>
-
-            <div>
-              <small> Inactivos </small>
-
-              <strong> {{ empleadosInactivos }} </strong>
-            </div>
-          </article>
-
-          <!-- CAJEROS -->
-
-          <article>
-            <div class="stat-icon cashier">
-              <ion-icon name="calculator-outline"></ion-icon>
-            </div>
-
-            <div>
-              <small> Cajeros </small>
-
-              <strong> {{ totalCajeros }} </strong>
-            </div>
-          </article>
-        </section>
-
-        <!-- =============================================
-             CARGANDO
-        ============================================== -->
-
-        <div class="employees-loading" *ngIf="cargando">
-          <ion-spinner></ion-spinner>
-
-          <p>Cargando empleados...</p>
-        </div>
-
-        <!-- =============================================
-             PANEL DE EMPLEADOS
-        ============================================== -->
-
-        <section class="employees-panel" *ngIf="!cargando">
-          <div class="panel-heading">
-            <div>
-              <span class="employees-eyebrow"> Equipo </span>
-
-              <h2>Personal registrado</h2>
-            </div>
-
-            <span class="employee-count" *ngIf="empleados.length">
-              {{ empleados.length }} {{ empleados.length === 1 ? 'empleado' : 'empleados' }}
+            <h3 class="font-headline-md text-title-md text-on-surface line-clamp-1">{{ e.nombre }} {{ e.apellidoPatEmp }} {{ e.apellidoMatEmp }}</h3>
+            <span class="font-label-sm text-primary flex items-center gap-1 justify-center mt-1">
+              <span class="material-symbols-outlined text-[14px]">{{ e.cargo === 'ADMINISTRADOR' ? 'shield' : 'badge' }}</span>
+              {{ e.cargo }}
             </span>
           </div>
 
-          <!-- ===========================================
-               LISTA DE EMPLEADOS
-          ============================================ -->
-
-          <div class="employee-grid">
-            <article class="employee-card" *ngFor="let e of empleados" [class.inactive-employee]="!e.estadoEmp">
-              <!-- AVATAR -->
-
-              <div class="employee-avatar">
-                <img *ngIf="e.fotoPerfil" [src]="e.fotoPerfil" [alt]="e.nombre" />
-
-                <ion-icon *ngIf="!e.fotoPerfil" name="person-outline"></ion-icon>
-              </div>
-
-              <!-- INFORMACIÓN -->
-
-              <div class="employee-information">
-                <div class="employee-name-row">
-                  <h2>{{ e.nombre }}</h2>
-
-                  <span class="employee-status" [class.inactive]="!e.estadoEmp">
-                    <span></span>
-
-                    {{ e.estadoEmp ? 'Activo' : 'Inactivo' }}
-                  </span>
-                </div>
-
-                <!-- ROL -->
-
-                <span class="employee-role">
-                  <ion-icon
-                    [name]="
-                      e.cargo === 'ADMINISTRADOR'
-                        ? 'shield-checkmark-outline'
-                        : 'calculator-outline'
-                    "
-                  ></ion-icon>
-
-                  {{ e.cargo }}
-                </span>
-
-                <!-- CONTACTO -->
-
-                <div class="employee-contact">
-                  <span>
-                    <ion-icon name="mail-outline"></ion-icon>
-
-                    {{ e.correo }}
-                  </span>
-
-                  <span *ngIf="e.telefono">
-                    <ion-icon name="call-outline"></ion-icon>
-
-                    {{ e.telefono }}
-                  </span>
-                </div>
-
-                <!-- FECHA -->
-
-                <small class="employee-date" *ngIf="e.fechaIngreso">
-                  Ingreso: {{ e.fechaIngreso | date:'mediumDate' }}
-                </small>
-              </div>
-
-              <!-- =======================================
-                   ACCIONES
-              ======================================== -->
-
-              <div class="employee-actions">
-                <ion-button fill="clear" (click)="editar(e)">
-                  <ion-icon slot="start" name="create-outline"></ion-icon>
-
-                  Editar
-                </ion-button>
-
-                <ion-button
-                  fill="clear"
-                  [color]="
-                    e.estadoEmp
-                      ? 'danger'
-                      : 'success'
-                  "
-                  (click)="cambiarEstado(e)"
-                >
-                  <ion-icon
-                    slot="start"
-                    [name]="
-                      e.estadoEmp
-                        ? 'pause-circle-outline'
-                        : 'checkmark-circle-outline'
-                    "
-                  ></ion-icon>
-
-                  {{ e.estadoEmp ? 'Desactivar' : 'Activar' }}
-                </ion-button>
-              </div>
-            </article>
-          </div>
-
-          <!-- ===========================================
-               SIN EMPLEADOS
-          ============================================ -->
-
-          <div class="employees-empty" *ngIf="!empleados.length">
-            <div class="empty-icon">
-              <ion-icon name="people-outline"></ion-icon>
+          <div class="flex-1 bg-surface-container-low rounded-xl p-3 mb-4 space-y-2">
+            <div class="flex items-center gap-2 text-on-surface-variant">
+              <span class="material-symbols-outlined text-[16px]">mail</span>
+              <span class="font-body-sm text-sm truncate">{{ e.correo }}</span>
             </div>
-
-            <h2>No hay empleados registrados</h2>
-
-            <p>Agrega el primer empleado para comenzar a administrar el personal.</p>
-
-            <ion-button (click)="nuevo()">
-              <ion-icon slot="start" name="person-add-outline"></ion-icon>
-
-              Agregar empleado
-            </ion-button>
+            <div *ngIf="e.telefono" class="flex items-center gap-2 text-on-surface-variant">
+              <span class="material-symbols-outlined text-[16px]">call</span>
+              <span class="font-body-sm text-sm">{{ e.telefono }}</span>
+            </div>
+            <div *ngIf="e.fechaIngreso" class="flex items-center gap-2 text-on-surface-variant">
+              <span class="material-symbols-outlined text-[16px]">event</span>
+              <span class="font-body-sm text-sm">Ingreso: {{ e.fechaIngreso | date:'mediumDate' }}</span>
+            </div>
           </div>
-        </section>
-      </main>
-    </ion-content>
-  </ng-container>
+
+          <div class="grid grid-cols-2 gap-2 mt-auto border-t border-surface-variant pt-3">
+            <button (click)="editar(e)" class="flex items-center justify-center gap-2 py-2 rounded-lg bg-surface-container hover:bg-surface-variant text-on-surface-variant font-label-sm transition-colors">
+              <span class="material-symbols-outlined text-[18px]">edit</span> Editar
+            </button>
+            <button (click)="cambiarEstado(e)" class="flex items-center justify-center gap-2 py-2 rounded-lg font-label-sm transition-colors" [ngClass]="e.estadoEmp ? 'bg-error-container text-error hover:bg-[#ffe4e6]' : 'bg-green-100 text-green-700 hover:bg-green-200'">
+              <span class="material-symbols-outlined text-[18px]">{{ e.estadoEmp ? 'person_off' : 'person_check' }}</span>
+              {{ e.estadoEmp ? 'Desactivar' : 'Activar' }}
+            </button>
+          </div>
+        </article>
+      </section>
+
+      <!-- Empty State -->
+      <section *ngIf="!cargando && !empleados.length" class="h-[60vh] flex flex-col items-center justify-center text-center max-w-sm mx-auto">
+        <div class="w-24 h-24 bg-surface-variant rounded-full flex items-center justify-center text-on-surface-variant mb-6">
+          <span class="material-symbols-outlined text-5xl">group_off</span>
+        </div>
+        <h2 class="font-headline-md text-[24px] text-on-surface mb-2">No hay empleados</h2>
+        <p class="font-body-md text-on-surface-variant mb-8">Agrega el primer empleado para comenzar a administrar el personal.</p>
+        <button (click)="nuevo()" class="bg-primary text-on-primary py-3 px-6 rounded-xl font-label-md shadow-pastel active:scale-[0.98] transition-transform flex items-center gap-2">
+          <span class="material-symbols-outlined">person_add</span>
+          Agregar empleado
+        </button>
+      </section>
+
+      <div *ngIf="cargando" class="flex justify-center py-20">
+        <ion-spinner name="dots" color="primary"></ion-spinner>
+      </div>
+    </main>
+  </ion-content>
 </app-admin-shell>
 
-<!-- =========================================================
-     MODAL NUEVO / EDITAR EMPLEADO
-========================================================== -->
-
-<ion-modal cssClass="employee-modal" [isOpen]="modal" (didDismiss)="modal = false">
+<!-- Modal -->
+<ion-modal [isOpen]="modal" (didDismiss)="modal = false" cssClass="bottom-drawer-modal">
   <ng-template>
-    <ion-header>
-      <ion-toolbar>
-        <ion-title> {{ editando ? 'Editar empleado' : 'Nuevo empleado' }} </ion-title>
+    <main class="w-full h-full bg-surface-container-lowest flex flex-col relative">
+      <header class="flex items-center justify-between px-md py-lg border-b border-surface-variant bg-surface">
+        <button [disabled]="guardando" (click)="modal = false" class="w-10 h-10 rounded-full bg-surface-container hover:bg-surface-variant flex items-center justify-center text-on-surface transition-colors">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+        <h1 class="font-headline-md text-title-lg text-on-surface absolute left-1/2 -translate-x-1/2">{{ editando ? 'Editar Empleado' : 'Nuevo Empleado' }}</h1>
+        <div class="w-10"></div>
+      </header>
 
-        <ion-buttons slot="end">
-          <ion-button [disabled]="guardando" (click)="modal = false"> Cerrar </ion-button>
-        </ion-buttons>
-      </ion-toolbar>
-    </ion-header>
-
-    <ion-content class="ion-padding">
-      <div class="employee-form">
-        <!-- =============================================
-             INTRO FORMULARIO
-        ============================================== -->
-
-        <div class="form-heading">
-          <div class="form-icon">
-            <ion-icon
-              [name]="
-                editando
-                  ? 'create-outline'
-                  : 'person-add-outline'
-              "
-            ></ion-icon>
+      <div class="flex-1 overflow-y-auto p-md space-y-6 pb-32">
+        <div class="bg-surface-container-low rounded-xl p-md flex gap-4 items-center">
+          <div class="w-12 h-12 rounded-full bg-primary-container text-primary flex items-center justify-center">
+            <span class="material-symbols-outlined">{{ editando ? 'edit_square' : 'person_add' }}</span>
           </div>
-
           <div>
-            <span class="employees-eyebrow"> {{ editando ? 'Edición' : 'Nuevo registro' }} </span>
-
-            <h2>{{ editando ? 'Actualizar empleado' : 'Agregar empleado' }}</h2>
-
-            <p>
-              {{ editando ? 'Modifica únicamente los datos que necesites actualizar.' : 'Captura la información
-              necesaria para crear el acceso del empleado.' }}
-            </p>
+            <h2 class="font-headline-md text-title-md text-on-surface">{{ editando ? 'Actualizar información' : 'Registro de acceso' }}</h2>
+            <p class="font-body-sm text-on-surface-variant">{{ editando ? 'Modifica únicamente los datos necesarios.' : 'Captura los datos para crear el acceso.' }}</p>
           </div>
         </div>
 
-        <!-- =============================================
-             CAMPOS
-        ============================================== -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="sm:col-span-2">
+            <label class="font-label-sm text-on-surface-variant block mb-1">Nombre *</label>
+            <input type="text" [(ngModel)]="form.nombre" class="w-full bg-surface-container border border-surface-variant rounded-xl px-4 h-12 font-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" />
+          </div>
+          
+          <div>
+            <label class="font-label-sm text-on-surface-variant block mb-1">Apellido Paterno</label>
+            <input type="text" [(ngModel)]="form.apellidoPat" class="w-full bg-surface-container border border-surface-variant rounded-xl px-4 h-12 font-body-md focus:border-primary outline-none" />
+          </div>
+          
+          <div>
+            <label class="font-label-sm text-on-surface-variant block mb-1">Apellido Materno</label>
+            <input type="text" [(ngModel)]="form.apellidoMat" class="w-full bg-surface-container border border-surface-variant rounded-xl px-4 h-12 font-body-md focus:border-primary outline-none" />
+          </div>
 
-        <div class="form-grid">
-          <!-- NOMBRE -->
+          <div class="sm:col-span-2">
+            <label class="font-label-sm text-on-surface-variant block mb-1">Correo Electrónico *</label>
+            <input type="email" [(ngModel)]="form.correo" class="w-full bg-surface-container border border-surface-variant rounded-xl px-4 h-12 font-body-md focus:border-primary outline-none" />
+          </div>
 
-          <ion-input fill="outline" label="Nombre *" labelPlacement="stacked" [(ngModel)]="form.nombre"></ion-input>
+          <div>
+            <label class="font-label-sm text-on-surface-variant block mb-1">Teléfono</label>
+            <input type="tel" [(ngModel)]="form.telefono" class="w-full bg-surface-container border border-surface-variant rounded-xl px-4 h-12 font-body-md focus:border-primary outline-none" />
+          </div>
+          
+          <div>
+            <label class="font-label-sm text-on-surface-variant block mb-1">Fecha de Ingreso</label>
+            <input type="date" [(ngModel)]="form.fechaIngreso" class="w-full bg-surface-container border border-surface-variant rounded-xl px-4 h-12 font-body-md focus:border-primary outline-none" />
+          </div>
 
-          <!-- APELLIDO PATERNO -->
+          <div class="sm:col-span-2">
+            <label class="font-label-sm text-on-surface-variant block mb-1">Cargo *</label>
+            <select [(ngModel)]="form.idCargo" class="w-full bg-surface-container border border-surface-variant rounded-xl px-4 h-12 font-body-md focus:border-primary outline-none">
+              <option *ngFor="let c of cargos" [value]="c.idCargo">{{ c.nombreCargo }}</option>
+            </select>
+          </div>
 
-          <ion-input
-            fill="outline"
-            label="Apellido paterno"
-            labelPlacement="stacked"
-            [(ngModel)]="form.apellidoPat"
-          ></ion-input>
-
-          <!-- APELLIDO MATERNO -->
-
-          <ion-input
-            fill="outline"
-            label="Apellido materno"
-            labelPlacement="stacked"
-            [(ngModel)]="form.apellidoMat"
-          ></ion-input>
-
-          <!-- CORREO -->
-
-          <ion-input
-            fill="outline"
-            type="email"
-            inputmode="email"
-            label="Correo electrónico *"
-            labelPlacement="stacked"
-            [(ngModel)]="form.correo"
-          ></ion-input>
-
-          <!-- TELÉFONO -->
-
-          <ion-input
-            fill="outline"
-            type="tel"
-            inputmode="tel"
-            label="Teléfono"
-            labelPlacement="stacked"
-            [(ngModel)]="form.telefono"
-          ></ion-input>
-
-          <!-- FECHA INGRESO -->
-
-          <ion-input
-            fill="outline"
-            type="date"
-            label="Fecha de ingreso"
-            labelPlacement="stacked"
-            [(ngModel)]="form.fechaIngreso"
-          ></ion-input>
-
-          <!-- CARGO -->
-
-          <ion-select fill="outline" label="Cargo *" labelPlacement="stacked" [(ngModel)]="form.idCargo">
-            <ion-select-option *ngFor="let c of cargos" [value]="c.idCargo"> {{ c.nombreCargo }} </ion-select-option>
-          </ion-select>
-
-          <!-- FOTO -->
-
-          <ion-input
-            fill="outline"
-            type="url"
-            label="URL de foto"
-            labelPlacement="stacked"
-            placeholder="Opcional"
-            [(ngModel)]="form.fotoPerfil"
-          ></ion-input>
+          <div class="sm:col-span-2">
+            <label class="font-label-sm text-on-surface-variant block mb-1">URL de Foto (Opcional)</label>
+            <input type="url" [(ngModel)]="form.fotoPerfil" class="w-full bg-surface-container border border-surface-variant rounded-xl px-4 h-12 font-body-md focus:border-primary outline-none" placeholder="https://..." />
+          </div>
         </div>
 
-        <!-- =============================================
-             CONTRASEÑA
-        ============================================== -->
-
-        <section class="password-section">
-          <div>
-            <ion-icon name="key-outline"></ion-icon>
-
-            <div>
-              <strong> Contraseña </strong>
-
-              <small>
-                {{ editando ? 'Déjala vacía para conservar la contraseña actual.' : 'Puede quedar vacía si utilizará
-                exclusivamente Google.' }}
-              </small>
+        <div class="bg-surface-container-low border border-surface-variant rounded-xl p-md">
+          <div class="flex items-center gap-3 mb-3">
+            <span class="material-symbols-outlined text-on-surface-variant">key</span>
+            <div class="flex flex-col">
+              <strong class="font-label-md text-on-surface">Contraseña</strong>
+              <small class="text-[12px] text-on-surface-variant leading-tight">{{ editando ? 'Déjala vacía para conservar la actual.' : 'Opcional si usará exclusivamente Google.' }}</small>
             </div>
           </div>
-
-          <ion-input
-            fill="outline"
-            [label]="
-              editando
-                ? 'Nueva contraseña'
-                : 'Contraseña inicial'
-            "
-            labelPlacement="stacked"
-            type="password"
-            [(ngModel)]="form.password"
-          ></ion-input>
-        </section>
-
-        <!-- =============================================
-             GUARDAR
-        ============================================== -->
-
-        <ion-button class="save-employee" expand="block" [disabled]="guardando" (click)="guardar()">
-          <ion-spinner *ngIf="guardando" name="crescent"></ion-spinner>
-
-          <ion-icon *ngIf="!guardando" slot="start" name="save-outline"></ion-icon>
-
-          {{ guardando ? 'Guardando...' : editando ? 'Guardar cambios' : 'Registrar empleado' }}
-        </ion-button>
+          <input type="password" [(ngModel)]="form.password" class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 h-12 font-body-md focus:border-primary outline-none" [placeholder]="editando ? 'Nueva contraseña...' : 'Contraseña inicial...'" />
+        </div>
       </div>
-    </ion-content>
+
+      <footer class="absolute bottom-0 left-0 w-full p-md bg-surface border-t border-surface-variant shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10">
+        <button [disabled]="guardando" (click)="guardar()" class="w-full py-4 bg-primary text-on-primary font-label-md rounded-xl shadow-pastel flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-50">
+          <ion-spinner *ngIf="guardando" name="dots"></ion-spinner>
+          <span *ngIf="!guardando" class="material-symbols-outlined">save</span>
+          <span *ngIf="!guardando">{{ editando ? 'Guardar Cambios' : 'Registrar Empleado' }}</span>
+        </button>
+      </footer>
+    </main>
   </ng-template>
 </ion-modal>
