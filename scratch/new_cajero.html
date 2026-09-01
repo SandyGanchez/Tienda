@@ -1,4 +1,4 @@
-ï»¿<app-admin-shell menuId="admin-pos-menu" contentId="pos-main" activeSection="cajero">
+<app-admin-shell menuId="admin-pos-menu" contentId="pos-main" activeSection="cajero">
   <ion-header class="ion-no-border shadow-sm relative z-40 bg-surface dark:bg-surface-container-highest">
     <ion-toolbar class="bg-surface dark:bg-surface-container-highest">
       <div class="flex items-center justify-between px-container-margin py-sm w-full">
@@ -9,12 +9,12 @@
           </div>
           <div class="flex flex-col">
             <h1 class="font-headline-md text-label-md text-on-surface">Terminal POS</h1>
-            <span class="font-label-sm text-[10px] text-on-surface-variant" *ngIf="auth.sesion?.empleado as empleado">{{empleado.nombre}} Â· {{empleado.nombreSuc}}</span>
+            <span class="font-label-sm text-[10px] text-on-surface-variant" *ngIf="auth.sesion?.empleado as empleado">{{empleado.nombre}} · {{empleado.nombreSuc}}</span>
           </div>
         </div>
         
         <div class="flex items-center gap-2">
-           <button class="bg-surface-variant hover:bg-surface-container-high w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant transition-colors" (click)="auth.logout()" aria-label="Cerrar sesiÃ³n">
+           <button class="bg-surface-variant hover:bg-surface-container-high w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant transition-colors" (click)="auth.logout()" aria-label="Cerrar sesión">
             <span class="material-symbols-outlined">logout</span>
           </button>
         </div>
@@ -85,8 +85,8 @@
       <div class="mb-lg mt-2">
         <div class="relative flex items-center w-full h-12 rounded-xl bg-surface-container focus-within:ring-1 focus-within:ring-primary transition-all">
           <span class="material-symbols-outlined absolute left-3 text-on-surface-variant">search</span>
-          <ion-searchbar #lector mode="md" placeholder="CÃ³digo de barras o nombre..." [(ngModel)]="busqueda" (keyup.enter)="agregarDesdeEntrada()" debounce="120" class="!p-0 !m-0 !shadow-none !bg-transparent w-full --background:transparent"></ion-searchbar>
-          <button (click)="escanear()" class="absolute right-2 w-8 h-8 flex items-center justify-center rounded-lg bg-primary-container text-on-primary-container hover:bg-primary hover:text-on-primary transition-colors">
+          <ion-searchbar #lector mode="md" placeholder="Código de barras o nombre..." (ionInput)="buscar($event)" debounce="300" class="!p-0 !m-0 !shadow-none !bg-transparent w-full --background:transparent"></ion-searchbar>
+          <button (click)="modoEscaner()" class="absolute right-2 w-8 h-8 flex items-center justify-center rounded-lg bg-primary-container text-on-primary-container hover:bg-primary hover:text-on-primary transition-colors">
             <span class="material-symbols-outlined text-[18px]">barcode_scanner</span>
           </button>
         </div>
@@ -99,8 +99,8 @@
         <div *ngFor="let prod of resultados" class="bg-surface-container-lowest rounded-[16px] shadow-pastel p-md relative flex flex-col h-full active:scale-[0.98] transition-transform">
           <div *ngIf="prod.existencia !== null && prod.existencia <= 0" class="absolute top-2 left-2 bg-error text-error-on text-[10px] font-bold px-2 py-0.5 rounded-full z-10">Agotado</div>
           <div class="aspect-square bg-surface-variant rounded-lg mb-sm overflow-hidden relative">
-            <img *ngIf="imagen(prod.imagen) as img" [src]="img" class="w-full h-full object-cover" [alt]="prod.nombre" />
-            <div *ngIf="!imagen(prod.imagen)" class="w-full h-full flex items-center justify-center text-on-surface-variant">
+            <img *ngIf="imagen(prod.fotoPrincipal) as img" [src]="img" class="w-full h-full object-cover" [alt]="prod.nombre" />
+            <div *ngIf="!imagen(prod.fotoPrincipal)" class="w-full h-full flex items-center justify-center text-on-surface-variant">
               <span class="material-symbols-outlined text-4xl">inventory_2</span>
             </div>
           </div>
@@ -138,17 +138,17 @@
         <ul class="space-y-3 mb-4">
           <li *ngFor="let item of carrito; let i = index" class="flex justify-between items-center py-2 border-b border-surface-variant border-dashed">
             <div class="flex flex-col flex-1 pr-4">
-              <span class="font-body-md text-body-md text-on-surface line-clamp-1">{{ item.nombre }}</span>
-              <span class="font-label-sm text-label-sm text-on-surface-variant">{{ item.cantidad }} x {{ item.precioUnitario | currency:"MXN" }}</span>
+              <span class="font-body-md text-body-md text-on-surface line-clamp-1">{{ item.producto.nombre }}</span>
+              <span class="font-label-sm text-label-sm text-on-surface-variant">{{ item.cantidad }} x {{ item.precioFinal | currency:"MXN" }}</span>
             </div>
             <div class="flex items-center gap-3">
               <span class="font-label-md text-label-md text-primary font-bold">{{ item.subtotal | currency:"MXN" }}</span>
-              <button (click)="eliminar(item)" class="w-8 h-8 rounded-full hover:bg-error-container text-error flex items-center justify-center transition-colors">
+              <button (click)="remover(i)" class="w-8 h-8 rounded-full hover:bg-error-container text-error flex items-center justify-center transition-colors">
                 <span class="material-symbols-outlined text-[18px]">delete</span>
               </button>
             </div>
           </li>
-          <li *ngIf="!carrito.length" class="text-center py-6 text-on-surface-variant font-body-sm">El ticket estÃ¡ vacÃ­o</li>
+          <li *ngIf="!carrito.length" class="text-center py-6 text-on-surface-variant font-body-sm">El ticket está vacío</li>
         </ul>
       </div>
       
@@ -207,7 +207,7 @@
 
           <!-- Payment Methods -->
           <section>
-            <h2 class="font-label-md text-on-surface-variant mb-md px-sm">MÃ©todo de Pago</h2>
+            <h2 class="font-label-md text-on-surface-variant mb-md px-sm">Método de Pago</h2>
             <div class="flex gap-sm">
               <button (click)="metodoPago = 'EFECTIVO'" [ngClass]="metodoPago === 'EFECTIVO' ? 'border-primary-container bg-surface-container-low text-primary-container border-2' : 'border-outline-variant bg-surface-container-lowest text-on-surface-variant border'" class="flex-1 py-md px-sm rounded-xl font-label-md flex flex-col items-center gap-sm transition-colors">
                 <span class="material-symbols-outlined text-2xl">payments</span>Efectivo
@@ -269,11 +269,11 @@
         </header>
         <div class="p-md space-y-4">
           <div class="flex gap-4">
-            <button (click)="tipoMovimiento = 'INGRESO'" [ngClass]="tipoMovimiento === 'INGRESO' ? 'bg-[#F3E8FF] text-[#58436B] border-2 border-primary' : 'bg-surface-container text-on-surface-variant border border-transparent'" class="flex-1 rounded-2xl p-sm py-md flex flex-col items-center justify-center gap-2 shadow-sm transition-transform">
+            <button (click)="tipoMovimiento = 'ENTRADA'" [ngClass]="tipoMovimiento === 'ENTRADA' ? 'bg-[#F3E8FF] text-[#58436B] border-2 border-primary' : 'bg-surface-container text-on-surface-variant border border-transparent'" class="flex-1 rounded-2xl p-sm py-md flex flex-col items-center justify-center gap-2 shadow-sm transition-transform">
               <span class="material-symbols-outlined">add_circle</span>
               <span class="font-label-md text-center">Entrada</span>
             </button>
-            <button (click)="tipoMovimiento = 'RETIRO'" [ngClass]="tipoMovimiento === 'RETIRO' ? 'bg-[#FFE4E1] text-[#58436B] border-2 border-error' : 'bg-surface-container text-on-surface-variant border border-transparent'" class="flex-1 rounded-2xl p-sm py-md flex flex-col items-center justify-center gap-2 shadow-sm transition-transform">
+            <button (click)="tipoMovimiento = 'SALIDA'" [ngClass]="tipoMovimiento === 'SALIDA' ? 'bg-[#FFE4E1] text-[#58436B] border-2 border-error' : 'bg-surface-container text-on-surface-variant border border-transparent'" class="flex-1 rounded-2xl p-sm py-md flex flex-col items-center justify-center gap-2 shadow-sm transition-transform">
               <span class="material-symbols-outlined">remove_circle</span>
               <span class="font-label-md text-center">Retiro</span>
             </button>
@@ -312,8 +312,8 @@
             <h3 class="font-label-md text-on-surface-variant mb-2">Resumen de Movimientos</h3>
             <div class="flex justify-between items-center"><span class="font-body-md text-on-surface">Fondo Inicial</span><span class="font-body-md">{{ caja?.fondoInicial | currency:"MXN" }}</span></div>
             <div class="flex justify-between items-center"><span class="font-body-md text-on-surface">Ventas Efectivo</span><span class="font-body-md text-[#16a34a]">+{{ resumen?.totalEfectivo | currency:"MXN" }}</span></div>
-            <div class="flex justify-between items-center"><span class="font-body-md text-on-surface">Entradas manuales</span><span class="font-body-md text-[#16a34a]">+{{ caja?.totalIngresos | currency:"MXN" }}</span></div>
-            <div class="flex justify-between items-center"><span class="font-body-md text-on-surface">Salidas manuales</span><span class="font-body-md text-error">-{{ caja?.totalRetiros | currency:"MXN" }}</span></div>
+            <div class="flex justify-between items-center"><span class="font-body-md text-on-surface">Entradas manuales</span><span class="font-body-md text-[#16a34a]">+{{ totalEntradas | currency:"MXN" }}</span></div>
+            <div class="flex justify-between items-center"><span class="font-body-md text-on-surface">Salidas manuales</span><span class="font-body-md text-error">-{{ totalSalidas | currency:"MXN" }}</span></div>
             <div class="border-t border-surface-variant pt-2 mt-2 flex justify-between items-center">
               <span class="font-label-md text-on-surface">Efectivo Esperado</span>
               <span class="font-label-md text-primary">{{ resumen?.efectivoEsperado | currency:"MXN" }}</span>
@@ -321,9 +321,9 @@
           </section>
           
           <section class="flex flex-col gap-md">
-            <h3 class="font-label-md text-on-surface-variant">DeclaraciÃ³n de Cierre</h3>
+            <h3 class="font-label-md text-on-surface-variant">Declaración de Cierre</h3>
             <div>
-              <label class="font-label-sm block mb-1">Efectivo FÃ­sico en Caja</label>
+              <label class="font-label-sm block mb-1">Efectivo Físico en Caja</label>
               <input type="number" [(ngModel)]="efectivoContado" class="w-full bg-surface-container border border-surface-variant rounded-xl px-4 py-3 font-body-md" placeholder="0.00" />
             </div>
             

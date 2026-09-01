@@ -58,6 +58,11 @@ export class CajeroPage implements OnInit {
 
   carrito: ItemVenta[] = [];
 
+  // New UI states
+  trayExpanded = false;
+  cobrarModalOpen = false;
+  procesandoMovimiento = false;
+
   busqueda = '';
 
   metodoPago: MetodoPago = 'EFECTIVO';
