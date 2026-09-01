@@ -6,14 +6,19 @@ import { environment } from '../../environments/environment';
 import { ImagenesService } from './imagenes.service';
 
 export interface ProductoPublico {
-  encontrado: boolean;
-  fuente: string;
-  codigoQR: string;
-  nombre?: string;
-  marca?: string;
-  categoria?: string;
-  tamano?: string;
-  presentacion?: string;
+  id: string;
+  nombre: string;
+  precioVenta: number;
+  existencia: number;
+  codigoQR: string | null;
+  sku: string | null;
+  imagen: string | null;
+  tamano: string | null;
+  presentacion: string | null;
+  marca: string | null;
+  categoria: string | null;
+  encontrado?: boolean;
+  fuente?: string;
   imagenUrl?: string;
 }
 
@@ -33,11 +38,11 @@ export class ProductosService {
     return this.http.post<ProductoResponse>(this.apiUrl, producto);
   }
 
-  updateProducto(id: number, producto: CrearProductoDto): Observable<ProductoResponse> {
+  updateProducto(id: string | number, producto: CrearProductoDto): Observable<ProductoResponse> {
     return this.http.put<ProductoResponse>(`${this.apiUrl}/${id}`, producto);
   }
 
-  deleteProducto(id: number): Observable<{ message: string }> {
+  deleteProducto(id: string | number): Observable<{ message: string }> {
     return this.http.delete<{ message: string }>(`${this.apiUrl}/${id}`);
   }
 
@@ -49,7 +54,7 @@ export class ProductosService {
     return this.http.get<ProductoPublico>(`${this.apiUrl}/externo/${encodeURIComponent(codigoQR)}`);
   }
 
-  subirImagen(idPro: number, imagen: Blob, nombreArchivo: string): Observable<ProductoResponse> {
+  subirImagen(idPro: string | number, imagen: Blob, nombreArchivo: string): Observable<ProductoResponse> {
     const mimeType = imagen.type || 'image/jpeg';
     return this.http
       .post<{ uploadUrl: string; key: string; publicUrl: string }>(`${this.apiUrl}/${idPro}/presign-imagen`, {

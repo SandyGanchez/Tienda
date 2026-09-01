@@ -22,15 +22,15 @@ export class PedidosClienteService {
     return this.http.get<PedidoClienteResumen[]>(`${this.url}/pedidos`);
   }
 
-  detalle(idPedido: number): Observable<PedidoCliente> {
+  detalle(idPedido: string | number): Observable<PedidoCliente> {
     return this.http.get<PedidoCliente>(`${this.url}/pedidos/${idPedido}`);
   }
 
-  cancelar(idPedido: number): Observable<PedidoCliente> {
+  cancelar(idPedido: string | number): Observable<PedidoCliente> {
     return this.http.post<PedidoCliente>(`${this.url}/pedidos/${idPedido}/cancelar`, {});
   }
 
-  subirComprobante(idPedido: number, archivo: File): Observable<PedidoCliente> {
+  subirComprobante(idPedido: string | number, archivo: File): Observable<PedidoCliente> {
     const mimeType = archivo.type || 'application/octet-stream';
     return this.http
       .post<{ uploadUrl: string; key: string }>(`${this.url}/pedidos/${idPedido}/presign-comprobante`, {
@@ -56,7 +56,7 @@ export class PedidosClienteService {
       );
   }
 
-  obtenerComprobante(idPedido: number): Observable<Blob> {
+  obtenerComprobante(idPedido: string | number): Observable<Blob> {
     return this.http.get(`${this.url}/pedidos/${idPedido}/comprobante`, { responseType: 'blob' });
   }
 

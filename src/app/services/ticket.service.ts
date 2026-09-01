@@ -35,18 +35,19 @@ export class TicketService {
       doc.text(texto, 40, y, { align: 'center', maxWidth: 72 });
       y += 6;
     };
-    centro(v.nombreSuc || 'Tienda de abarrotes', 13);
+    centro(v.sucursal || v.nombreSuc || 'Tienda de abarrotes', 13);
     if (v.descripcionSuc) centro(v.descripcionSuc, 8);
     if (v.telefonoSuc) centro(`Tel. ${v.telefonoSuc}`, 8);
     if (v.correoSuc) centro(v.correoSuc, 8);
     centro('COMPROBANTE DE COMPRA', 10);
-    if (v.estadoVenta === 'CANCELADA') centro('*** VENTA CANCELADA ***', 11);
+    if (v.estado === 'CANCELADA') centro('*** VENTA CANCELADA ***', 11);
     doc.setFontSize(8);
-    doc.text(`Folio: ${v.idVenta}`, 4, y);
+    doc.text(`Folio: ${v.id}`, 4, y);
     y += 5;
-    doc.text(`${v.fechaVenta} ${v.horaVenta}`, 4, y);
+    doc.text(`${v.fecha} ${v.hora}`, 4, y);
     y += 5;
-    doc.text(`Cajero: ${v.cajero}`, 4, y, { maxWidth: 72 });
+    const nombreCajero = typeof v.cajero === 'object' && v.cajero !== null ? v.cajero.nombre : v.cajero;
+    doc.text(`Cajero: ${nombreCajero || 'Cajero'}`, 4, y, { maxWidth: 72 });
     y += 7;
     for (const item of v.items) {
       doc.text(`${item.cantidad} x ${item.nombre}`, 4, y, { maxWidth: 50 });
@@ -76,7 +77,7 @@ export class TicketService {
 
   async descargar(v: VentaDetalle): Promise<void> {
     const doc = await this.crear(v),
-      nombre = `ticket-${v.idVenta}.pdf`;
+      nombre = `ticket-${v.id}.pdf`;
     if (Capacitor.isNativePlatform()) {
       const data = doc.output('datauristring').split(',')[1];
       await Filesystem.writeFile({ path: nombre, data, directory: Directory.Cache });
@@ -86,14 +87,14 @@ export class TicketService {
   }
   async compartir(v: VentaDetalle): Promise<void> {
     const doc = await this.crear(v),
-      nombre = `ticket-${v.idVenta}.pdf`;
+      nombre = `ticket-${v.id}.pdf`;
     if (!Capacitor.isNativePlatform()) {
       doc.save(nombre);
       return;
     }
     const data = doc.output('datauristring').split(',')[1];
     const file = await Filesystem.writeFile({ path: nombre, data, directory: Directory.Cache });
-    await Share.share({ title: `Comprobante ${v.idVenta}`, files: [file.uri] });
+    await Share.share({ title: `Comprobante ${v.id}`, files: [file.uri] });
   }
   imprimir(): void {
     window.print();
