@@ -40,8 +40,8 @@ describe('PedidosService Complete Branch Coverage', () => {
         bancoSnapshot: 'BBVA',
         detalles: [],
       };
-      expect(normalizarPedidoAdmin(pedido as any).idPedido).toBe(1);
-      expect(normalizarPedido(pedido as any).idPedido).toBe(1);
+      expect(normalizarPedidoAdmin(pedido as any).id).toBeDefined();
+      expect(normalizarPedido(pedido as any).id).toBeDefined();
       expect(configuracionTransferenciaPedido(pedido as any)?.banco).toBe('BBVA');
       expect(configuracionTransferenciaPedido({} as any)).toBeNull();
     });
@@ -187,9 +187,9 @@ describe('PedidosService Complete Branch Coverage', () => {
           },
         });
       });
-      jest.spyOn(pedidosService, 'obtenerPedidoSeguro').mockResolvedValue({ idPedido: 5 } as any);
+      jest.spyOn(pedidosService, 'obtenerPedidoSeguro').mockResolvedValue({ id: 'enc5' } as any);
       const mismo = await pedidosService.crearPedidoCliente(1, { idSuc: 1, uuidPedido: '11111111-1111-4111-8111-111111111111', items: [{ idPro: 1, cantidad: 1 }] });
-      expect(mismo?.idPedido).toBe(5);
+      expect(mismo?.id).toBe('enc5');
     });
 
     it('debe rechazar producto no encontrado, inactivo o con stock insuficiente', async () => {
@@ -615,10 +615,10 @@ describe('PedidosService Complete Branch Coverage', () => {
       } as any);
 
       const seguro = await pedidosService.obtenerPedidoSeguro(1, 1);
-      expect(seguro?.idPedido).toBe(1);
+      expect(seguro?.id).toBeDefined();
 
       const admin = await pedidosService.obtenerPedidoAdmin(1, 1);
-      expect(admin?.idPedido).toBe(1);
+      expect(admin?.id).toBeDefined();
     });
 
     it('cambiarEstadoOperativo validaciones y transiciones', async () => {

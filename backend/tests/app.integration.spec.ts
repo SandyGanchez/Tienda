@@ -72,8 +72,8 @@ describe('App End-to-End Integration Tests', () => {
 
       const res = await request(app).get('/public/productos');
       expect(res.status).toBe(200);
-      expect(res.body[0].nombrePro).toBe('Jugo de Naranja');
-      expect(res.body[0].nombreMarca).toBe('Del Valle');
+      expect(res.body[0].nombre).toBe('Jugo de Naranja');
+      expect(res.body[0].marca).toBe('Del Valle');
     });
   });
 

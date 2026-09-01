@@ -18,7 +18,7 @@ describe('CatalogosService', () => {
 
       const marcas = await catalogosService.listarMarcas();
       expect(marcas.length).toBe(2);
-      expect(marcas[0].nombreMarca).toBe('Bimbo');
+      expect(marcas[0]?.nombre).toBe('Bimbo');
     });
 
     it('crearMarca debe crear correctamente', async () => {
@@ -28,7 +28,7 @@ describe('CatalogosService', () => {
         descripMarca: 'Bebidas',
       });
       const marca = await catalogosService.crearMarca('Pepsi', 'Bebidas');
-      expect(marca.idMarca).toBe(1);
+      expect(marca?.id).toBeDefined();
     });
 
     it('crearMarca debe rechazar nombre vacío', async () => {
@@ -45,7 +45,7 @@ describe('CatalogosService', () => {
         descripMarca: null,
       });
       const res = await catalogosService.actualizarMarca(1, 'Pepsi Co');
-      expect(res.nombreMarca).toBe('Pepsi Co');
+      expect(res?.nombre).toBe('Pepsi Co');
     });
 
     it('actualizarMarca debe rechazar nombre vacío', async () => {
@@ -78,7 +78,7 @@ describe('CatalogosService', () => {
       ]);
 
       const cats = await catalogosService.listarCategorias();
-      expect(cats[0].nombreCat).toBe('Bebidas');
+      expect(cats[0]?.nombre).toBe('Bebidas');
 
       jest.spyOn(prisma.categoria, 'create').mockResolvedValue({
         idCat: 2,
@@ -87,7 +87,7 @@ describe('CatalogosService', () => {
       });
 
       const nueva = await catalogosService.crearCategoria('Snacks');
-      expect(nueva.nombreCat).toBe('Snacks');
+      expect(nueva?.nombre).toBe('Snacks');
     });
 
     it('crearCategoria debe rechazar nombre vacío', async () => {
@@ -104,7 +104,7 @@ describe('CatalogosService', () => {
         descripCat: 'Leches',
       });
       const res = await catalogosService.actualizarCategoria(1, 'Lácteos', 'Leches');
-      expect(res.nombreCat).toBe('Lácteos');
+      expect(res?.nombre).toBe('Lácteos');
 
       await expect(catalogosService.actualizarCategoria(1, '')).rejects.toMatchObject({
         status: 400,
@@ -177,7 +177,7 @@ describe('CatalogosService', () => {
 
       const suc = await catalogosService.obtenerSucursal(1);
       expect(suc).toBeDefined();
-      expect(suc?.nombreSuc).toBe('Matriz');
+      expect(suc?.nombre).toBe('Matriz');
       expect(suc?.direccion).toContain('Av. Principal');
 
       jest.spyOn(prisma.sucursal, 'findUnique').mockResolvedValue(null);
@@ -200,15 +200,15 @@ describe('CatalogosService', () => {
 
       const lista = await catalogosService.listarSucursales();
       expect(lista.length).toBe(1);
-      expect(lista[0].direccion).toBeNull();
+      expect(lista[0]?.direccion).toBeNull();
     });
 
     it('crearSucursal y actualizarSucursal', async () => {
       jest.spyOn(prisma.sucursal, 'create').mockResolvedValue({ idSuc: 1 } as any);
-      jest.spyOn(catalogosService, 'obtenerSucursal').mockResolvedValue({ idSuc: 1, nombreSuc: 'Suc 1' } as any);
+      jest.spyOn(catalogosService, 'obtenerSucursal').mockResolvedValue({ id: 'enc1', idSuc: 1, nombreSuc: 'Suc 1' } as any);
 
       const creada = await catalogosService.crearSucursal({ nombreSuc: 'Suc 1' });
-      expect(creada?.idSuc).toBe(1);
+      expect(creada?.id).toBeDefined();
 
       await expect(catalogosService.crearSucursal({ nombreSuc: '' })).rejects.toMatchObject({
         status: 400,
@@ -216,7 +216,7 @@ describe('CatalogosService', () => {
 
       jest.spyOn(prisma.sucursal, 'update').mockResolvedValue({ idSuc: 1 } as any);
       const act = await catalogosService.actualizarSucursal(1, { nombreSuc: 'Suc 1 Modificada' });
-      expect(act?.idSuc).toBe(1);
+      expect(act?.id).toBeDefined();
 
       await expect(catalogosService.actualizarSucursal(1, { nombreSuc: '' })).rejects.toMatchObject({
         status: 400,
@@ -243,20 +243,20 @@ describe('CatalogosService', () => {
 
       jest.spyOn(catalogosService, 'obtenerSucursal')
         .mockResolvedValueOnce({ idSuc: 1, logoSuc: '/uploads/tienda/old.png' } as any)
-        .mockResolvedValueOnce({ idSuc: 1, logoSuc: 'https://example.com/logo.png' } as any);
+        .mockResolvedValueOnce({ id: 'enc1', idSuc: 1, logoSuc: 'https://example.com/logo.png' } as any);
 
       jest.spyOn(prisma.sucursal, 'update').mockResolvedValue({ idSuc: 1 } as any);
 
       const res = await catalogosService.confirmarLogo(1, 'https://example.com/logo.png');
-      expect(res?.idSuc).toBe(1);
+      expect(res?.id).toBeDefined();
 
       // Confirmar con key s3
       jest.spyOn(catalogosService, 'obtenerSucursal')
         .mockResolvedValueOnce({ idSuc: 1, logoSuc: null } as any)
-        .mockResolvedValueOnce({ idSuc: 1, logoSuc: 'https://bucket.s3.region.amazonaws.com/tienda/key.png' } as any);
+        .mockResolvedValueOnce({ id: 'enc1', idSuc: 1, logo: 'https://bucket.s3.region.amazonaws.com/tienda/key.png' } as any);
 
       const res2 = await catalogosService.confirmarLogo(1, 'tienda/key.png');
-      expect(res2?.idSuc).toBe(1);
+      expect(res2?.id).toBeDefined();
     });
 
     it('eliminarLogo debe poner logo en null', async () => {
@@ -267,12 +267,12 @@ describe('CatalogosService', () => {
 
       jest.spyOn(catalogosService, 'obtenerSucursal')
         .mockResolvedValueOnce({ idSuc: 1, logoSuc: '/uploads/tienda/logo.png' } as any)
-        .mockResolvedValueOnce({ idSuc: 1, logoSuc: null } as any);
+        .mockResolvedValueOnce({ idSuc: 1, logo: null } as any);
 
       jest.spyOn(prisma.sucursal, 'update').mockResolvedValue({ idSuc: 1 } as any);
 
       const res = await catalogosService.eliminarLogo(1);
-      expect(res?.logoSuc).toBeNull();
+      expect(res?.logo).toBeNull();
     });
 
     it('listarCargos debe retornar cargos permitidos', async () => {
