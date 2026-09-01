@@ -96,7 +96,7 @@ export class PedidoOnlineDetallePage implements OnInit {
     if (!this.pedido || this.accionEnCurso) return;
     this.accionEnCurso = accion;
     try {
-      const id = this.pedido.idPedido;
+      const id = this.pedido.id;
       this.pedido = await firstValueFrom(
         accion === 'aprobar'
           ? this.api.aprobar(id)
@@ -128,7 +128,7 @@ export class PedidoOnlineDetallePage implements OnInit {
     const ventana = window.open('', '_blank');
     if (ventana) ventana.opener = null;
     try {
-      const blob = await firstValueFrom(this.api.comprobante(this.pedido.idPedido));
+      const blob = await firstValueFrom(this.api.comprobante(this.pedido.id));
       if (!(blob instanceof Blob) || blob.size === 0) throw new Error('COMPROBANTE_VACIO');
       const blobUrl = URL.createObjectURL(blob);
       window.setTimeout(() => URL.revokeObjectURL(blobUrl), 5 * 60 * 1000);

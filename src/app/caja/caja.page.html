@@ -25,7 +25,7 @@
     ><ion-card *ngFor="let c of cortes"
       ><ion-card-header
         ><ion-card-subtitle>{{c.empleado}} · {{c.nombreSuc}}</ion-card-subtitle
-        ><ion-card-title>Caja #{{c.idSesionCaja}} · {{c.estado}}</ion-card-title></ion-card-header
+        ><ion-card-title>Caja #{{c.id}} · {{c.estado}}</ion-card-title></ion-card-header
       ><ion-card-content
         ><p>{{c.fechaHoraApertura}} <span *ngIf="c.fechaHoraCierre">→ {{c.fechaHoraCierre}}</span></p>
         <p>Total vendido: <b>{{c.totalVentas|currency:'MXN'}}</b> · {{c.numeroVentas}} ventas</p>
@@ -37,3 +37,4 @@
     >
   </main></ion-content
 >
+

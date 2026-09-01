@@ -7,11 +7,7 @@ import { CarritoService } from '../services/carrito.service';
 import { ClienteAuthService } from '../services/cliente-auth.service';
 import { ImagenesService } from '../services/imagenes.service';
 
-interface ProductoPublico extends ProductoParaCarrito {
-  tipoPro: string | null;
-  nombreMarca: string | null;
-  nombreCat: string | null;
-}
+interface ProductoPublico extends ProductoParaCarrito { tipo?: string | null; marca?: string | null; categoria?: string | null; }
 
 @Component({
   selector: 'app-catalogo',
@@ -38,11 +34,11 @@ export class CatalogoPage implements OnInit {
   }
 
   get categorias(): string[] {
-    return this.valoresUnicos(this.productos.map((producto) => producto.nombreCat));
+    return this.valoresUnicos(this.productos.map((producto) => producto.categoria || null));
   }
 
   get marcas(): string[] {
-    return this.valoresUnicos(this.productos.map((producto) => producto.nombreMarca));
+    return this.valoresUnicos(this.productos.map((producto) => producto.marca || null));
   }
 
   get productosFiltrados(): ProductoPublico[] {
@@ -50,11 +46,11 @@ export class CatalogoPage implements OnInit {
     return this.productos.filter((producto) => {
       const coincideTexto =
         !termino ||
-        [producto.nombrePro, producto.nombreMarca, producto.nombreCat].some((valor) =>
+        [producto.nombre, producto.marca, producto.categoria].some((valor) =>
           valor?.toLocaleLowerCase('es-MX').includes(termino),
         );
-      const coincideCategoria = this.categoria === 'todas' || producto.nombreCat === this.categoria;
-      const coincideMarca = this.marca === 'todas' || producto.nombreMarca === this.marca;
+      const coincideCategoria = this.categoria === 'todas' || producto.categoria === this.categoria;
+      const coincideMarca = this.marca === 'todas' || producto.marca === this.marca;
       return coincideTexto && coincideCategoria && coincideMarca;
     });
   }
@@ -84,7 +80,7 @@ export class CatalogoPage implements OnInit {
   }
 
   disponible(producto: ProductoPublico): boolean {
-    return Number(producto.existenciaPro ?? 0) > 0;
+    return Number(producto.existencia ?? 0) > 0;
   }
 
   seleccionarCategoria(categoria: string): void {
@@ -101,7 +97,7 @@ export class CatalogoPage implements OnInit {
     const agregado = this.carrito.agregar(producto);
     const toast = await this.toastController.create({
       message: agregado
-        ? `${producto.nombrePro} se agregó al carrito.`
+        ? `${producto.nombre} se agregó al carrito.`
         : 'No hay más existencia disponible para agregar.',
       duration: 1800,
       position: 'bottom',
@@ -110,9 +106,11 @@ export class CatalogoPage implements OnInit {
     await toast.present();
   }
 
-  private valoresUnicos(valores: Array<string | null>): string[] {
+  private valoresUnicos(valores: Array<string | null | undefined>): string[] {
     return [...new Set(valores.filter((valor): valor is string => Boolean(valor)))].sort((a, b) =>
       a.localeCompare(b, 'es'),
     );
   }
 }
+
+

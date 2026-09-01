@@ -37,7 +37,7 @@ export class HistorialVentasPage implements OnInit {
   ========================================= */
 
   get ventasCompletadas(): number {
-    return this.ventas.filter((venta) => venta.estadoVenta === 'COMPLETADA').length;
+    return this.ventas.filter((venta) => venta.estado === 'COMPLETADA').length;
   }
 
   /* =========================================
@@ -45,7 +45,7 @@ export class HistorialVentasPage implements OnInit {
   ========================================= */
 
   get ventasCanceladas(): number {
-    return this.ventas.filter((venta) => venta.estadoVenta === 'CANCELADA').length;
+    return this.ventas.filter((venta) => venta.estado === 'CANCELADA').length;
   }
 
   /* =========================================
@@ -56,7 +56,7 @@ export class HistorialVentasPage implements OnInit {
   get totalVendido(): number {
     return this.ventas
 
-      .filter((venta) => venta.estadoVenta === 'COMPLETADA')
+      .filter((venta) => venta.estado === 'COMPLETADA')
 
       .reduce((total, venta) => total + Number(venta.total), 0);
   }

@@ -156,7 +156,7 @@ export class CajeroPage implements OnInit {
        * intentamos recuperar la caja local.
        */
 
-      const idEmpleado = this.auth.sesion?.empleado.idEmp;
+      const idEmpleado = this.auth.sesion?.empleado.id;
 
       if (idEmpleado && this.sqlite.disponible) {
         this.caja = (await this.sqlite.cajaLocalAbierta(idEmpleado)) as unknown as Caja | null;
@@ -181,7 +181,7 @@ export class CajeroPage implements OnInit {
 
     const productosFiltrados = termino
       ? this.productos.filter((producto) =>
-          [producto.nombrePro, producto.codigoQR, producto.skuPro].some((valor) =>
+          [producto.nombre, producto.codigoQR, producto.sku].some((valor) =>
             this.normalizar(valor).includes(termino),
           ),
         )
@@ -279,13 +279,13 @@ export class CajeroPage implements OnInit {
        */
 
       this.caja = {
-        idSesionCaja: 0,
+        id: '',
 
         uuidSesionCaja,
 
-        idEmp: empleado.idEmp,
+        empleadoId: empleado.id,
 
-        idSuc: empleado.idSuc,
+        sucursalId: empleado.sucursalId,
 
         fechaHoraApertura: new Date().toISOString(),
 
@@ -322,7 +322,7 @@ export class CajeroPage implements OnInit {
         nombreSuc: empleado.nombreSuc || '',
       };
 
-      await this.sqlite.guardarCajaLocal(this.caja, 'PENDIENTE');
+      if (this.caja) { await this.sqlite.guardarCajaLocal(this.caja, 'PENDIENTE'); }
 
       await this.sqlite.encolar(
         'APERTURA',
@@ -357,8 +357,8 @@ export class CajeroPage implements OnInit {
 
       this.productos = productos.map((producto) => ({
         ...producto,
-        precioVentaPro: Number(producto.precioVentaPro),
-        existenciaPro: Number(producto.existenciaPro) || 0,
+        precioVentaPro: Number(producto.precioVenta),
+        existenciaPro: Number(producto.existencia) || 0,
       }));
 
       if (this.sqlite.disponible) {
@@ -394,13 +394,13 @@ export class CajeroPage implements OnInit {
   ========================================= */
 
   agregar(producto: ProductoPos): void {
-    if (producto.existenciaPro <= 0) {
+    if (producto.existencia <= 0) {
       void this.feedback('Este producto no tiene existencias.', 'warning');
 
       return;
     }
 
-    const itemExistente = this.carrito.find((item) => item.idPro === producto.idPro);
+    const itemExistente = this.carrito.find((item) => item.id === producto.id);
 
     if (itemExistente) {
       this.incrementar(itemExistente);
@@ -412,19 +412,19 @@ export class CajeroPage implements OnInit {
       ...this.carrito,
 
       {
-        idPro: producto.idPro,
+        id: producto.id,
 
-        nombre: producto.nombrePro,
+        nombre: producto.nombre,
 
-        precioUnitario: Number(producto.precioVentaPro),
+        precioUnitario: Number(producto.precioVenta),
 
         cantidad: 1,
 
-        existenciaDisponible: producto.existenciaPro,
+        existenciaDisponible: producto.existencia,
 
-        subtotal: Number(producto.precioVentaPro),
+        subtotal: Number(producto.precioVenta),
 
-        imagen: producto.imagenPro,
+        imagen: producto.imagen,
       },
     ];
   }
@@ -470,7 +470,7 @@ export class CajeroPage implements OnInit {
   ========================================= */
 
   eliminar(item: ItemVenta): void {
-    this.carrito = this.carrito.filter((producto) => producto.idPro !== item.idPro);
+    this.carrito = this.carrito.filter((producto) => producto.id !== item.id);
   }
 
   /* =========================================
@@ -485,7 +485,7 @@ export class CajeroPage implements OnInit {
     }
 
     const producto = this.productos.find(
-      (item) => item.codigoQR?.trim() === codigo || item.skuPro?.trim().toLowerCase() === codigo.toLowerCase(),
+      (item) => item.codigoQR?.trim() === codigo || item.sku?.trim().toLowerCase() === codigo.toLowerCase(),
     );
 
     if (!producto) {
@@ -589,7 +589,7 @@ export class CajeroPage implements OnInit {
       uuidVenta,
 
       items: this.carrito.map((item) => ({
-        idPro: item.idPro,
+        id: item.id,
 
         cantidad: item.cantidad,
       })),
@@ -634,9 +634,9 @@ export class CajeroPage implements OnInit {
 
         uuidSesionCaja: this.caja.uuidSesionCaja,
 
-        idEmp: empleado.idEmp,
+        empleadoId: empleado.id,
 
-        idSuc: empleado.idSuc,
+        sucursalId: empleado.sucursalId,
 
         total: this.total,
 
@@ -645,7 +645,7 @@ export class CajeroPage implements OnInit {
         montoRecibido: dto.montoRecibido,
 
         items: this.carrito.map((item) => ({
-          idPro: item.idPro,
+          id: item.id,
 
           nombre: item.nombre,
 
@@ -750,7 +750,7 @@ export class CajeroPage implements OnInit {
 
         uuidSesionCaja: this.caja.uuidSesionCaja,
 
-        idEmp: empleado.idEmp,
+        empleadoId: empleado.id,
       });
 
       await this.sqlite.encolar(
@@ -1051,7 +1051,7 @@ export class CajeroPage implements OnInit {
   private async confirmarVenta(venta?: VentaRegistrada | null): Promise<void> {
     const total = venta?.total ?? this.total;
     const cambio = venta?.cambio ?? this.cambio;
-    const folio = venta?.idVenta ? `Folio ${venta.idVenta}` : 'Venta realizada';
+    const folio = venta?.id ? `Folio ${venta.id}` : 'Venta realizada';
 
     const alerta = await this.alert.create({
       header: 'Venta realizada',
@@ -1065,13 +1065,13 @@ export class CajeroPage implements OnInit {
           `,
 
       buttons: [
-        ...(venta?.idVenta
+        ...(venta?.id
           ? [
               {
                 text: 'Ver comprobante',
 
                 handler: () => {
-                  location.assign(`/ventas/${venta.idVenta}`);
+                  location.assign(`/ventas/${venta.id}`);
                 },
               },
             ]
@@ -1099,3 +1099,7 @@ export class CajeroPage implements OnInit {
     }).format(Number(valor));
   }
 }
+
+
+
+

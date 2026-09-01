@@ -63,7 +63,7 @@ export class PedidoDetallePage implements OnInit {
     if (!this.pedido || !this.archivo || this.procesando) return;
     this.procesando = true;
     try {
-      this.pedido = await firstValueFrom(this.api.subirComprobante(this.pedido.idPedido, this.archivo));
+      this.pedido = await firstValueFrom(this.api.subirComprobante(this.pedido.id, this.archivo));
       this.archivo = null;
       await this.feedback('Pago enviado a revisión.', 'success');
     } catch (e: unknown) {
@@ -88,7 +88,7 @@ export class PedidoDetallePage implements OnInit {
     if (!this.pedido) return;
     this.procesando = true;
     try {
-      this.pedido = await firstValueFrom(this.api.cancelar(this.pedido.idPedido));
+      this.pedido = await firstValueFrom(this.api.cancelar(this.pedido.id));
       await this.feedback('Pedido cancelado. Los productos volvieron al inventario.', 'success');
     } catch (e: unknown) {
       await this.feedback(this.error(e, 'No pudimos cancelar el pedido.'), 'danger');
@@ -102,7 +102,7 @@ export class PedidoDetallePage implements OnInit {
     const ventana = window.open('', '_blank');
     if (ventana) ventana.opener = null;
     try {
-      const blob = await firstValueFrom(this.api.obtenerComprobante(this.pedido.idPedido));
+      const blob = await firstValueFrom(this.api.obtenerComprobante(this.pedido.id));
       if (!(blob instanceof Blob) || blob.size === 0) throw new Error('COMPROBANTE_VACIO');
       const blobUrl = URL.createObjectURL(blob);
       window.setTimeout(() => URL.revokeObjectURL(blobUrl), 5 * 60 * 1000);

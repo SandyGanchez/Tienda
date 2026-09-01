@@ -10,11 +10,11 @@
     *ngIf="sucursales.length > 1"
     label="Sucursal a configurar"
     labelPlacement="stacked"
-    [value]="sucursalActual?.idSuc"
+    [value]="sucursalActual?.id || sucursalActual?.sucursalId || sucursalActual?.idSuc"
     (ionChange)="seleccionar($event.detail.value)"
   >
-    <ion-select-option *ngFor="let sucursal of sucursales" [value]="sucursal.idSuc">{{
-      sucursal.nombreSuc || 'Sucursal ' + sucursal.idSuc
+    <ion-select-option *ngFor="let sucursal of sucursales" [value]="sucursal.id || sucursal.sucursalId || sucursal.idSuc">{{
+      sucursal.nombre || sucursal.nombreSuc || 'Sucursal ' + (sucursal.id || sucursal.sucursalId || sucursal.idSuc)
     }}</ion-select-option>
   </ion-select>
   <div class="selection-notice" *ngIf="sucursales.length > 1 && !sucursalActual">

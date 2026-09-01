@@ -153,8 +153,8 @@
                 >{{accionEnCurso==='entregar'?'Actualizando…':'Marcar como entregado'}}</ion-button
               >
             </section>
-            <a class="sale-link" *ngIf="p.idVenta" [routerLink]="['/ventas',p.idVenta]"
-              ><ion-icon name="receipt-outline"></ion-icon><span>Ver venta #{{p.idVenta}}</span
+            <a class="sale-link" *ngIf="p.id" [routerLink]="['/ventas',p.id]"
+              ><ion-icon name="receipt-outline"></ion-icon><span>Ver venta #{{p.id}}</span
               ><ion-icon name="arrow-forward-outline"></ion-icon
             ></a>
           </aside>

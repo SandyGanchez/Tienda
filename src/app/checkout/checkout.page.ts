@@ -10,9 +10,11 @@ import { ImagenesService } from '../services/imagenes.service';
 import { PedidosClienteService } from '../services/pedidos-cliente.service';
 
 interface ProductoPublicoStock {
-  idPro: number;
-  existenciaPro: number | null;
-  precioVentaPro: number;
+  id: string;
+  existencia?: number | null;
+  precioVenta?: number;
+  existenciaPro?: number | null;
+  precioVentaPro?: number;
 }
 
 @Component({
@@ -60,7 +62,7 @@ export class CheckoutPage implements OnInit {
       const pedido = await firstValueFrom(
         this.pedidos.crearPedido({
           uuidPedido: this.uuidIntento(),
-          items: this.carrito.items.map((item) => ({ idPro: item.idPro, cantidad: item.cantidad })),
+          items: this.carrito.items.map((item) => ({ id: item.id, cantidad: item.cantidad })),
         }),
       );
       this.pedido = pedido;
@@ -110,10 +112,10 @@ export class CheckoutPage implements OnInit {
     if (!this.pedido || !this.archivo || this.subiendo) return;
     this.subiendo = true;
     try {
-      this.pedido = await firstValueFrom(this.pedidos.subirComprobante(this.pedido.idPedido, this.archivo));
+      this.pedido = await firstValueFrom(this.pedidos.subirComprobante(this.pedido.id, this.archivo));
       this.archivo = null;
       await this.feedback('Pago enviado a revisión.', 'success');
-      await this.router.navigateByUrl(`/mis-pedidos/${this.pedido.idPedido}`);
+      await this.router.navigateByUrl(`/mis-pedidos/${this.pedido.id}`);
     } catch (error: unknown) {
       await this.feedback(this.mensajeError(error, 'No pudimos subir el comprobante.'), 'danger');
     } finally {
@@ -147,7 +149,7 @@ export class CheckoutPage implements OnInit {
 
   private uuidIntento(): string {
     const firma = this.carrito.items
-      .map((item) => `${item.idPro}:${item.cantidad}`)
+      .map((item) => `${item.id}:${item.cantidad}`)
       .sort()
       .join('|');
     try {

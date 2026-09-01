@@ -58,10 +58,20 @@ const routes: Routes = [
     loadChildren: () => import('./pedidos-online/pedidos-online.module').then((m) => m.PedidosOnlinePageModule),
   },
   {
-    path: 'caja',
-    canActivate: [RoleGuard],
-    data: { roles: ['ADMINISTRADOR', 'CAJERO'] },
-    loadChildren: () => import('./caja/caja.module').then((m) => m.CajaPageModule),
+    path: 'categorias',
+    loadChildren: () => import('./categorias/categorias.module').then((m) => m.CategoriasPageModule),
+  },
+  {
+    path: 'configuracion',
+    loadChildren: () => import('./configuracion/configuracion.module').then((m) => m.ConfiguracionPageModule),
+  },
+  {
+    path: 'marcas',
+    loadChildren: () => import('./marcas/marcas.module').then((m) => m.MarcasPageModule),
+  },
+  {
+    path: 'productos',
+    loadChildren: () => import('./productos/productos.module').then((m) => m.ProductosPageModule),
   },
   { path: '**', redirectTo: 'login' },
 ];

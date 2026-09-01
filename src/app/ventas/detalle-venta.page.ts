@@ -58,7 +58,7 @@ export class DetalleVentaPage implements OnInit {
     }
     this.cancelandoVenta = true;
     try {
-      await firstValueFrom(this.api.cancelarVenta(this.venta.idVenta, motivo));
+      await firstValueFrom(this.api.cancelarVenta(this.venta.id, motivo));
       this.mostrarCancelacion = false;
       await this.cargar();
       await this.feedback('Venta cancelada. El inventario fue actualizado.', 'success');

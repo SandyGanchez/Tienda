@@ -25,7 +25,7 @@ export class CarritoPage {
   }
 
   async incrementar(item: ItemCarrito): Promise<void> {
-    if (this.carrito.incrementar(item.idPro)) return;
+    if (this.carrito.incrementar(item.id)) return;
     const toast = await this.toastController.create({
       message: 'Alcanzaste la existencia disponible de este producto.',
       duration: 1800,

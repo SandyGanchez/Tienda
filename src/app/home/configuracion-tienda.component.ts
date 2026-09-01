@@ -44,7 +44,7 @@ export class ConfiguracionTiendaComponent implements OnChanges, OnInit {
   }
 
   seleccionar(id: number | string): void {
-    const seleccionada = this.sucursales.find((sucursal) => sucursal.idSuc === Number(id));
+    const seleccionada = this.sucursales.find((sucursal) => String(sucursal.id || sucursal.sucursalId || sucursal.idSuc) === String(id));
     if (seleccionada) this.sucursalSeleccionada.emit(seleccionada);
   }
 
@@ -64,9 +64,11 @@ export class ConfiguracionTiendaComponent implements OnChanges, OnInit {
 
   async quitarLogoActual(): Promise<void> {
     if (!this.sucursalActual || this.guardando) return;
+    const idSuc = this.sucursalActual.id || this.sucursalActual.sucursalId || this.sucursalActual.idSuc;
+    if (!idSuc) return;
     this.guardando = true;
     try {
-      const actualizada = await firstValueFrom(this.api.quitarLogo(this.sucursalActual.idSuc));
+      const actualizada = await firstValueFrom(this.api.quitarLogo(idSuc));
       this.sucursalGuardada.emit(actualizada);
       await this.feedback('Logo eliminado correctamente.', 'success');
     } catch (error: unknown) {
@@ -86,13 +88,17 @@ export class ConfiguracionTiendaComponent implements OnChanges, OnInit {
     }
     this.guardando = true;
     try {
-      let guardada = this.sucursalActual
-        ? await firstValueFrom(this.api.actualizarSucursal(this.sucursalActual.idSuc, this.form))
+      const idSucActual = this.sucursalActual ? (this.sucursalActual.id || this.sucursalActual.sucursalId || this.sucursalActual.idSuc) : null;
+      let guardada = idSucActual
+        ? await firstValueFrom(this.api.actualizarSucursal(idSucActual, this.form))
         : await firstValueFrom(this.api.crearSucursal(this.form));
       let falloLogo = false;
       if (this.logoPendiente) {
         try {
-          guardada = await firstValueFrom(this.api.subirLogo(guardada.idSuc, this.logoPendiente, this.nombreLogo));
+          const idSucGuardada = guardada.id || guardada.sucursalId || guardada.idSuc || idSucActual;
+          if (idSucGuardada) {
+            guardada = await firstValueFrom(this.api.subirLogo(idSucGuardada, this.logoPendiente, this.nombreLogo));
+          }
         } catch (error: unknown) {
           falloLogo = true;
           console.error('La tienda se guardó, pero falló el logo', error);
