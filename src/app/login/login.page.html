@@ -1,112 +1,162 @@
-<ion-content class="bg-surface">
-  <main class="min-h-screen flex flex-col md:flex-row bg-surface">
-    
-    <!-- LEFT PANEL: BRANDING -->
-    <section class="hidden md:flex flex-col flex-1 bg-primary-container relative overflow-hidden p-xl justify-between">
-      <!-- Decorative Elements -->
-      <div class="absolute -top-32 -left-32 w-96 h-96 bg-primary opacity-10 rounded-full blur-3xl"></div>
-      <div class="absolute bottom-0 right-0 w-[500px] h-[500px] bg-secondary opacity-10 rounded-full blur-3xl"></div>
-      
-      <!-- Brand Top -->
-      <div class="relative z-10 flex items-center gap-4">
-        <div class="w-16 h-16 rounded-2xl bg-surface flex items-center justify-center shadow-pastel overflow-hidden">
-          <img *ngIf="resolverLogo() as logo; else logoFallback" [src]="logo" alt="Logo de la tienda" class="w-full h-full object-cover" />
-          <ng-template #logoFallback><span class="material-symbols-outlined text-4xl text-primary">storefront</span></ng-template>
-        </div>
-        <div class="flex flex-col">
-          <span class="font-label-sm text-on-primary-container uppercase tracking-widest opacity-80">Tienda de abarrotes</span>
-          <strong class="font-headline-md text-[24px] text-on-primary-container">{{ nombreTienda }}</strong>
-        </div>
-      </div>
-      
-      <!-- Illustration -->
-      <div class="relative z-10 flex-1 flex flex-col items-center justify-center my-10 max-h-[400px]">
-        <img class="w-full h-full object-contain max-w-md drop-shadow-xl" src="assets/img/login-house.png" alt="Ilustración de la tienda" />
+<ion-content class="login-content">
+  <main class="login-shell">
+    <!-- =====================================================
+         PANEL IZQUIERDO / ILUSTRACIÓN
+    ====================================================== -->
+    <section class="login-brand">
+      <!-- Decoraciones -->
+      <span class="decor-circle decor-circle-one"></span>
+      <span class="decor-circle decor-circle-two"></span>
+      <span class="decor-circle decor-circle-three"></span>
+
+      <div class="decor-dots" aria-hidden="true">
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
       </div>
 
-      <!-- Copy -->
-      <div class="relative z-10">
-        <h1 class="font-display-md text-on-primary-container leading-tight mb-2">
-          Todo lo que necesitas, <br/><span class="text-primary font-bold">cerca de ti.</span>
+      <!-- Branding -->
+      <div class="brand-top">
+        <div class="login-logo">
+          <img *ngIf="resolverLogo() as logo; else logoFallback" [src]="logo" alt="Logo de la tienda" />
+
+          <ng-template #logoFallback>
+            <ion-icon name="storefront-outline"></ion-icon>
+          </ng-template>
+        </div>
+
+        <div class="brand-name">
+          <span>Tienda de abarrotes</span>
+          <strong>{{ nombreTienda }}</strong>
+        </div>
+      </div>
+
+      <!-- Ilustración principal -->
+      <div class="house-wrapper">
+        <div class="house-background"></div>
+
+        <img class="house-image" src="assets/img/login-house.png" alt="Ilustración de la tienda" />
+      </div>
+
+      <!-- Texto inferior -->
+      <div class="brand-copy">
+        <h1>
+          Todo lo que necesitas,
+          <span>cerca de ti.</span>
         </h1>
-        <p class="font-body-lg text-on-primary-container opacity-80 max-w-md">
-          {{ tienda?.descripcionSuc || 'Productos para tu día a día, en un solo lugar.' }}
-        </p>
+
+        <p>{{ tienda?.descripcionSuc || 'Productos para tu día a día, en un solo lugar.' }}</p>
       </div>
     </section>
 
-    <!-- RIGHT PANEL: LOGIN -->
-    <section class="flex-1 flex flex-col items-center justify-center p-container-margin md:p-xl bg-surface relative">
-      <div class="w-full max-w-sm flex flex-col gap-8">
-        
-        <!-- Mobile Header (hidden on desktop) -->
-        <div class="md:hidden flex flex-col items-center mb-4">
-          <div class="w-20 h-20 rounded-3xl bg-primary-container flex items-center justify-center shadow-pastel mb-4 overflow-hidden">
-            <img *ngIf="resolverLogo() as logo; else logoFallbackMobile" [src]="logo" alt="Logo de la tienda" class="w-full h-full object-cover" />
-            <ng-template #logoFallbackMobile><span class="material-symbols-outlined text-4xl text-primary">storefront</span></ng-template>
-          </div>
-          <h2 class="font-headline-md text-center text-on-surface">{{ nombreTienda }}</h2>
-        </div>
+    <!-- =====================================================
+         PANEL DERECHO / LOGIN
+    ====================================================== -->
+    <section class="login-card">
+      <div class="login-form">
+        <header class="login-header">
+          <h2>
+            Bienvenido
+            <span class="welcome-heart"></span>
+          </h2>
 
-        <header>
-          <h2 class="font-display-sm text-on-surface mb-2">Bienvenido 👋</h2>
-          <p class="font-body-md text-on-surface-variant">Inicia sesión para continuar</p>
+          <p>Inicia sesión para continuar</p>
         </header>
 
-        <form class="flex flex-col gap-5" (ngSubmit)="ingresar()">
-          <!-- Correo -->
-          <div class="flex flex-col gap-1">
-            <label class="font-label-sm text-on-surface-variant">Correo electrónico</label>
-            <div class="relative flex items-center h-14 bg-surface-container border border-surface-variant rounded-xl overflow-hidden focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
-              <span class="material-symbols-outlined absolute left-4 text-on-surface-variant">person</span>
-              <input type="email" autocomplete="email" placeholder="Ingresa tu correo" [disabled]="autenticando" [(ngModel)]="correo" name="correo" class="w-full h-full bg-transparent border-none pl-12 pr-4 font-body-md focus:outline-none" />
-            </div>
-          </div>
+        <!-- CORREO -->
+        <div class="field-group">
+          <label> Correo electrónico </label>
 
-          <!-- Contraseña -->
-          <div class="flex flex-col gap-1">
-            <label class="font-label-sm text-on-surface-variant">Contraseña</label>
-            <div class="relative flex items-center h-14 bg-surface-container border border-surface-variant rounded-xl overflow-hidden focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
-              <span class="material-symbols-outlined absolute left-4 text-on-surface-variant">lock</span>
-              <input [type]="mostrarPassword ? 'text' : 'password'" autocomplete="current-password" placeholder="Ingresa tu contraseña" [disabled]="autenticando" [(ngModel)]="password" name="password" class="w-full h-full bg-transparent border-none pl-12 pr-12 font-body-md focus:outline-none" />
-              <button type="button" [disabled]="autenticando" (click)="mostrarPassword = !mostrarPassword" class="absolute right-2 w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-variant transition-colors disabled:opacity-50">
-                <span class="material-symbols-outlined">{{ mostrarPassword ? 'visibility_off' : 'visibility' }}</span>
-              </button>
-            </div>
-          </div>
+          <div class="field-control">
+            <ion-icon name="person-outline" class="field-icon"></ion-icon>
 
-          <!-- Botón Ingresar -->
-          <button type="submit" [disabled]="autenticando" class="w-full h-14 mt-2 bg-primary hover:bg-surface-tint text-on-primary font-label-md text-[16px] rounded-xl shadow-pastel flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50">
-            <ion-spinner *ngIf="autenticando" name="dots"></ion-spinner>
-            <span *ngIf="!autenticando">{{ 'Iniciar sesión' }}</span>
-            <span *ngIf="!autenticando" class="material-symbols-outlined">arrow_forward</span>
-          </button>
-        </form>
-
-        <div class="flex items-center gap-4 my-2 opacity-60">
-          <div class="flex-1 h-px bg-outline-variant"></div>
-          <span class="font-label-sm text-on-surface-variant uppercase tracking-widest">o</span>
-          <div class="flex-1 h-px bg-outline-variant"></div>
-        </div>
-
-        <div class="flex flex-col items-center gap-4">
-          <p class="font-label-md text-on-surface-variant">¿Eres cliente?</p>
-          
-          <button [disabled]="autenticando || !googleConfigurado" (click)="ingresarGoogle()" class="w-full h-14 bg-surface-container hover:bg-surface-container-high border border-outline-variant text-on-surface font-label-md text-[16px] rounded-xl shadow-sm flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50">
-            <img src="assets/icon/favicon.png" alt="G" class="w-5 h-5 opacity-70" />
-            Continuar con Google
-          </button>
-          
-          <small *ngIf="!googleConfigurado" class="text-error font-body-sm text-center">Google estará disponible cuando se configuren las credenciales OAuth.</small>
-          
-          <div class="mt-6 flex flex-col items-center gap-2">
-            <span class="font-body-md text-on-surface-variant">¿Solo quieres comprar?</span>
-            <button routerLink="/catalogo" class="text-primary font-label-md hover:underline flex items-center gap-1 bg-transparent">
-              Ver productos <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
-            </button>
+            <ion-input
+              type="email"
+              autocomplete="email"
+              placeholder="Ingresa tu correo"
+              [disabled]="autenticando"
+              [(ngModel)]="correo"
+            ></ion-input>
           </div>
         </div>
-        
+
+        <!-- CONTRASEÑA -->
+        <div class="field-group">
+          <label> Contraseña </label>
+
+          <div class="field-control">
+            <ion-icon name="lock-closed-outline" class="field-icon"></ion-icon>
+
+            <ion-input
+              [type]="mostrarPassword ? 'text' : 'password'"
+              autocomplete="current-password"
+              placeholder="Ingresa tu contraseña"
+              [disabled]="autenticando"
+              [(ngModel)]="password"
+            ></ion-input>
+
+            <ion-button
+              class="password-toggle"
+              fill="clear"
+              type="button"
+              [disabled]="autenticando"
+              (click)="mostrarPassword = !mostrarPassword"
+              aria-label="Mostrar u ocultar contraseña"
+            >
+              <ion-icon
+                slot="icon-only"
+                [name]="mostrarPassword
+                  ? 'eye-off-outline'
+                  : 'eye-outline'"
+              ></ion-icon>
+            </ion-button>
+          </div>
+        </div>
+
+        <!-- LOGIN -->
+        <ion-button expand="block" class="login-primary" [disabled]="autenticando" (click)="ingresar()">
+          <span> {{ autenticando ? 'Iniciando sesión...' : 'Iniciar sesión' }} </span>
+
+          <ion-icon *ngIf="!autenticando" slot="end" name="arrow-forward-outline"></ion-icon>
+        </ion-button>
+
+        <!-- DIVISOR -->
+        <div class="login-divider">
+          <span>o</span>
+        </div>
+
+        <!-- GOOGLE -->
+        <p class="client-copy">¿Eres cliente?</p>
+
+        <ion-button
+          expand="block"
+          fill="outline"
+          class="google-button"
+          [disabled]="autenticando || !googleConfigurado"
+          (click)="ingresarGoogle()"
+        >
+          <strong class="google-letter"> G </strong>
+
+          Continuar con Google
+        </ion-button>
+
+        <small class="google-warning" *ngIf="!googleConfigurado">
+          Google estará disponible cuando se configuren las credenciales OAuth.
+        </small>
+
+        <!-- CATÁLOGO -->
+        <div class="catalog-link">
+          <span> ¿Solo quieres comprar? </span>
+
+          <ion-button fill="clear" routerLink="/catalogo">
+            Ver productos
+
+            <ion-icon slot="end" name="arrow-forward-outline"></ion-icon>
+          </ion-button>
+        </div>
       </div>
     </section>
   </main>
