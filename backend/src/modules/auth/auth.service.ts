@@ -123,7 +123,7 @@ export class AuthService {
     const apellidoPat = texto(perfil.family_name).slice(0, 100) || null;
     const fotoPerfil = texto(perfil.picture) || null;
 
-    return await prisma.$transaction(async (tx) => {
+    return await prisma.$transaction(async (tx: any) => {
       let cliente = await tx.cliente.findUnique({
         where: { googleSub },
       });

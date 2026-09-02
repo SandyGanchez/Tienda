@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 
 declare global {
   // eslint-disable-next-line no-var
@@ -15,5 +15,5 @@ if (process.env.NODE_ENV !== 'production') {
   global.__prismaClient = prisma;
 }
 
-export type TransactionClient = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
+export type TransactionClient = Prisma.TransactionClient;
 export type DbClient = PrismaClient | TransactionClient;
