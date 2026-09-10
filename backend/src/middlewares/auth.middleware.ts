@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../config/prisma';
 import { clienteSeguro, verificarToken } from '../utils/security';
 import { idValido } from '../utils/formatters';
+import { authRepository } from '../db/repositories/auth.repository';
 
 export async function autenticar(req: Request, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization || '';
@@ -23,6 +24,32 @@ export async function autenticar(req: Request, res: Response, next: NextFunction
     const idEmp = idValido(payload.sub);
     if (!idEmp) {
       res.status(401).json({ message: 'Sesión no válida' });
+      return;
+    }
+
+    if (process.env.DYNAMODB_TABLE) {
+      const empleado = await authRepository.findEmpleadoById(idEmp);
+      if (!empleado || !empleado.estadoEmp) {
+        res.status(401).json({ message: 'Sesión no válida' });
+        return;
+      }
+      req.empleado = {
+        idEmp: empleado.idEmp,
+        nombre: [empleado.nombreEmp, empleado.apellidoPatEmp, empleado.apellidoMatEmp].filter(Boolean).join(' '),
+        nombreEmp: empleado.nombreEmp,
+        apellidoPatEmp: empleado.apellidoPatEmp,
+        apellidoMatEmp: empleado.apellidoMatEmp || null,
+        correo: empleado.correoEmp,
+        telefono: empleado.telefono || null,
+        fechaIngreso: null,
+        fotoPerfil: empleado.fotoPerfil || null,
+        idCargo: empleado.idCargo || 1,
+        cargo: empleado.cargoNombre || empleado.cargo || 'ADMINISTRADOR',
+        idSuc: empleado.idSuc || 1,
+        nombreSuc: empleado.nombreSuc || 'Doña paty',
+        estadoEmp: Boolean(empleado.estadoEmp),
+      };
+      next();
       return;
     }
 
@@ -83,6 +110,23 @@ export async function autenticarCliente(req: Request, res: Response, next: NextF
     const idCliente = idValido(payload.sub);
     if (!idCliente) {
       res.status(401).json({ message: 'Sesión no válida' });
+      return;
+    }
+
+    if (process.env.DYNAMODB_TABLE) {
+      const cliente = await authRepository.findClienteById(idCliente);
+      if (!cliente || !cliente.estadoCliente) {
+        res.status(401).json({ message: 'Sesión no válida' });
+        return;
+      }
+      req.cliente = {
+        ...clienteSeguro(cliente),
+        nombreCliente: cliente.nombreCliente,
+        apellidoPatCliente: cliente.apellidoPatCliente || null,
+        apellidoMatCliente: cliente.apellidoMatCliente || null,
+        correoCliente: cliente.correoCliente,
+      };
+      next();
       return;
     }
 

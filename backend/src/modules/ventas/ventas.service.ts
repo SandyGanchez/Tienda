@@ -11,9 +11,18 @@ import {
 } from '../../utils/formatters';
 import { empleadoSeguro } from '../../utils/security';
 import { toVentaRegistradaDto, toVentaListDto, toVentaDetalleDto } from '../../dtos/venta.dto';
+import { cajaRepository } from '../../db/repositories/caja.repository';
+import { productoRepository } from '../../db/repositories/producto.repository';
+import { ventaRepository } from '../../db/repositories/venta.repository';
+
 
 export class VentasService {
   async obtenerVentaRegistrada(idVenta: number, empleado: any, client: DbClient = prisma) {
+    if (process.env.DYNAMODB_TABLE) {
+      const v = await ventaRepository.getVentaById(idVenta, empleado?.idSuc || 1);
+      if (!v) return null;
+      return toVentaRegistradaDto(v, empleado);
+    }
     const v = await client.venta.findUnique({
       where: { idVenta: Number(idVenta) },
       include: {
@@ -57,7 +66,52 @@ export class VentasService {
       throw errorFuncional('El monto recibido no es válido', 400);
     }
 
+    if (process.env.DYNAMODB_TABLE) {
+      const caja = await cajaRepository.getSesionAbierta(empleado?.idSuc || 1);
+      if (!caja) {
+        throw errorFuncional('Debes abrir caja antes de registrar ventas.', 409);
+      }
+
+      let totalCalculado = 0;
+      const itemsParaVenta = [];
+      for (const [idPro, cantidad] of cantidades.entries()) {
+        const prod = await productoRepository.getProductoById(idPro, empleado?.idSuc || 1);
+        if (!prod) throw errorFuncional(`El producto no existe`, 404);
+        if (prod.existenciaPro < cantidad) {
+          throw errorFuncional(`Existencias insuficientes para "${prod.nombrePro}". Disponibles: ${prod.existenciaPro}`, 409);
+        }
+        const precio = Number(prod.precioVentaPro);
+        totalCalculado += Number((precio * cantidad).toFixed(2));
+        itemsParaVenta.push({
+          idPro,
+          nombrePro: prod.nombrePro,
+          cantidad,
+          precioUnitario: precio,
+        });
+      }
+
+      const pagoCon = montoRecibidoCentavos ? montoRecibidoCentavos / 100 : totalCalculado;
+      const cambio = metodoPago === 'EFECTIVO' ? Number((pagoCon - totalCalculado).toFixed(2)) : 0;
+      if (cambio < 0) {
+        throw errorFuncional('El monto recibido es menor al total de la venta', 400);
+      }
+
+      const venta = await ventaRepository.createVenta({
+        idSuc: empleado?.idSuc || 1,
+        idEmp: empleado?.idEmp || 1,
+        idSesionCaja: caja.idSesionCaja,
+        totalVenta: totalCalculado,
+        pagoCon,
+        cambio,
+        metodoPago,
+        items: itemsParaVenta,
+      });
+
+      return toVentaRegistradaDto(venta, empleado);
+    }
+
     return await prisma.$transaction(async (tx) => {
+
       const repetida = await tx.venta.findUnique({
         where: { uuidVenta },
       });
@@ -212,6 +266,10 @@ export class VentasService {
   }
 
   async listarVentas(empleado: { idEmp: number; idSuc: number; cargo: string }) {
+    if (process.env.DYNAMODB_TABLE) {
+      const ventas = await ventaRepository.listVentas(empleado?.idSuc || 1);
+      return ventas.map(toVentaListDto);
+    }
     const where = empleado.cargo === 'CAJERO' ? { idEmp: empleado.idEmp } : { idSuc: empleado.idSuc };
 
     const ventas = await prisma.venta.findMany({
@@ -227,6 +285,12 @@ export class VentasService {
   }
 
   async detalleVenta(idVenta: number, empleado: { idEmp: number; idSuc: number; cargo: string }) {
+    if (process.env.DYNAMODB_TABLE) {
+      const v = await ventaRepository.getVentaById(idVenta, empleado?.idSuc || 1);
+      if (!v) return null;
+      return toVentaDetalleDto(v);
+    }
+
     const where = {
       idVenta,
       ...(empleado.cargo === 'CAJERO' ? { idEmp: empleado.idEmp } : { idSuc: empleado.idSuc }),
@@ -241,22 +305,12 @@ export class VentasService {
         pedidos: { select: { idPedido: true } },
         detalles: {
           include: { producto: true },
-          orderBy: { idDetVenta: 'asc' },
+          orderBy: { idDetDetVenta: 'asc' } as any,
         },
       },
     });
 
     if (!v) return null;
-
-    const cajeroStr = v.empleado
-      ? [v.empleado.nombreEmp, v.empleado.apellidoPatEmp, v.empleado.apellidoMatEmp].filter(Boolean).join(' ')
-      : null;
-    const canceladorStr = v.empleadoCancela
-      ? [v.empleadoCancela.nombreEmp, v.empleadoCancela.apellidoPatEmp, v.empleadoCancela.apellidoMatEmp]
-          .filter(Boolean)
-          .join(' ')
-      : null;
-    const origenVenta = v.pedidos && v.pedidos.length > 0 ? 'ONLINE' : 'POS';
 
     return toVentaDetalleDto(v);
   }

@@ -9,6 +9,9 @@ import {
   clienteSeguro,
 } from '../../utils/security';
 import { texto, errorFuncional } from '../../utils/formatters';
+import { authRepository } from '../../db/repositories/auth.repository';
+import { sucursalRepository } from '../../db/repositories/sucursal.repository';
+
 
 export class AuthService {
   async loginEmpleado(correoInput: string, passwordInput: string) {
@@ -19,7 +22,29 @@ export class AuthService {
       throw errorFuncional('Correo y contraseña son obligatorios', 400);
     }
 
+    if (process.env.DYNAMODB_TABLE) {
+      const empleado = await authRepository.findEmpleadoByEmail(correo);
+      if (!empleado?.contrasenaHash || !(await comparePassword(password, empleado.contrasenaHash))) {
+        throw errorFuncional('Correo o contraseña incorrectos', 401);
+      }
+      if (!empleado.estadoEmp) {
+        throw errorFuncional('Tu cuenta está desactivada', 403);
+      }
+      const cargoNombre = empleado.cargoNombre || 'ADMINISTRADOR';
+      if (!['ADMINISTRADOR', 'CAJERO'].includes(cargoNombre)) {
+        throw errorFuncional('Tu cuenta no tiene un cargo autorizado', 403);
+      }
+      const empSeguro = empleadoSeguro({
+        ...empleado,
+        cargo: cargoNombre,
+        idSuc: empleado.idSuc || 1,
+        nombreSuc: 'Doña paty',
+      });
+      return { token: emitirSesionEmpleado(empSeguro), empleado: empSeguro };
+    }
+
     const empleado = await prisma.empleado.findFirst({
+
       where: { correoEmp: { equals: correo, mode: 'insensitive' } },
       include: {
         cargo: {
@@ -123,7 +148,31 @@ export class AuthService {
     const apellidoPat = texto(perfil.family_name).slice(0, 100) || null;
     const fotoPerfil = texto(perfil.picture) || null;
 
+    if (process.env.DYNAMODB_TABLE) {
+      let cliente = await authRepository.findClienteByGoogleSub(googleSub);
+      if (!cliente) {
+        cliente = await authRepository.findClienteByEmail(correo);
+        if (cliente && cliente.googleSub && cliente.googleSub !== googleSub) {
+          throw errorFuncional('Esta cuenta Google no coincide con la cuenta de cliente vinculada', 403);
+        }
+      }
+      if (cliente && !cliente.estadoCliente) {
+        throw errorFuncional('Tu cuenta de cliente está desactivada', 403);
+      }
+      if (!cliente) {
+        cliente = await authRepository.createCliente({
+          nombreCliente: nombre,
+          apellidoPatCliente: apellidoPat || undefined,
+          correoCliente: correo,
+          googleSub,
+          fotoPerfil: fotoPerfil || undefined,
+        });
+      }
+      return cliente;
+    }
+
     return await prisma.$transaction(async (tx: any) => {
+
       let cliente = await tx.cliente.findUnique({
         where: { googleSub },
       });

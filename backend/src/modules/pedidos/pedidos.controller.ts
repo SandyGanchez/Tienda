@@ -34,11 +34,8 @@ export class PedidosController {
       return;
     }
     await pedidosService.liberarPedidosExpirados(req.cliente.idCliente);
-    const pedidos = await prisma.pedidoCliente.findMany({
-      where: { idCliente: req.cliente.idCliente },
-      orderBy: [{ fechaPedido: 'desc' }, { idPedido: 'desc' }],
-    });
-    res.json(pedidos.map(normalizarPedido));
+    const pedidos = await pedidosService.listarPedidosCliente(req.cliente.idCliente);
+    res.json(pedidos);
   }
 
   async obtenerPedidoCliente(req: Request, res: Response): Promise<void> {
@@ -237,15 +234,8 @@ export class PedidosController {
       return;
     }
     await pedidosService.liberarPedidosExpirados();
-      const pedidos = await prisma.pedidoCliente.findMany({
-              where: { idSuc },
-              orderBy: [{ fechaPedido: 'desc' }, { idPedido: 'desc' }],
-              include: {
-                cliente: true,
-                empleadoRevisa: true,
-              },
-            });
-      res.json(pedidos.map(normalizarPedidoAdmin));
+    const pedidos = await pedidosService.listarPedidosAdmin(idSuc);
+    res.json(pedidos);
   }
 
   async obtenerPedidoAdmin(req: Request, res: Response): Promise<void> {

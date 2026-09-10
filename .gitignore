@@ -107,6 +107,7 @@ override.tf.json
 .terraformrc
 terraform.rc
 .terraform.lock.hcl
+terraform/*.zip
 
 # Stitch designs
 stitch-designs/

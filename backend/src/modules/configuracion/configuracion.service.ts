@@ -1,6 +1,7 @@
 import { prisma } from '../../config/prisma';
 import { texto, errorFuncional } from '../../utils/formatters';
 import { normalizarConfiguracionTransferencia, pedidosService } from '../pedidos/pedidos.service';
+import { configuracionRepository } from '../../db/repositories/configuracion.repository';
 
 function booleanoEstricto(value: unknown): boolean | null {
   if (value === true || value === 1) return true;
@@ -39,6 +40,10 @@ export function validarConfiguracionTransferencia(body: any) {
 
 export class ConfiguracionService {
   async obtenerAdmin(idSuc: number) {
+    if (process.env.DYNAMODB_TABLE) {
+      const conf = await configuracionRepository.getConfiguracion(idSuc);
+      return normalizarConfiguracionTransferencia(conf, true);
+    }
     const configuracion = await prisma.configuracionTransferencia.findUnique({
       where: { idSuc },
     });
@@ -51,6 +56,12 @@ export class ConfiguracionService {
       throw errorFuncional(validacion.error, 400);
     }
     const datos = validacion.valores!;
+
+    if (process.env.DYNAMODB_TABLE) {
+      const conf = await configuracionRepository.updateConfiguracion(idSuc, datos);
+      return normalizarConfiguracionTransferencia(conf, true);
+    }
+
     const configuracion = await prisma.configuracionTransferencia.upsert({
       where: { idSuc },
       update: {
@@ -76,6 +87,10 @@ export class ConfiguracionService {
   }
 
   async obtenerCliente() {
+    if (process.env.DYNAMODB_TABLE) {
+      const conf = await configuracionRepository.getConfiguracion(1);
+      return normalizarConfiguracionTransferencia(conf);
+    }
     const idSuc = await pedidosService.obtenerSucursalDisponibleCliente();
     const configuracion = await pedidosService.obtenerConfiguracionTransferencia(idSuc, true);
     return normalizarConfiguracionTransferencia(configuracion);
@@ -83,3 +98,4 @@ export class ConfiguracionService {
 }
 
 export const configuracionService = new ConfiguracionService();
+
