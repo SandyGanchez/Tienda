@@ -78,7 +78,7 @@ async function seed() {
       edadPer: 35,
       generoPer: 'Masculino',
       correoEmp: 'admin@gmail.com',
-      contrasenaHash: '$2b$10$KwXEoSi/WH4f7M/zjCbXe.Ecf/HkZbCB7bCEzPpqf8PeFzrvHnkUq', // admin123
+      contrasenaHash: '$2b$10$R/HsmlNRTNeXCmudYcq.v.8K6uxoLXHzOyGEpw3WS23V1auxrXzhW', // Sandy_1234
       estadoEmp: true,
       telefono: '7221234567',
       idCargo: 1,
