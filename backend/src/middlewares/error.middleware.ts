@@ -18,6 +18,14 @@ export function errorServidor(
     return res.status(404).json({ message: 'El registro solicitado no fue encontrado' });
   }
 
+  if (error && (error.name === 'TransactionCanceledException' || error.name === 'ConditionalCheckFailedException')) {
+    return res.status(409).json({
+      message: error.message && !error.message.includes('Transaction cancelled')
+        ? error.message
+        : 'Conflicto de concurrencia o elemento duplicado en la base de datos',
+    });
+  }
+
   const status = typeof error?.status === 'number' ? error.status : 500;
   const message =
     status >= 500 && env.NODE_ENV === 'production'

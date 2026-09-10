@@ -78,7 +78,7 @@ async function seed() {
       edadPer: 35,
       generoPer: 'Masculino',
       correoEmp: 'admin@gmail.com',
-      contrasenaHash: '$2b$10$7qZB/As1PwjGAABwNQFE5OYS40Gt0ZBCbZv2IoK5/Wo6Eiba/nyii',
+      contrasenaHash: '$2b$10$KwXEoSi/WH4f7M/zjCbXe.Ecf/HkZbCB7bCEzPpqf8PeFzrvHnkUq', // admin123
       estadoEmp: true,
       telefono: '7221234567',
       idCargo: 1,
@@ -93,7 +93,7 @@ async function seed() {
       edadPer: 28,
       generoPer: 'Femenino',
       correoEmp: 'diana@gmail.com',
-      contrasenaHash: '$2b$10$7qZB/As1PwjGAABwNQFE5OYS40Gt0ZBCbZv2IoK5/Wo6Eiba/nyii',
+      contrasenaHash: '$2b$10$KwXEoSi/WH4f7M/zjCbXe.Ecf/HkZbCB7bCEzPpqf8PeFzrvHnkUq', // admin123
       estadoEmp: true,
       telefono: '7298456578',
       idCargo: 2,
@@ -108,7 +108,7 @@ async function seed() {
       edadPer: 25,
       generoPer: 'Otro',
       correoEmp: 'dumb@user.com',
-      contrasenaHash: '$2b$12$mcSBVhI4MURCB3ZqM.9tQuD9C7w3CZoMFDK01IM0.2TMqUAzkYlOK',
+      contrasenaHash: '$2b$10$KwXEoSi/WH4f7M/zjCbXe.Ecf/HkZbCB7bCEzPpqf8PeFzrvHnkUq', // admin123
       estadoEmp: true,
       telefono: '7220000000',
       idCargo: 2,
@@ -127,6 +127,18 @@ async function seed() {
           GSI2PK: `EMAIL#${emp.correoEmp.toLowerCase()}`,
           GSI2SK: `EMP#${emp.idEmp}`,
           ...emp,
+        },
+      }),
+    );
+    // Unicidad STD para evitar duplicados en transacciones
+    await docClient.send(
+      new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          PK: `UNIQUE_EMAIL#${emp.correoEmp.toLowerCase()}`,
+          SK: 'EMAIL',
+          idEmp: emp.idEmp,
+          tipo: 'EMPLEADO',
         },
       }),
     );
@@ -173,13 +185,38 @@ async function seed() {
         Item: {
           ...Keys.cliente(cli.idCliente),
           GSI1PK: 'CLIENTES',
-          GSI1SK: `${cli.nombreCliente} ${cli.apellidoPatCliente}`,
-          GSI2PK: `GOOGLE#${cli.googleSub}`,
+          GSI1SK: `${cli.apellidoPatCliente || ''}#${cli.nombreCliente}`,
+          GSI2PK: `EMAIL#${cli.correoCliente.toLowerCase()}`,
           GSI2SK: `CLI#${cli.idCliente}`,
           ...cli,
         },
       }),
     );
+    // Unicidad STD por Email
+    await docClient.send(
+      new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          PK: `UNIQUE_EMAIL#${cli.correoCliente.toLowerCase()}`,
+          SK: 'EMAIL',
+          idCliente: cli.idCliente,
+          tipo: 'CLIENTE',
+        },
+      }),
+    );
+    // Unicidad STD por Google Sub si existe
+    if (cli.googleSub) {
+      await docClient.send(
+        new PutCommand({
+          TableName: TABLE_NAME,
+          Item: {
+            PK: `UNIQUE_GOOGLE#${cli.googleSub}`,
+            SK: 'GOOGLE_SUB',
+            idCliente: cli.idCliente,
+          },
+        }),
+      );
+    }
   }
 
   // 5. Categorías
@@ -418,6 +455,17 @@ async function seed() {
         fondoInicial: 500.0,
         totalVentas: 150.0,
         fechaApertura: new Date().toISOString(),
+      },
+    }),
+  );
+  await docClient.send(
+    new PutCommand({
+      TableName: TABLE_NAME,
+      Item: {
+        PK: 'SUC#1',
+        SK: 'SESION_ACTIVA#1',
+        idSesionCaja: 3,
+        idEmp: 1,
       },
     }),
   );

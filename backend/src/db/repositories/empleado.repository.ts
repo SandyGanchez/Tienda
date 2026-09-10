@@ -1,7 +1,8 @@
-import { DeleteCommand, GetCommand, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { DeleteCommand, GetCommand, PutCommand, QueryCommand, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient, TABLE_NAME } from '../dynamo.client';
 import { getNextSequence, Keys } from '../dynamo.keys';
 import { EmpleadoEntity } from './auth.repository';
+import { errorFuncional } from '../../utils/formatters';
 
 export class EmpleadoRepository {
   async listEmpleados(idSuc = 1): Promise<EmpleadoEntity[]> {
@@ -36,21 +37,46 @@ export class EmpleadoRepository {
       estadoEmp: data.estadoEmp !== false,
     };
 
-    await docClient.send(
-      new PutCommand({
-        TableName: TABLE_NAME,
-        Item: {
-          ...Keys.empleado(idEmp),
-          GSI1PK: `SUC#${item.idSuc}#EMPLEADOS`,
-          GSI1SK: `${item.apellidoPatEmp}#${item.nombreEmp}`,
-          GSI2PK: `EMAIL#${item.correoEmp.toLowerCase().trim()}`,
-          GSI2SK: `EMP#${idEmp}`,
-          ...item,
-        },
-      }),
-    );
+    const emailNorm = item.correoEmp.toLowerCase().trim();
 
-    return item;
+    const transactItems = [
+      {
+        Put: {
+          TableName: TABLE_NAME,
+          Item: {
+            ...Keys.empleado(idEmp),
+            GSI1PK: `SUC#${item.idSuc}#EMPLEADOS`,
+            GSI1SK: `${item.apellidoPatEmp}#${item.nombreEmp}`,
+            GSI2PK: `EMAIL#${emailNorm}`,
+            GSI2SK: `EMP#${idEmp}`,
+            ...item,
+          },
+          ConditionExpression: 'attribute_not_exists(PK)',
+        },
+      },
+      {
+        Put: {
+          TableName: TABLE_NAME,
+          Item: {
+            PK: `UNIQUE_EMAIL#${emailNorm}`,
+            SK: 'EMAIL',
+            tipo: 'EMPLEADO',
+            idEmp,
+          },
+          ConditionExpression: 'attribute_not_exists(PK)',
+        },
+      },
+    ];
+
+    try {
+      await docClient.send(new TransactWriteCommand({ TransactItems: transactItems }));
+      return item;
+    } catch (error: any) {
+      if (error.name === 'TransactionCanceledException') {
+        throw errorFuncional('El correo electrónico ya está registrado por otro empleado', 409);
+      }
+      throw error;
+    }
   }
 
   async updateEmpleado(idEmp: number, data: Partial<EmpleadoEntity>): Promise<EmpleadoEntity | null> {
@@ -63,28 +89,81 @@ export class EmpleadoRepository {
       idEmp,
     };
 
-    await docClient.send(
-      new PutCommand({
-        TableName: TABLE_NAME,
-        Item: {
-          ...Keys.empleado(idEmp),
-          GSI1PK: `SUC#${updated.idSuc}#EMPLEADOS`,
-          GSI1SK: `${updated.apellidoPatEmp}#${updated.nombreEmp}`,
-          GSI2PK: `EMAIL#${updated.correoEmp.toLowerCase().trim()}`,
-          GSI2SK: `EMP#${idEmp}`,
-          ...updated,
-        },
-      }),
-    );
+    const oldEmailNorm = existing.correoEmp.toLowerCase().trim();
+    const newEmailNorm = updated.correoEmp.toLowerCase().trim();
 
-    return updated;
+    const transactItems: any[] = [
+      {
+        Put: {
+          TableName: TABLE_NAME,
+          Item: {
+            ...Keys.empleado(idEmp),
+            GSI1PK: `SUC#${updated.idSuc}#EMPLEADOS`,
+            GSI1SK: `${updated.apellidoPatEmp}#${updated.nombreEmp}`,
+            GSI2PK: `EMAIL#${newEmailNorm}`,
+            GSI2SK: `EMP#${idEmp}`,
+            ...updated,
+          },
+        },
+      },
+    ];
+
+    if (oldEmailNorm !== newEmailNorm) {
+      transactItems.push(
+        {
+          Delete: {
+            TableName: TABLE_NAME,
+            Key: { PK: `UNIQUE_EMAIL#${oldEmailNorm}`, SK: 'EMAIL' },
+          },
+        },
+        {
+          Put: {
+            TableName: TABLE_NAME,
+            Item: {
+              PK: `UNIQUE_EMAIL#${newEmailNorm}`,
+              SK: 'EMAIL',
+              tipo: 'EMPLEADO',
+              idEmp,
+            },
+            ConditionExpression: 'attribute_not_exists(PK)',
+          },
+        },
+      );
+    }
+
+    try {
+      await docClient.send(new TransactWriteCommand({ TransactItems: transactItems }));
+      return updated;
+    } catch (error: any) {
+      if (error.name === 'TransactionCanceledException') {
+        throw errorFuncional('El nuevo correo electrónico ya está en uso', 409);
+      }
+      throw error;
+    }
   }
 
   async deleteEmpleado(idEmp: number): Promise<boolean> {
+    const existing = await this.getEmpleadoById(idEmp);
+    if (!existing) return true;
+
+    const emailNorm = existing.correoEmp.toLowerCase().trim();
+
     await docClient.send(
-      new DeleteCommand({
-        TableName: TABLE_NAME,
-        Key: Keys.empleado(idEmp),
+      new TransactWriteCommand({
+        TransactItems: [
+          {
+            Delete: {
+              TableName: TABLE_NAME,
+              Key: Keys.empleado(idEmp),
+            },
+          },
+          {
+            Delete: {
+              TableName: TABLE_NAME,
+              Key: { PK: `UNIQUE_EMAIL#${emailNorm}`, SK: 'EMAIL' },
+            },
+          },
+        ],
       }),
     );
     return true;
@@ -92,3 +171,4 @@ export class EmpleadoRepository {
 }
 
 export const empleadoRepository = new EmpleadoRepository();
+

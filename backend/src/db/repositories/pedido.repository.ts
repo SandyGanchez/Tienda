@@ -1,6 +1,7 @@
-import { GetCommand, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { GetCommand, PutCommand, QueryCommand, UpdateCommand, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient, TABLE_NAME } from '../dynamo.client';
 import { getNextSequence, Keys } from '../dynamo.keys';
+import { errorFuncional } from '../../utils/formatters';
 
 export interface DetallePedidoItem {
   idPro: number;
@@ -66,19 +67,42 @@ export class PedidoRepository {
       detalles,
     };
 
-    await docClient.send(
-      new PutCommand({
-        TableName: TABLE_NAME,
-        Item: {
-          ...Keys.pedidoCliente(data.idCliente, idPedido),
-          GSI1PK: `SUC#${data.idSuc}#PEDIDOS`,
-          GSI1SK: `${pedido.estado}#${now}`,
-          ...pedido,
+    const transactItems: any[] = [
+      {
+        Put: {
+          TableName: TABLE_NAME,
+          Item: {
+            ...Keys.pedidoCliente(data.idCliente, idPedido),
+            GSI1PK: `SUC#${data.idSuc}#PEDIDOS`,
+            GSI1SK: `${pedido.estado}#${now}`,
+            ...pedido,
+          },
+          ConditionExpression: 'attribute_not_exists(PK)',
         },
-      }),
-    );
+      },
+      ...data.items.map((item) => ({
+        Update: {
+          TableName: TABLE_NAME,
+          Key: Keys.producto(data.idSuc, item.idPro),
+          UpdateExpression: 'ADD existenciaPro :negCant',
+          ConditionExpression: 'attribute_exists(PK) AND existenciaPro >= :cant',
+          ExpressionAttributeValues: {
+            ':negCant': -item.cantidad,
+            ':cant': item.cantidad,
+          },
+        },
+      })),
+    ];
 
-    return pedido;
+    try {
+      await docClient.send(new TransactWriteCommand({ TransactItems: transactItems }));
+      return pedido;
+    } catch (error: any) {
+      if (error.name === 'TransactionCanceledException') {
+        throw errorFuncional('No se pudo procesar el pedido. Puede que el stock de algún producto se haya agotado o sea insuficiente.', 400);
+      }
+      throw error;
+    }
   }
 
   async listPedidosCliente(idCliente: number): Promise<PedidoClienteEntity[]> {

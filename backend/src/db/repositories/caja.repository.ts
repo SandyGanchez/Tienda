@@ -1,6 +1,7 @@
-import { GetCommand, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { DeleteCommand, GetCommand, PutCommand, QueryCommand, TransactWriteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient, TABLE_NAME } from '../dynamo.client';
 import { getNextSequence, Keys } from '../dynamo.keys';
+import { errorFuncional } from '../../utils/formatters';
 
 export interface SesionCajaEntity {
   idSesionCaja: number;
@@ -18,7 +19,22 @@ export interface SesionCajaEntity {
 }
 
 export class CajaRepository {
-  async getSesionAbierta(idSuc = 1): Promise<SesionCajaEntity | null> {
+  async getSesionAbierta(idSuc = 1, idEmp?: number): Promise<SesionCajaEntity | null> {
+    if (idEmp) {
+      const activaRes = await docClient.send(
+        new GetCommand({
+          TableName: TABLE_NAME,
+          Key: {
+            PK: `SUC#${idSuc}`,
+            SK: `SESION_ACTIVA#${idEmp}`,
+          },
+        }),
+      );
+      if (activaRes.Item?.idSesionCaja) {
+        return await this.getSesionById(activaRes.Item.idSesionCaja, idSuc);
+      }
+    }
+
     const res = await docClient.send(
       new QueryCommand({
         TableName: TABLE_NAME,
@@ -58,18 +74,44 @@ export class CajaRepository {
       fechaApertura: now,
     };
 
-    await docClient.send(
-      new PutCommand({
-        TableName: TABLE_NAME,
-        Item: {
-          ...Keys.sesionCaja(data.idSuc, idSesionCaja),
-          GSI1PK: `EMP#${data.idEmp}#SESIONES`,
-          GSI1SK: now,
-          ...item,
+    const transactItems = [
+      {
+        Put: {
+          TableName: TABLE_NAME,
+          Item: {
+            ...Keys.sesionCaja(data.idSuc, idSesionCaja),
+            GSI1PK: `EMP#${data.idEmp}#SESIONES`,
+            GSI1SK: now,
+            ...item,
+          },
+          ConditionExpression: 'attribute_not_exists(PK)',
         },
-      }),
-    );
-    return item;
+      },
+      {
+        Put: {
+          TableName: TABLE_NAME,
+          Item: {
+            PK: `SUC#${data.idSuc}`,
+            SK: `SESION_ACTIVA#${data.idEmp}`,
+            idSesionCaja,
+            idEmp: data.idEmp,
+            idSuc: data.idSuc,
+            fechaApertura: now,
+          },
+          ConditionExpression: 'attribute_not_exists(PK)',
+        },
+      },
+    ];
+
+    try {
+      await docClient.send(new TransactWriteCommand({ TransactItems: transactItems }));
+      return item;
+    } catch (error: any) {
+      if (error.name === 'TransactionCanceledException') {
+        throw errorFuncional('Ya tienes una sesión de caja abierta en esta sucursal', 409);
+      }
+      throw error;
+    }
   }
 
   async cerrarSesion(
@@ -89,17 +131,30 @@ export class CajaRepository {
       observaciones: data.observaciones || null,
     };
 
-    await docClient.send(
-      new PutCommand({
-        TableName: TABLE_NAME,
-        Item: {
-          ...Keys.sesionCaja(idSuc, idSesionCaja),
-          GSI1PK: `EMP#${updated.idEmp}#SESIONES`,
-          GSI1SK: updated.fechaApertura,
-          ...updated,
+    const transactItems = [
+      {
+        Put: {
+          TableName: TABLE_NAME,
+          Item: {
+            ...Keys.sesionCaja(idSuc, idSesionCaja),
+            GSI1PK: `EMP#${updated.idEmp}#SESIONES`,
+            GSI1SK: updated.fechaApertura,
+            ...updated,
+          },
         },
-      }),
-    );
+      },
+      {
+        Delete: {
+          TableName: TABLE_NAME,
+          Key: {
+            PK: `SUC#${idSuc}`,
+            SK: `SESION_ACTIVA#${updated.idEmp}`,
+          },
+        },
+      },
+    ];
+
+    await docClient.send(new TransactWriteCommand({ TransactItems: transactItems }));
     return updated;
   }
 

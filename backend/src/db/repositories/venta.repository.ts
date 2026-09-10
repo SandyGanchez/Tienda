@@ -1,6 +1,7 @@
 import { GetCommand, QueryCommand, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient, TABLE_NAME } from '../dynamo.client';
 import { getNextSequence, Keys } from '../dynamo.keys';
+import { errorFuncional } from '../../utils/formatters';
 
 export interface DetalleVentaItem {
   idPro: number;
@@ -70,6 +71,7 @@ export class VentaRepository {
             GSI1SK: now,
             ...ventaItem,
           },
+          ConditionExpression: 'attribute_not_exists(PK)',
         },
       },
       // 2. Incrementar total de la sesión de caja
@@ -98,11 +100,18 @@ export class VentaRepository {
       })),
     ];
 
-    await docClient.send(
-      new TransactWriteCommand({
-        TransactItems: transactItems,
-      }),
-    );
+    try {
+      await docClient.send(
+        new TransactWriteCommand({
+          TransactItems: transactItems,
+        }),
+      );
+    } catch (error: any) {
+      if (error.name === 'TransactionCanceledException') {
+        throw errorFuncional('No se pudo procesar la venta. Verifique que haya existencias suficientes de todos los productos.', 400);
+      }
+      throw error;
+    }
 
     return ventaItem;
   }
