@@ -115,6 +115,7 @@ export class PedidoRepository {
           ':skPrefix': 'PEDIDO#',
         },
         ScanIndexForward: false,
+        ConsistentRead: true,
       }),
     );
     return (res.Items || []) as PedidoClienteEntity[];
@@ -140,6 +141,7 @@ export class PedidoRepository {
       new GetCommand({
         TableName: TABLE_NAME,
         Key: Keys.pedidoCliente(idCliente, idPedido),
+        ConsistentRead: true,
       }),
     );
     return (res.Item as PedidoClienteEntity) || null;

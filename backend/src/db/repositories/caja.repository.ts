@@ -28,6 +28,7 @@ export class CajaRepository {
             PK: `SUC#${idSuc}`,
             SK: `SESION_ACTIVA#${idEmp}`,
           },
+          ConsistentRead: true,
         }),
       );
       if (activaRes.Item?.idSesionCaja) {
@@ -43,6 +44,7 @@ export class CajaRepository {
           ':pk': `SUC#${idSuc}`,
           ':skPrefix': 'SESION#',
         },
+        ConsistentRead: true,
       }),
     );
     const sesiones = (res.Items || []) as SesionCajaEntity[];
@@ -55,6 +57,7 @@ export class CajaRepository {
       new GetCommand({
         TableName: TABLE_NAME,
         Key: Keys.sesionCaja(idSuc, idSesionCaja),
+        ConsistentRead: true,
       }),
     );
     return (res.Item as SesionCajaEntity) || null;
@@ -168,6 +171,7 @@ export class CajaRepository {
           ':skPrefix': 'SESION#',
         },
         ScanIndexForward: false,
+        ConsistentRead: true,
       }),
     );
     return (res.Items || []) as SesionCajaEntity[];

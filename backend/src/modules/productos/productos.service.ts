@@ -11,7 +11,8 @@ import { productoRepository } from '../../db/repositories/producto.repository';
 
 export function validarProducto(producto: any): string | null {
   if (!texto(producto.nombre)) return 'El nombre del producto es obligatorio';
-  if (!Number.isFinite(Number(producto.precio)) || Number(producto.precio) < 0) {
+  const precio = producto.precio !== undefined ? producto.precio : producto.precioVenta;
+  if (!Number.isFinite(Number(precio)) || Number(precio) < 0) {
     return 'El precio de venta debe ser un número mayor o igual a cero';
   }
   if (!Number.isInteger(Number(producto.existencia)) || Number(producto.existencia) < 0) {
@@ -218,7 +219,7 @@ export class ProductosService {
       const nuevo = await productoRepository.createProducto({
         idSuc: 1,
         nombrePro: texto(body.nombre),
-        precioVentaPro: Number(body.precio),
+        precioVentaPro: Number(body.precio !== undefined ? body.precio : body.precioVenta),
         costoPro: body.costo !== null && body.costo !== undefined && body.costo !== '' ? Number(body.costo) : 0,
         existenciaPro: Number(body.existencia),
         stockMinimoPro: body.stockMinimo ? Number(body.stockMinimo) : 1,

@@ -1,6 +1,7 @@
 import { DeleteCommand, GetCommand, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient, TABLE_NAME } from '../dynamo.client';
 import { getNextSequence, Keys } from '../dynamo.keys';
+import { errorFuncional } from '../../utils/formatters';
 
 export interface CategoriaEntity {
   idCat: number;
@@ -34,6 +35,7 @@ export class CatalogoRepository {
           ':pk': `SUC#${idSuc}`,
           ':skPrefix': 'CAT#',
         },
+        ConsistentRead: true,
       }),
     );
     return ((res.Items || []) as CategoriaEntity[]).sort((a, b) => a.idCat - b.idCat);
@@ -44,6 +46,7 @@ export class CatalogoRepository {
       new GetCommand({
         TableName: TABLE_NAME,
         Key: Keys.categoria(idSuc, idCat),
+        ConsistentRead: true,
       }),
     );
     return (res.Item as CategoriaEntity) || null;
@@ -94,6 +97,22 @@ export class CatalogoRepository {
   }
 
   async deleteCategoria(idCat: number, idSuc = 1): Promise<boolean> {
+    // ON DELETE RESTRICT: Verificar si existen productos en esta categoría
+    const checkProds = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        IndexName: 'GSI1',
+        KeyConditionExpression: 'GSI1PK = :catKey',
+        ExpressionAttributeValues: {
+          ':catKey': `CAT#${idCat}#PRODS`,
+        },
+        Limit: 1,
+      }),
+    );
+    if (checkProds.Items && checkProds.Items.length > 0) {
+      throw errorFuncional('No se puede eliminar la categoría porque contiene productos asociados (Restricción ON DELETE RESTRICT)', 409);
+    }
+
     await docClient.send(
       new DeleteCommand({
         TableName: TABLE_NAME,
@@ -113,6 +132,7 @@ export class CatalogoRepository {
           ':pk': `SUC#${idSuc}`,
           ':skPrefix': 'MARCA#',
         },
+        ConsistentRead: true,
       }),
     );
     return ((res.Items || []) as MarcaEntity[]).sort((a, b) => a.idMarca - b.idMarca);
@@ -123,6 +143,7 @@ export class CatalogoRepository {
       new GetCommand({
         TableName: TABLE_NAME,
         Key: Keys.marca(idSuc, idMarca),
+        ConsistentRead: true,
       }),
     );
     return (res.Item as MarcaEntity) || null;
@@ -173,6 +194,25 @@ export class CatalogoRepository {
   }
 
   async deleteMarca(idMarca: number, idSuc = 1): Promise<boolean> {
+    // ON DELETE RESTRICT: Verificar si existen productos con esta marca
+    const checkProds = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+        FilterExpression: 'idMarca = :idMarca',
+        ExpressionAttributeValues: {
+          ':pk': `SUC#${idSuc}`,
+          ':skPrefix': 'PROD#',
+          ':idMarca': idMarca,
+        },
+        Limit: 1,
+        ConsistentRead: true,
+      }),
+    );
+    if (checkProds.Items && checkProds.Items.length > 0) {
+      throw errorFuncional('No se puede eliminar la marca porque contiene productos asociados (Restricción ON DELETE RESTRICT)', 409);
+    }
+
     await docClient.send(
       new DeleteCommand({
         TableName: TABLE_NAME,
@@ -192,6 +232,7 @@ export class CatalogoRepository {
           ':pk': `SUC#${idSuc}`,
           ':skPrefix': 'CARGO#',
         },
+        ConsistentRead: true,
       }),
     );
     return (res.Items || []) as CargoEntity[];

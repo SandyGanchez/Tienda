@@ -1,10 +1,9 @@
 import { z } from 'zod';
 
-export const crearProductoSchema = z.object({
+export const baseProductoSchema = z.object({
   nombre: z.string().trim().min(1, { message: 'El nombre del producto es obligatorio' }).max(150),
-  precioVenta: z.union([z.number(), z.string()]).refine((v) => !isNaN(Number(v)) && Number(v) >= 0, {
-    message: 'El precio de venta debe ser un número válido mayor o igual a cero',
-  }),
+  precio: z.union([z.number(), z.string()]).optional(),
+  precioVenta: z.union([z.number(), z.string()]).optional(),
   costo: z.union([z.number(), z.string()]).refine((v) => !isNaN(Number(v)) && Number(v) >= 0, {
     message: 'El costo debe ser un número válido mayor o igual a cero',
   }),
@@ -21,4 +20,11 @@ export const crearProductoSchema = z.object({
   idCat: z.union([z.string(), z.number()], { message: 'La categoría es obligatoria' }),
 });
 
-export const actualizarProductoSchema = crearProductoSchema.partial();
+export const crearProductoSchema = baseProductoSchema.refine((d) => {
+  const p = d.precio !== undefined ? d.precio : d.precioVenta;
+  return p !== undefined && !isNaN(Number(p)) && Number(p) >= 0;
+}, {
+  message: 'El precio de venta debe ser un número válido mayor o igual a cero',
+});
+
+export const actualizarProductoSchema = baseProductoSchema.partial();

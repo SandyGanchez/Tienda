@@ -24,6 +24,7 @@ export class EmpleadoRepository {
       new GetCommand({
         TableName: TABLE_NAME,
         Key: Keys.empleado(idEmp),
+        ConsistentRead: true,
       }),
     );
     return (res.Item as EmpleadoEntity) || null;

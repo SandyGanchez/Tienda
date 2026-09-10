@@ -141,6 +141,7 @@ export class VentaRepository {
           ':skPrefix': 'VENTA#',
         },
         ScanIndexForward: false,
+        ConsistentRead: true,
       }),
     );
     return (res.Items || []) as VentaEntity[];
@@ -151,6 +152,7 @@ export class VentaRepository {
       new GetCommand({
         TableName: TABLE_NAME,
         Key: Keys.venta(idSuc, idVenta),
+        ConsistentRead: true,
       }),
     );
     return (res.Item as VentaEntity) || null;

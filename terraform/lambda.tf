@@ -46,7 +46,12 @@ resource "aws_iam_role" "lambda_exec" {
             "dynamodb:Scan",
             "dynamodb:UpdateItem",
             "dynamodb:TransactWriteItems",
-            "dynamodb:TransactGetItems"
+            "dynamodb:TransactGetItems",
+            "dynamodb:ConditionCheckItem",
+            "dynamodb:PartiQLSelect",
+            "dynamodb:PartiQLUpdate",
+            "dynamodb:PartiQLInsert",
+            "dynamodb:PartiQLDelete"
           ]
           Resource = [
             aws_dynamodb_table.tienda.arn,

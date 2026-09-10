@@ -1,6 +1,7 @@
 import { GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient, TABLE_NAME } from '../dynamo.client';
 import { Keys } from '../dynamo.keys';
+import { errorFuncional } from '../../utils/formatters';
 
 export interface ConfiguracionTransferenciaEntity {
   idConfiguracion: number;
@@ -12,6 +13,7 @@ export interface ConfiguracionTransferenciaEntity {
   instrucciones?: string | null;
   activo: boolean;
   fechaActualizacion: string;
+  version?: number;
 }
 
 export class ConfiguracionRepository {
@@ -20,6 +22,7 @@ export class ConfiguracionRepository {
       new GetCommand({
         TableName: TABLE_NAME,
         Key: Keys.configuracion(idSuc),
+        ConsistentRead: true,
       }),
     );
     return (res.Item as ConfiguracionTransferenciaEntity) || null;
@@ -30,6 +33,7 @@ export class ConfiguracionRepository {
     data: Partial<Omit<ConfiguracionTransferenciaEntity, 'idConfiguracion' | 'idSuc'>>,
   ): Promise<ConfiguracionTransferenciaEntity> {
     const existing = await this.getConfiguracion(idSuc);
+    const currentVersion = existing?.version || 1;
     const updated: ConfiguracionTransferenciaEntity = {
       idConfiguracion: existing?.idConfiguracion || 1,
       idSuc,
@@ -40,17 +44,29 @@ export class ConfiguracionRepository {
       instrucciones: data.instrucciones ?? existing?.instrucciones ?? null,
       activo: data.activo ?? existing?.activo ?? true,
       fechaActualizacion: new Date().toISOString(),
+      version: currentVersion + 1,
     };
 
-    await docClient.send(
-      new PutCommand({
-        TableName: TABLE_NAME,
-        Item: {
-          ...Keys.configuracion(idSuc),
-          ...updated,
-        },
-      }),
-    );
+    try {
+      await docClient.send(
+        new PutCommand({
+          TableName: TABLE_NAME,
+          Item: {
+            ...Keys.configuracion(idSuc),
+            ...updated,
+          },
+          ConditionExpression: 'attribute_exists(PK) AND (attribute_not_exists(version) OR version = :ver)',
+          ExpressionAttributeValues: {
+            ':ver': currentVersion,
+          },
+        }),
+      );
+    } catch (error: any) {
+      if (error.name === 'ConditionalCheckFailedException') {
+        throw errorFuncional('Conflicto de concurrencia: La configuración fue actualizada por otro usuario.', 409);
+      }
+      throw error;
+    }
     return updated;
   }
 }
