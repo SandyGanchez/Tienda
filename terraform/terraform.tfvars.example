@@ -1,6 +1,3 @@
-# Configuración de variables para Terraform
-aws_region  = "us-east-1"
-aws_profile = "terra-profile"
-bucket_name = "tienda-donapaty-frontend"
-environment = "production"
-app_name    = "tienda-donapaty"
+# terraform.tfvars.example
+google_client_id     = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
+google_client_secret = "YOUR_GOOGLE_CLIENT_SECRET"

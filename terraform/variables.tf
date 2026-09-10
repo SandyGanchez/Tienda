@@ -27,3 +27,37 @@ variable "app_name" {
   type        = string
   default     = "tienda-donapaty"
 }
+
+variable "jwt_secret" {
+  description = "Clave secreta para firmar tokens JWT"
+  type        = string
+  default     = "tienda-secret-jwt-key-2026-production"
+  sensitive   = true
+}
+
+variable "google_client_id" {
+  description = "Google Client ID para autenticación OAuth"
+  type        = string
+  default     = ""
+}
+
+variable "google_client_secret" {
+  description = "Google Client Secret para autenticación OAuth"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "hashids_salt" {
+  description = "Salt para ofuscación de IDs"
+  type        = string
+  default     = "TiendaHashidsSaltSecret2026"
+  sensitive   = true
+}
+
+variable "uploads_bucket_name" {
+  description = "Nombre del bucket S3 para almacenamiento de imágenes y comprobantes"
+  type        = string
+  default     = "tienda-donapaty-uploads"
+}
+

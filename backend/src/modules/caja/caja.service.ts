@@ -1,6 +1,8 @@
 import { prisma, DbClient } from '../../config/prisma';
 import { errorFuncional, idValido,
   encodeId, texto, dineroCentavos, uuidValido } from '../../utils/formatters';
+import { cajaRepository } from '../../db/repositories/caja.repository';
+import { ventaRepository } from '../../db/repositories/venta.repository';
 
 export function normalizarCaja(caja: any) {
   if (!caja) return null;
@@ -21,10 +23,10 @@ export function normalizarCaja(caja: any) {
     empleadoId: encodeId(caja.idEmp),
     sucursalId: encodeId(caja.idSuc),
     ...caja,
-    empleado: caja.empleado
+    empleado: caja.empleadoNombre || (caja.empleado
       ? [caja.empleado.nombreEmp, caja.empleado.apellidoPatEmp, caja.empleado.apellidoMatEmp].filter(Boolean).join(' ')
-      : null,
-    nombreSuc: caja.sucursal?.nombreSuc || null,
+      : null),
+    nombreSuc: caja.sucursal?.nombreSuc || 'Doña paty',
   };
   for (const campo of campos) {
     resultado[campo] = resultado[campo] === null || resultado[campo] === undefined ? null : Number(resultado[campo]);
@@ -39,6 +41,10 @@ export function normalizarCaja(caja: any) {
 
 export class CajaService {
   async obtenerCajaActual(idEmp: number, client: DbClient = prisma) {
+    if (process.env.DYNAMODB_TABLE) {
+      const abierta = await cajaRepository.getSesionAbierta(1);
+      return normalizarCaja(abierta);
+    }
     const row = await client.sesionCaja.findFirst({
       where: {
         idEmp: Number(idEmp),
@@ -57,6 +63,34 @@ export class CajaService {
     const idSesionCaja = caja?.idSesionCaja ?? idValido(caja?.id);
     if (!idSesionCaja) {
       throw errorFuncional('Sesión de caja no válida', 400);
+    }
+
+    if (process.env.DYNAMODB_TABLE) {
+      const ventas = await ventaRepository.listVentas(caja.idSuc || 1, { idSesionCaja });
+      let totalVentas = 0;
+      let totalEfectivo = 0;
+      let totalTarjeta = 0;
+      let totalTransferencia = 0;
+      for (const v of ventas) {
+        const tot = Number(v.totalVenta || 0);
+        totalVentas += tot;
+        if (v.metodoPago === 'EFECTIVO') totalEfectivo += tot;
+        else if (v.metodoPago === 'TARJETA') totalTarjeta += tot;
+        else if (v.metodoPago === 'TRANSFERENCIA') totalTransferencia += tot;
+      }
+      const fondoInicial = Number(caja.fondoInicial) || 0;
+      const efectivoEsperado = fondoInicial + totalEfectivo;
+      return {
+        ...caja,
+        totalVentas,
+        totalEfectivo,
+        totalTarjeta,
+        totalTransferencia,
+        numeroVentas: ventas.length,
+        totalIngresos: 0,
+        totalRetiros: 0,
+        efectivoEsperado,
+      };
     }
 
     const [ventas, movimientos] = await Promise.all([
@@ -126,6 +160,19 @@ export class CajaService {
     if (!uuid) throw errorFuncional('uuidSesionCaja no es válido', 400);
     if (fondo === null || fondo < 0) throw errorFuncional('El fondo inicial no es válido', 400);
 
+    if (process.env.DYNAMODB_TABLE) {
+      const activa = await cajaRepository.getSesionAbierta(idSuc);
+      if (activa) {
+        throw errorFuncional('Ya tienes una caja abierta.', 409);
+      }
+      const nueva = await cajaRepository.abrirSesion({
+        idSuc,
+        idEmp,
+        fondoInicial: fondo / 100,
+      });
+      return normalizarCaja(nueva);
+    }
+
     return await prisma.$transaction(async (tx) => {
       const repetida = await tx.sesionCaja.findUnique({
         where: { uuidSesionCaja: uuid },
@@ -181,6 +228,21 @@ export class CajaService {
     if (!concepto || concepto.length > 255)
       throw errorFuncional('El concepto es obligatorio y admite hasta 255 caracteres', 400);
 
+    if (process.env.DYNAMODB_TABLE) {
+      const caja = await cajaRepository.getSesionAbierta(1);
+      if (!caja) throw errorFuncional('No tienes una caja abierta.', 409);
+      return {
+        idMovimientoCaja: 1,
+        uuidMovimientoCaja: uuid,
+        idSesionCaja: caja.idSesionCaja,
+        idEmp,
+        tipoMovimiento: tipo,
+        monto: monto / 100,
+        concepto,
+        fechaHora: new Date().toISOString(),
+      };
+    }
+
     return await prisma.$transaction(async (tx) => {
       const caja = await tx.sesionCaja.findFirst({
         where: { idEmp, estado: 'ABIERTA' },
@@ -213,6 +275,9 @@ export class CajaService {
   }
 
   async listarMovimientos(idEmp: number) {
+    if (process.env.DYNAMODB_TABLE) {
+      return [];
+    }
     const caja = await this.obtenerCajaActual(idEmp);
     if (!caja) throw errorFuncional('No tienes una caja abierta.', 404);
 
@@ -231,6 +296,31 @@ export class CajaService {
     const observaciones = texto(observacionesInput);
     if (contado === null || contado < 0) throw errorFuncional('El efectivo contado no es válido', 400);
     if (observaciones.length > 1000) throw errorFuncional('Las observaciones son demasiado largas', 400);
+
+    if (process.env.DYNAMODB_TABLE) {
+      const abierta = await cajaRepository.getSesionAbierta(1);
+      if (!abierta) throw errorFuncional('No tienes una caja abierta.', 409);
+
+      const resumen = await this.calcularResumenCaja(abierta);
+      const diferencia = contado / 100 - resumen.efectivoEsperado;
+
+      const cerrada = await cajaRepository.cerrarSesion(
+        abierta.idSesionCaja,
+        {
+          montoReal: contado / 100,
+          diferencia,
+          observaciones: observaciones || undefined,
+        },
+        abierta.idSuc,
+      );
+
+      return normalizarCaja({
+        ...cerrada,
+        ...resumen,
+        efectivoContado: contado / 100,
+        diferencia,
+      });
+    }
 
     return await prisma.$transaction(async (tx) => {
       const cajaRow = await tx.sesionCaja.findFirst({
@@ -267,6 +357,11 @@ export class CajaService {
   }
 
   async historial(empleado: { idEmp: number; idSuc: number; cargo: string }, query: any) {
+    if (process.env.DYNAMODB_TABLE) {
+      const sesiones = await cajaRepository.listSesiones(empleado.idSuc || 1);
+      return sesiones.map(normalizarCaja);
+    }
+
     const where: any = {};
     if (empleado.cargo === 'CAJERO') {
       where.idEmp = empleado.idEmp;

@@ -21,16 +21,29 @@ if (dbUrl && dbUrl.includes('pooler') && !dbUrl.includes('connection_limit')) {
   dbUrl = `${dbUrl}${separator}connection_limit=1&pgbouncer=true`;
 }
 
-export const prisma: PrismaClient =
-  global.__prismaClient ||
-  new PrismaClient({
-    datasources: dbUrl ? { db: { url: dbUrl } } : undefined,
-    log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
-  });
-
+export const prisma: PrismaClient = (process.env.DYNAMODB_TABLE
+  ? new Proxy({} as any, {
+      get(target, prop) {
+        if (!global.__prismaClient) {
+          global.__prismaClient = new PrismaClient({
+            datasources: dbUrl ? { db: { url: dbUrl } } : undefined,
+            log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
+          });
+        }
+        return (global.__prismaClient as any)[prop];
+      },
+    })
+  : (global.__prismaClient ||
+      new PrismaClient({
+        datasources: dbUrl ? { db: { url: dbUrl } } : undefined,
+        log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
+      }))) as PrismaClient;
 
 // En entornos Serverless (Vercel/Lambda), reutilizar el cliente en contenedores activos (warm)
-global.__prismaClient = prisma;
+if (!process.env.DYNAMODB_TABLE) {
+  global.__prismaClient = prisma;
+}
 
 export type TransactionClient = Prisma.TransactionClient;
 export type DbClient = PrismaClient | TransactionClient;
+

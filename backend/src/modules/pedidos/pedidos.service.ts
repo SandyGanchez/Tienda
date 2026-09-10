@@ -16,6 +16,9 @@ import {
 import { comprobantesUploadDir } from '../../middlewares/upload.middleware';
 import { dineroCentavos, errorFuncional, idValido,
   encodeId, texto, uuidValido } from '../../utils/formatters';
+import { pedidoRepository } from '../../db/repositories/pedido.repository';
+import { productoRepository } from '../../db/repositories/producto.repository';
+import { configuracionRepository } from '../../db/repositories/configuracion.repository';
 
 const HORAS_RESERVA_PEDIDO = 2;
 const MAX_TOTAL_PEDIDO_CENTAVOS = 9999999999;
@@ -121,6 +124,8 @@ export function mimeRealComprobante(rutaArchivo: string): string | null {
 
 export class PedidosService {
   async obtenerSucursalDisponibleCliente() {
+    if (process.env.DYNAMODB_TABLE) return 1;
+
     const sucursales = await prisma.sucursal.findMany({
       orderBy: { idSuc: 'asc' },
       take: 2,
@@ -134,6 +139,14 @@ export class PedidosService {
   }
 
   async obtenerConfiguracionTransferencia(idSuc: number, exigirActiva = true) {
+    if (process.env.DYNAMODB_TABLE) {
+      const conf = await configuracionRepository.getConfiguracion(idSuc);
+      if (!conf || (exigirActiva && !conf.activo)) {
+        throw errorFuncional('Los pagos por transferencia no están disponibles en este momento.', 409);
+      }
+      return conf;
+    }
+
     const configuracion = await prisma.configuracionTransferencia.findUnique({
       where: { idSuc: Number(idSuc) },
     });
@@ -173,6 +186,8 @@ export class PedidosService {
   }
 
   async liberarPedidosExpirados(idCliente?: number | null) {
+    if (process.env.DYNAMODB_TABLE) return;
+
     const where: any = {
       estado: 'PENDIENTE_PAGO',
       comprobanteRuta: null,
@@ -202,6 +217,37 @@ export class PedidosService {
   }
 
   async obtenerPedidoSeguro(idPedido: number, idCliente: number, client: DbClient = prisma) {
+    if (process.env.DYNAMODB_TABLE) {
+      const p = await pedidoRepository.getPedidoById(idCliente, idPedido);
+      if (!p) return null;
+      return {
+        id: encodeId(p.idPedido),
+        folio: folioPedido(p.idPedido),
+        uuidPedido: `pedido-${p.idPedido}`,
+        fechaPedido: p.fechaCreacion,
+        fechaLimitePago: p.fechaCreacion,
+        estado: p.estado,
+        total: Number(p.totalPedido || 0),
+        tieneComprobante: Boolean(p.comprobanteUrl),
+        fechaComprobante: p.fechaCreacion,
+        motivoRechazo: null,
+        idVenta: null,
+        fechaRevision: null,
+        comprobanteUrl: p.comprobanteUrl || null,
+        comprobante: p.comprobanteUrl ? { nombre: 'comprobante', mime: 'image/jpeg', fecha: p.fechaCreacion, url: p.comprobanteUrl } : null,
+        items: (p.detalles || []).map((d: any) => ({
+          productoId: encodeId(d.idPro),
+          nombre: d.nombrePro,
+          imagen: d.imagenPro || null,
+          presentacion: null,
+          cantidad: d.cantidad,
+          precioUnitario: Number(d.precioUnitario),
+          subtotal: Number(d.subtotal),
+        })),
+        configuracionTransferencia: null,
+      };
+    }
+
     const p = await client.pedidoCliente.findFirst({
       where: {
         idPedido: Number(idPedido),
@@ -265,6 +311,45 @@ export class PedidosService {
   }
 
   async obtenerPedidoAdmin(idPedido: number, idSuc: number, client: DbClient = prisma) {
+    if (process.env.DYNAMODB_TABLE) {
+      const pedidos = await pedidoRepository.listPedidosAdmin(idSuc);
+      const p = pedidos.find((item) => item.idPedido === idPedido);
+      if (!p) return null;
+      return {
+        id: encodeId(p.idPedido),
+        folio: folioPedido(p.idPedido),
+        uuidPedido: `pedido-${p.idPedido}`,
+        fechaPedido: p.fechaCreacion,
+        fechaLimitePago: p.fechaCreacion,
+        estado: p.estado,
+        total: Number(p.totalPedido || 0),
+        tieneComprobante: Boolean(p.comprobanteUrl),
+        fechaComprobante: p.fechaCreacion,
+        motivoRechazo: null,
+        idVenta: null,
+        fechaRevision: null,
+        cliente: {
+          id: encodeId(p.idCliente),
+          nombre: p.clienteNombre || 'Cliente',
+          correo: p.clienteCorreo || '',
+          foto: null,
+        },
+        comprobanteUrl: p.comprobanteUrl || null,
+        comprobante: p.comprobanteUrl ? { nombre: 'comprobante', mime: 'image/jpeg', fecha: p.fechaCreacion, url: p.comprobanteUrl } : null,
+        empleadoRevisa: null,
+        configuracionTransferencia: null,
+        items: (p.detalles || []).map((item) => ({
+          idPro: Number(item.idPro),
+          nombre: item.nombrePro,
+          imagen: item.imagenPro || null,
+          presentacion: null,
+          cantidad: Number(item.cantidad),
+          precioUnitario: Number(item.precioUnitario),
+          subtotal: Number(item.subtotal),
+        })),
+      };
+    }
+
     const p = await client.pedidoCliente.findFirst({
       where: {
         idPedido: Number(idPedido),
@@ -361,6 +446,45 @@ export class PedidosService {
 
     const ids = [...cantidades.keys()].sort((a, b) => a - b);
     const configuracion = await this.obtenerConfiguracionTransferencia(idSuc);
+
+    if (process.env.DYNAMODB_TABLE) {
+      const itemsPedido = [];
+      let totalCentavos = 0;
+      for (const [idPro, cantidad] of cantidades.entries()) {
+        const prod = await productoRepository.getProductoById(idPro, idSuc);
+        if (!prod) {
+          throw errorFuncional('Uno de los productos ya no está disponible.', 404, { idPro });
+        }
+        if (!prod.activoPro) {
+          throw errorFuncional(`${prod.nombrePro} ya no está disponible para venta.`, 409, { idPro });
+        }
+        if (cantidad > prod.existenciaPro) {
+          throw errorFuncional(`Stock insuficiente para ${prod.nombrePro}.`, 409, { idPro, disponible: prod.existenciaPro });
+        }
+        const precioCentavos = dineroCentavos(prod.precioVentaPro);
+        if (precioCentavos === null || precioCentavos < 0) {
+          throw errorFuncional(`${prod.nombrePro} no tiene un precio válido.`, 409, { idPro });
+        }
+        const subtotalCentavos = precioCentavos * cantidad;
+        totalCentavos += subtotalCentavos;
+        itemsPedido.push({
+          idPro,
+          nombrePro: prod.nombrePro,
+          cantidad,
+          precioUnitario: precioCentavos / 100,
+          imagenPro: prod.imagenPro || undefined,
+        });
+      }
+
+      const pedido = await pedidoRepository.createPedido({
+        idCliente,
+        idSuc,
+        totalPedido: totalCentavos / 100,
+        items: itemsPedido,
+      });
+
+      return await this.obtenerPedidoSeguro(pedido.idPedido, idCliente);
+    }
 
     return await prisma.$transaction(async (tx) => {
       const repetido = await tx.pedidoCliente.findUnique({
@@ -697,6 +821,14 @@ export class PedidosService {
   async cambiarEstadoOperativo(idPedido: number, idSuc: number, estadoActual: string, estadoNuevo: string) {
     if (!idPedido) throw errorFuncional('El pedido no es válido.', 400);
 
+    if (process.env.DYNAMODB_TABLE) {
+      const pedidos = await pedidoRepository.listPedidosAdmin(idSuc);
+      const pedido = pedidos.find((p) => p.idPedido === idPedido);
+      if (!pedido) throw errorFuncional('Pedido no encontrado.', 404);
+      await pedidoRepository.updateEstado(pedido.idCliente, idPedido, estadoNuevo as any);
+      return await this.obtenerPedidoAdmin(idPedido, idSuc);
+    }
+
     return await prisma.$transaction(async (tx) => {
       const pedido = await tx.pedidoCliente.findFirst({
         where: { idPedido, idSuc },
@@ -713,9 +845,70 @@ export class PedidosService {
       return await this.obtenerPedidoAdmin(idPedido, idSuc, tx);
     });
   }
+
+  async listarPedidosCliente(idCliente: number) {
+    if (process.env.DYNAMODB_TABLE) {
+      const rows = await pedidoRepository.listPedidosCliente(idCliente);
+      return rows.map((r) => ({
+        id: encodeId(r.idPedido),
+        folio: folioPedido(r.idPedido),
+        uuidPedido: `pedido-${r.idPedido}`,
+        fechaPedido: r.fechaCreacion,
+        fechaLimitePago: r.fechaCreacion,
+        estado: r.estado,
+        total: Number(r.totalPedido),
+        tieneComprobante: Boolean(r.comprobanteUrl),
+        fechaComprobante: r.fechaCreacion,
+        motivoRechazo: null,
+        idVenta: null,
+        fechaRevision: null,
+      }));
+    }
+    const pedidos = await prisma.pedidoCliente.findMany({
+      where: { idCliente },
+      orderBy: [{ fechaPedido: 'desc' }, { idPedido: 'desc' }],
+    });
+    return pedidos.map(normalizarPedido);
+  }
+
+  async listarPedidosAdmin(idSuc: number) {
+    if (process.env.DYNAMODB_TABLE) {
+      const rows = await pedidoRepository.listPedidosAdmin(idSuc);
+      return rows.map((r) => ({
+        id: encodeId(r.idPedido),
+        folio: folioPedido(r.idPedido),
+        uuidPedido: `pedido-${r.idPedido}`,
+        fechaPedido: r.fechaCreacion,
+        fechaLimitePago: r.fechaCreacion,
+        estado: r.estado,
+        total: Number(r.totalPedido),
+        tieneComprobante: Boolean(r.comprobanteUrl),
+        fechaComprobante: r.fechaCreacion,
+        motivoRechazo: null,
+        idVenta: null,
+        fechaRevision: null,
+        cliente: {
+          id: encodeId(r.idCliente),
+          nombre: r.clienteNombre || 'Cliente',
+          correo: r.clienteCorreo || '',
+          foto: null,
+        },
+      }));
+    }
+    const pedidos = await prisma.pedidoCliente.findMany({
+      where: { idSuc },
+      orderBy: [{ fechaPedido: 'desc' }, { idPedido: 'desc' }],
+      include: {
+        cliente: true,
+        empleadoRevisa: true,
+      },
+    });
+    return pedidos.map(normalizarPedidoAdmin);
+  }
 }
 
 export const pedidosService = new PedidosService();
+
 
 
 
