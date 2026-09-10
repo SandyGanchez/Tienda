@@ -16,13 +16,13 @@ export const toProductoDto = (producto: any) => {
     sku: producto.skuPro,
     imagen: producto.imagenPro,
     activo: producto.activoPro,
-    marca: producto.marca || producto.nombreMarca ? {
+    marca: (producto.marca || producto.nombreMarca || producto.marcaNombre) ? {
       id: encodeId(producto.idMarca || producto.marca?.idMarca) || null,
-      nombre: producto.marca?.nombreMarca || producto.nombreMarca || null
+      nombre: producto.marca?.nombreMarca || producto.nombreMarca || producto.marcaNombre || null
     } : null,
-    categoria: producto.categoria || producto.nombreCat ? {
+    categoria: (producto.categoria || producto.nombreCat || producto.categoriaNombre) ? {
       id: encodeId(producto.idCat || producto.categoria?.idCat) || null,
-      nombre: producto.categoria?.nombreCat || producto.nombreCat || null
+      nombre: producto.categoria?.nombreCat || producto.nombreCat || producto.categoriaNombre || null
     } : null,
   };
 };
@@ -41,13 +41,13 @@ export const toProductoListDto = (producto: any) => {
     imagen: producto.imagenPro,
     tamano: producto.tamanoPro,
     presentacion: producto.presentacionPro,
-    marca: producto.marca || producto.nombreMarca ? {
+    marca: (producto.marca || producto.nombreMarca || producto.marcaNombre) ? {
       id: encodeId(producto.idMarca || producto.marca?.idMarca) || null,
-      nombre: producto.marca?.nombreMarca || producto.nombreMarca || null
+      nombre: producto.marca?.nombreMarca || producto.nombreMarca || producto.marcaNombre || null
     } : null,
-    categoria: producto.categoria || producto.nombreCat ? {
+    categoria: (producto.categoria || producto.nombreCat || producto.categoriaNombre) ? {
       id: encodeId(producto.idCat || producto.categoria?.idCat) || null,
-      nombre: producto.categoria?.nombreCat || producto.nombreCat || null
+      nombre: producto.categoria?.nombreCat || producto.nombreCat || producto.categoriaNombre || null
     } : null,
   };
 };

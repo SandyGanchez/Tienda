@@ -6,6 +6,8 @@ import { eliminarObjetoS3, esUrlS3, generarPresignedUpload } from '../../config/
 import { productosUploadDir } from '../../middlewares/upload.middleware';
 import { idValido, texto, textoNullable, errorFuncional } from '../../utils/formatters';
 import { toProductoDto, toProductoListDto } from '../../dtos/producto.dto';
+import { productoRepository } from '../../db/repositories/producto.repository';
+
 
 export function validarProducto(producto: any): string | null {
   if (!texto(producto.nombre)) return 'El nombre del producto es obligatorio';
@@ -54,6 +56,11 @@ export function eliminarUploadControlado(
 
 export class ProductosService {
   async obtenerProducto(idPro: number, client: DbClient = prisma) {
+    if (process.env.DYNAMODB_TABLE) {
+      const p = await productoRepository.getProductoById(idPro);
+      if (!p) return null;
+      return toProductoDto(p);
+    }
     const p = await client.producto.findUnique({
       where: { idPro },
       include: {
@@ -66,6 +73,7 @@ export class ProductosService {
   }
 
   async validarCatalogosProducto(producto: any): Promise<string | null> {
+    if (process.env.DYNAMODB_TABLE) return null;
     const [marca, categoria] = await Promise.all([
       producto.idMarca ? prisma.marca.findUnique({ where: { idMarca: idValido(producto.idMarca)! } }) : null,
       producto.idCat ? prisma.categoria.findUnique({ where: { idCat: idValido(producto.idCat)! } }) : null,
@@ -78,6 +86,10 @@ export class ProductosService {
   async codigoEnUso(codigoQR: string | null | undefined, idPro = 0): Promise<boolean> {
     const codigo = texto(codigoQR);
     if (!codigo) return false;
+    if (process.env.DYNAMODB_TABLE) {
+      const existente = await productoRepository.findByCodigoQR(codigo);
+      return Boolean(existente && existente.idPro !== Number(idPro));
+    }
     const existente = await prisma.producto.findFirst({
       where: {
         codigoQR: codigo,
@@ -89,6 +101,10 @@ export class ProductosService {
   }
 
   async listarAdmin() {
+    if (process.env.DYNAMODB_TABLE) {
+      const prods = await productoRepository.listProductos(1);
+      return prods.map((p) => toProductoListDto(p));
+    }
     const productos = await prisma.producto.findMany({
       orderBy: { nombrePro: 'asc' },
       include: {
@@ -100,6 +116,10 @@ export class ProductosService {
   }
 
   async listarPos() {
+    if (process.env.DYNAMODB_TABLE) {
+      const prods = await productoRepository.listProductos(1, { soloActivos: true });
+      return prods.map((p) => toProductoListDto(p));
+    }
     const productos = await prisma.producto.findMany({
       where: { activoPro: true },
       orderBy: [{ nombrePro: 'asc' }, { idPro: 'asc' }],
@@ -112,6 +132,10 @@ export class ProductosService {
   }
 
   async listarPublico() {
+    if (process.env.DYNAMODB_TABLE) {
+      const prods = await productoRepository.listProductos(1, { soloActivos: true });
+      return prods.map((p) => toProductoListDto(p));
+    }
     const productos = await prisma.producto.findMany({
       where: { activoPro: true },
       orderBy: { nombrePro: 'asc' },
@@ -124,6 +148,11 @@ export class ProductosService {
   }
 
   async buscarPorQR(codigoQR: string) {
+    if (process.env.DYNAMODB_TABLE) {
+      const p = await productoRepository.findByCodigoQR(codigoQR);
+      if (!p) return null;
+      return toProductoDto(p);
+    }
     const p = await prisma.producto.findUnique({
       where: { codigoQR },
       include: {
@@ -134,6 +163,7 @@ export class ProductosService {
     if (!p) return null;
     return toProductoDto(p);
   }
+
 
   async consultarExterno(codigo: string) {
     const response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(codigo)}.json`, {
@@ -184,6 +214,27 @@ export class ProductosService {
       throw errorFuncional('El código de barras ya pertenece a otro producto', 409);
     }
 
+    if (process.env.DYNAMODB_TABLE) {
+      const nuevo = await productoRepository.createProducto({
+        idSuc: 1,
+        nombrePro: texto(body.nombre),
+        precioVentaPro: Number(body.precio),
+        costoPro: body.costo !== null && body.costo !== undefined && body.costo !== '' ? Number(body.costo) : 0,
+        existenciaPro: Number(body.existencia),
+        stockMinimoPro: body.stockMinimo ? Number(body.stockMinimo) : 1,
+        tamanoPro: textoNullable(body.tamano),
+        presentacionPro: textoNullable(body.presentacion),
+        tipoPro: textoNullable(body.tipo),
+        codigoQR: textoNullable(body.codigoQR),
+        skuPro: textoNullable(body.sku),
+        imagenPro: textoNullable(body.imagen),
+        idMarca: body.idMarca ? Number(idValido(body.idMarca)) : null,
+        idCat: body.idCat ? Number(idValido(body.idCat)) : null,
+        activoPro: true,
+      });
+      return await this.obtenerProducto(nuevo.idPro);
+    }
+
     const nuevo = await prisma.producto.create({
       data: {
         nombrePro: texto(body.nombre),
@@ -224,7 +275,27 @@ export class ProductosService {
       throw errorFuncional('El código de barras ya pertenece a otro producto', 409);
     }
 
+    if (process.env.DYNAMODB_TABLE) {
+      await productoRepository.updateProducto(idPro, {
+        nombrePro: texto(body.nombre),
+        precioVentaPro: Number(body.precio),
+        costoPro: body.costo !== null && body.costo !== undefined && body.costo !== '' ? Number(body.costo) : 0,
+        existenciaPro: Number(body.existencia),
+        stockMinimoPro: body.stockMinimo ? Number(body.stockMinimo) : 1,
+        tamanoPro: textoNullable(body.tamano),
+        presentacionPro: textoNullable(body.presentacion),
+        tipoPro: textoNullable(body.tipo),
+        codigoQR: textoNullable(body.codigoQR),
+        skuPro: textoNullable(body.sku),
+        imagenPro: textoNullable(body.imagen),
+        idMarca: body.idMarca ? Number(idValido(body.idMarca)) : null,
+        idCat: body.idCat ? Number(idValido(body.idCat)) : null,
+      });
+      return await this.obtenerProducto(idPro);
+    }
+
     await prisma.producto.update({
+
       where: { idPro },
       data: {
         nombrePro: texto(body.nombre),
@@ -260,7 +331,7 @@ export class ProductosService {
   }
 
   async confirmarImagen(idPro: number, keyOUrl: string) {
-    const anterior = await prisma.producto.findUnique({ where: { idPro } });
+    const anterior = await this.obtenerProducto(idPro);
     if (!anterior) {
       throw errorFuncional('Producto no encontrado', 404);
     }
@@ -269,13 +340,17 @@ export class ProductosService {
       ? keyOUrl
       : `https://${env.AWS_BUCKET_NAME}.s3.${env.AWS_REGION}.amazonaws.com/${keyOUrl}`;
 
-    await prisma.producto.update({
-      where: { idPro },
-      data: { imagenPro: rutaFinal },
-    });
+    if (process.env.DYNAMODB_TABLE) {
+      await productoRepository.updateProducto(idPro, { imagenPro: rutaFinal });
+    } else {
+      await prisma.producto.update({
+        where: { idPro },
+        data: { imagenPro: rutaFinal },
+      });
+    }
 
-    if (anterior.imagenPro && anterior.imagenPro !== rutaFinal) {
-      eliminarUploadControlado(anterior.imagenPro, productosUploadDir, '/uploads/productos/');
+    if (anterior.imagen && anterior.imagen !== rutaFinal) {
+      eliminarUploadControlado(anterior.imagen, productosUploadDir, '/uploads/productos/');
     }
 
     return await this.obtenerProducto(idPro);
@@ -285,6 +360,14 @@ export class ProductosService {
     const producto = await this.obtenerProducto(idPro);
     if (!producto) {
       throw errorFuncional('Producto no encontrado', 404);
+    }
+
+    if (process.env.DYNAMODB_TABLE) {
+      if (producto.imagen) {
+        eliminarUploadControlado(producto.imagen, productosUploadDir, '/uploads/productos/');
+      }
+      await productoRepository.deleteProducto(idPro);
+      return { message: 'Producto eliminado correctamente' };
     }
 
     const [ventas, compras, pedidos] = await Promise.all([
@@ -308,6 +391,7 @@ export class ProductosService {
     await prisma.producto.delete({ where: { idPro } });
     return { message: 'Producto eliminado correctamente' };
   }
+
 }
 
 export const productosService = new ProductosService();

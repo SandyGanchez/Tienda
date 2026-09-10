@@ -21,7 +21,9 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1129.0",
     "@aws-sdk/client-s3": "^3.1121.0",
+    "@aws-sdk/lib-dynamodb": "^3.1129.0",
     "@aws-sdk/s3-request-presigner": "^3.1121.0",
     "@prisma/client": "^6.19.3",
     "@types/bcryptjs": "^2.4.6",
@@ -31,6 +33,7 @@
     "@types/multer": "^2.2.0",
     "@types/node": "^26.4.0",
     "@types/pg": "^8.23.1",
+    "@vendia/serverless-express": "^4.12.6",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
@@ -47,12 +50,17 @@
     "typescript": "^5.9.3"
   },
   "devDependencies": {
+    "@types/aws-lambda": "^8.10.163",
     "@types/jest": "^30.0.0",
     "@types/supertest": "^7.2.1",
+    "esbuild": "^0.28.2",
     "jest": "^30.5.0",
     "supertest": "^7.2.2",
     "ts-jest": "^29.4.12",
     "ts-morph": "^28.0.0",
     "ts-node": "^10.9.2"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
   }
 }

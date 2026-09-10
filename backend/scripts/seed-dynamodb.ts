@@ -1,0 +1,460 @@
+import { PutCommand, BatchWriteCommand } from '@aws-sdk/lib-dynamodb';
+import { docClient, TABLE_NAME } from '../src/db/dynamo.client';
+import { Keys } from '../src/db/dynamo.keys';
+
+async function seed() {
+  console.log(`🌱 Iniciando seeder de DynamoDB en tabla: ${TABLE_NAME}...`);
+
+  // 1. Sucursal
+  console.log('🏬 Sembrando sucursal...');
+  await docClient.send(
+    new PutCommand({
+      TableName: TABLE_NAME,
+      Item: {
+        ...Keys.sucursal(1),
+        GSI1PK: 'SUCURSALES',
+        GSI1SK: 'Doña paty',
+        idSuc: 1,
+        nombreSuc: 'Doña paty',
+        descripcionSuc: 'Tu mejor opción en abarrotes y productos de calidad',
+        telefonoSuc: '7298456512',
+        correoSuc: 'paty@gmail.com',
+        paginaWebSuc: 'https://tienda-donapaty.com',
+        redSocialSuc: '@tiendadonapaty',
+        logoSuc: 'https://tienda-donapaty-uploads.s3.us-east-1.amazonaws.com/tienda/logo-principal.png',
+        direccion: {
+          pais: 'México',
+          estado: 'México',
+          municipio: 'Toluca',
+          colonia: 'Centro',
+          calle: 'Av. Hidalgo',
+          noExt: '101',
+          noInt: 'A',
+          codPostal: '50000',
+        },
+        fechaCreacion: new Date().toISOString(),
+      },
+    }),
+  );
+
+  // 2. Cargos
+  console.log('💼 Sembrando cargos...');
+  const cargos = [
+    {
+      idCargo: 1,
+      idSuc: 1,
+      nombreCargo: 'ADMINISTRADOR',
+      descripcionCargo: 'Acceso completo a la administración de la tienda',
+    },
+    {
+      idCargo: 2,
+      idSuc: 1,
+      nombreCargo: 'CAJERO',
+      descripcionCargo: 'Acceso al punto de venta y cobro de productos',
+    },
+  ];
+  for (const c of cargos) {
+    await docClient.send(
+      new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          ...Keys.cargo(c.idSuc, c.idCargo),
+          GSI1PK: 'CARGOS',
+          GSI1SK: c.nombreCargo,
+          ...c,
+        },
+      }),
+    );
+  }
+
+  // 3. Empleados
+  console.log('👥 Sembrando empleados...');
+  const empleados = [
+    {
+      idEmp: 1,
+      nombreEmp: 'Administrador',
+      apellidoPatEmp: 'Tienda',
+      apellidoMatEmp: 'Principal',
+      edadPer: 35,
+      generoPer: 'Masculino',
+      correoEmp: 'admin@gmail.com',
+      contrasenaHash: '$2b$10$7qZB/As1PwjGAABwNQFE5OYS40Gt0ZBCbZv2IoK5/Wo6Eiba/nyii',
+      estadoEmp: true,
+      telefono: '7221234567',
+      idCargo: 1,
+      idSuc: 1,
+      cargoNombre: 'ADMINISTRADOR',
+    },
+    {
+      idEmp: 2,
+      nombreEmp: 'Diana Elena',
+      apellidoPatEmp: 'Sanchez',
+      apellidoMatEmp: 'Garcia',
+      edadPer: 28,
+      generoPer: 'Femenino',
+      correoEmp: 'diana@gmail.com',
+      contrasenaHash: '$2b$10$7qZB/As1PwjGAABwNQFE5OYS40Gt0ZBCbZv2IoK5/Wo6Eiba/nyii',
+      estadoEmp: true,
+      telefono: '7298456578',
+      idCargo: 2,
+      idSuc: 1,
+      cargoNombre: 'CAJERO',
+    },
+    {
+      idEmp: 3,
+      nombreEmp: 'Dumb',
+      apellidoPatEmp: 'User',
+      apellidoMatEmp: 'Test',
+      edadPer: 25,
+      generoPer: 'Otro',
+      correoEmp: 'dumb@user.com',
+      contrasenaHash: '$2b$12$mcSBVhI4MURCB3ZqM.9tQuD9C7w3CZoMFDK01IM0.2TMqUAzkYlOK',
+      estadoEmp: true,
+      telefono: '7220000000',
+      idCargo: 2,
+      idSuc: 1,
+      cargoNombre: 'CAJERO',
+    },
+  ];
+  for (const emp of empleados) {
+    await docClient.send(
+      new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          ...Keys.empleado(emp.idEmp),
+          GSI1PK: `SUC#${emp.idSuc}#EMPLEADOS`,
+          GSI1SK: `${emp.apellidoPatEmp}#${emp.nombreEmp}`,
+          GSI2PK: `EMAIL#${emp.correoEmp.toLowerCase()}`,
+          GSI2SK: `EMP#${emp.idEmp}`,
+          ...emp,
+        },
+      }),
+    );
+  }
+
+  // 4. Clientes
+  console.log('🛍️ Sembrando clientes...');
+  const clientes = [
+    {
+      idCliente: 1,
+      nombreCliente: 'Sandra',
+      apellidoPatCliente: 'Sanchez Garcia',
+      correoCliente: 'sandisg321@gmail.com',
+      googleSub: '112850685949394108985',
+      fotoPerfil:
+        'https://lh3.googleusercontent.com/a/ACg8ocIJMPP9WjSS1Q24EvkIWBfw2WViU4TmsTmYSiDX6fsI3iew7lhadA=s96-c',
+      estadoCliente: true,
+    },
+    {
+      idCliente: 2,
+      nombreCliente: 'Sandibell',
+      apellidoPatCliente: 'Sánchez',
+      correoCliente: 'sanchezsandibell0@gmail.com',
+      googleSub: '113116239049522862563',
+      fotoPerfil:
+        'https://lh3.googleusercontent.com/a/ACg8ocJibMkXat3_rQQN_O4QFu0m5BgRVZ34steAf1Y7l93XZlaCOw=s96-c',
+      estadoCliente: true,
+    },
+    {
+      idCliente: 3,
+      nombreCliente: 'Consultorios',
+      apellidoPatCliente: 'Médicos',
+      correoCliente: 'consultorios452@gmail.com',
+      googleSub: '105142001509885596007',
+      fotoPerfil:
+        'https://lh3.googleusercontent.com/a/ACg8ocKkjRmRyBvGMUa8gupz-o0JYVKFLXqw0LjpH50A-MwA_dUT-w=s96-c',
+      estadoCliente: true,
+    },
+  ];
+  for (const cli of clientes) {
+    await docClient.send(
+      new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          ...Keys.cliente(cli.idCliente),
+          GSI1PK: 'CLIENTES',
+          GSI1SK: `${cli.nombreCliente} ${cli.apellidoPatCliente}`,
+          GSI2PK: `GOOGLE#${cli.googleSub}`,
+          GSI2SK: `CLI#${cli.idCliente}`,
+          ...cli,
+        },
+      }),
+    );
+  }
+
+  // 5. Categorías
+  console.log('🏷️ Sembrando categorías...');
+  const categorias = [
+    { idCat: 1, nombreCat: 'Bebidas y Refrescos', descripCat: 'Refrescos carbonatados, jugos, aguas y energéticas' },
+    { idCat: 2, nombreCat: 'Abarrotes y Alimentos', descripCat: 'Despensa, latería, pastas, arroz y frijol' },
+    { idCat: 3, nombreCat: 'Cuidado Personal', descripCat: 'Desodorantes, jabones y cuidado corporal' },
+    { idCat: 4, nombreCat: 'Botanas y Snacks', descripCat: 'Papas, galletas, chocolates y golosinas' },
+  ];
+  for (const cat of categorias) {
+    await docClient.send(
+      new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          ...Keys.categoria(1, cat.idCat),
+          GSI1PK: 'CATEGORIAS',
+          GSI1SK: cat.nombreCat,
+          idSuc: 1,
+          ...cat,
+        },
+      }),
+    );
+  }
+
+  // 6. Marcas
+  console.log('🔖 Sembrando marcas...');
+  const marcas = [
+    { idMarca: 1, nombreMarca: 'Coca-Cola', descripMarca: 'Líder en refrescos y bebidas' },
+    { idMarca: 2, nombreMarca: 'Sabritas', descripMarca: 'Botanas y papas saladas' },
+    { idMarca: 3, nombreMarca: 'Nivea', descripMarca: 'Cuidado de la piel y desodorantes' },
+    { idMarca: 4, nombreMarca: 'Obao / Garnier', descripMarca: 'Desodorantes y cuidado personal' },
+    { idMarca: 5, nombreMarca: 'Bimbo', descripMarca: 'Panificación y pastelería' },
+  ];
+  for (const m of marcas) {
+    await docClient.send(
+      new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          ...Keys.marca(1, m.idMarca),
+          GSI1PK: 'MARCAS',
+          GSI1SK: m.nombreMarca,
+          idSuc: 1,
+          ...m,
+        },
+      }),
+    );
+  }
+
+  // 7. Proveedores
+  console.log('🚚 Sembrando proveedores...');
+  const proveedores = [
+    {
+      idProv: 1,
+      idSuc: 1,
+      nombreProv: 'Distribuidora Femsa México',
+      telefonoProv: '7225551122',
+      correoProv: 'contacto@femsa.com.mx',
+    },
+    {
+      idProv: 2,
+      idSuc: 1,
+      nombreProv: 'Grupo Bimbo Toluca',
+      telefonoProv: '7225553344',
+      correoProv: 'ventas@bimbo.com.mx',
+    },
+  ];
+  for (const prov of proveedores) {
+    await docClient.send(
+      new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          ...Keys.proveedor(1, prov.idProv),
+          GSI1PK: 'PROVEEDORES',
+          GSI1SK: prov.nombreProv,
+          ...prov,
+        },
+      }),
+    );
+  }
+
+  // 8. Productos
+  console.log('📦 Sembrando productos...');
+  const productos = [
+    {
+      idPro: 1,
+      idSuc: 1,
+      nombrePro: 'Coca-Cola Original',
+      precioVentaPro: 50.0,
+      costoPro: 42.0,
+      existenciaPro: 24,
+      stockMinimoPro: 5,
+      tamanoPro: '3 Litros',
+      presentacionPro: 'Botella No Retornable',
+      tipoPro: 'Refresco',
+      codigoQR: '7501054549864',
+      skuPro: 'COCA-3L-NR',
+      imagenPro: 'https://tienda-donapaty-uploads.s3.us-east-1.amazonaws.com/productos/coca-cola-3l.png',
+      activoPro: true,
+      idMarca: 1,
+      marcaNombre: 'Coca-Cola',
+      idCat: 1,
+      categoriaNombre: 'Bebidas y Refrescos',
+    },
+    {
+      idPro: 2,
+      idSuc: 1,
+      nombrePro: 'Coca-Cola Sin Azúcar',
+      precioVentaPro: 35.0,
+      costoPro: 28.0,
+      existenciaPro: 18,
+      stockMinimoPro: 4,
+      tamanoPro: '2 Litros',
+      presentacionPro: 'Botella No Retornable',
+      tipoPro: 'Refresco',
+      codigoQR: '7501054549871',
+      skuPro: 'COCA-2L-SA',
+      imagenPro: 'https://tienda-donapaty-uploads.s3.us-east-1.amazonaws.com/productos/coca-cola-2l.png',
+      activoPro: true,
+      idMarca: 1,
+      marcaNombre: 'Coca-Cola',
+      idCat: 1,
+      categoriaNombre: 'Bebidas y Refrescos',
+    },
+    {
+      idPro: 3,
+      idSuc: 1,
+      nombrePro: 'Desodorante Obao For Men',
+      precioVentaPro: 30.0,
+      costoPro: 22.0,
+      existenciaPro: 15,
+      stockMinimoPro: 3,
+      tamanoPro: '65 g',
+      presentacionPro: 'Roll-on',
+      tipoPro: 'Antitranspirante',
+      codigoQR: '7509552876383',
+      skuPro: 'OBAO-65G-MEN',
+      imagenPro: 'https://tienda-donapaty-uploads.s3.us-east-1.amazonaws.com/productos/obao-men.png',
+      activoPro: true,
+      idMarca: 4,
+      marcaNombre: 'Obao / Garnier',
+      idCat: 3,
+      categoriaNombre: 'Cuidado Personal',
+    },
+    {
+      idPro: 4,
+      idSuc: 1,
+      nombrePro: 'Crema Corporal Nivea Milk Nutritiva',
+      precioVentaPro: 85.0,
+      costoPro: 68.0,
+      existenciaPro: 10,
+      stockMinimoPro: 2,
+      tamanoPro: '400 ml',
+      presentacionPro: 'Botella dosificadora',
+      tipoPro: 'Crema corporal hidratante',
+      codigoQR: '7501001150020',
+      skuPro: 'NIV-MILK-400',
+      imagenPro: 'https://tienda-donapaty-uploads.s3.us-east-1.amazonaws.com/productos/nivea-milk.png',
+      activoPro: true,
+      idMarca: 3,
+      marcaNombre: 'Nivea',
+      idCat: 3,
+      categoriaNombre: 'Cuidado Personal',
+    },
+    {
+      idPro: 5,
+      idSuc: 1,
+      nombrePro: 'Papas Sabritas Original Sal',
+      precioVentaPro: 22.0,
+      costoPro: 17.5,
+      existenciaPro: 30,
+      stockMinimoPro: 5,
+      tamanoPro: '45 g',
+      presentacionPro: 'Bolsa',
+      tipoPro: 'Botana salada',
+      codigoQR: '7501011115552',
+      skuPro: 'SAB-SAL-45G',
+      imagenPro: 'https://tienda-donapaty-uploads.s3.us-east-1.amazonaws.com/productos/sabritas-sal.png',
+      activoPro: true,
+      idMarca: 2,
+      marcaNombre: 'Sabritas',
+      idCat: 4,
+      categoriaNombre: 'Botanas y Snacks',
+    },
+  ];
+  for (const prod of productos) {
+    await docClient.send(
+      new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          ...Keys.producto(prod.idSuc, prod.idPro),
+          GSI1PK: `CAT#${prod.idCat}#PRODS`,
+          GSI1SK: String(prod.precioVentaPro).padStart(8, '0'),
+          GSI2PK: `QR#${prod.codigoQR}`,
+          GSI2SK: `PROD#${prod.idPro}`,
+          ...prod,
+        },
+      }),
+    );
+  }
+
+  // 9. Configuración de Transferencia
+  console.log('💳 Sembrando configuración de transferencia...');
+  await docClient.send(
+    new PutCommand({
+      TableName: TABLE_NAME,
+      Item: {
+        ...Keys.configuracion(1),
+        idConfiguracion: 1,
+        idSuc: 1,
+        banco: 'BBVA',
+        titular: 'Sandra Sánchez García',
+        clabe: '012180015250213582',
+        numeroCuenta: '1525021358',
+        instrucciones: 'Realiza tu transferencia a esta cuenta y sube una foto o captura de tu comprobante de pago.',
+        activo: true,
+        fechaActualizacion: new Date().toISOString(),
+      },
+    }),
+  );
+
+  // 10. Sesión de Caja
+  console.log('💵 Sembrando sesión de caja abierta...');
+  await docClient.send(
+    new PutCommand({
+      TableName: TABLE_NAME,
+      Item: {
+        ...Keys.sesionCaja(1, 3),
+        GSI1PK: 'EMP#1#SESIONES',
+        GSI1SK: new Date().toISOString(),
+        idSesionCaja: 3,
+        idSuc: 1,
+        idEmp: 1,
+        empleadoNombre: 'Administrador Tienda',
+        estado: 'ABIERTA',
+        fondoInicial: 500.0,
+        totalVentas: 150.0,
+        fechaApertura: new Date().toISOString(),
+      },
+    }),
+  );
+
+  // 11. Inicializar Secuencias / Counters
+  console.log('🔢 Sembrando secuencias / contadores atómicos...');
+  const counters = [
+    { SK: 'sucursal', currentId: 1 },
+    { SK: 'cargo', currentId: 2 },
+    { SK: 'empleado', currentId: 3 },
+    { SK: 'cliente', currentId: 3 },
+    { SK: 'categoria', currentId: 4 },
+    { SK: 'marca', currentId: 5 },
+    { SK: 'proveedor', currentId: 2 },
+    { SK: 'producto', currentId: 5 },
+    { SK: 'configuracion', currentId: 1 },
+    { SK: 'sesionCaja', currentId: 3 },
+    { SK: 'venta', currentId: 0 },
+    { SK: 'pedidoCliente', currentId: 0 },
+  ];
+  for (const counter of counters) {
+    await docClient.send(
+      new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          PK: 'COUNTERS',
+          SK: counter.SK,
+          currentId: counter.currentId,
+        },
+      }),
+    );
+  }
+
+  console.log('✅ Seeder de DynamoDB finalizado exitosamente. Todas las entidades relacionales sembradas.');
+}
+
+seed().catch((err) => {
+  console.error('❌ Error en el seeder de DynamoDB:', err);
+  process.exit(1);
+});
