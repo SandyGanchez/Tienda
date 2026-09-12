@@ -2,6 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, ElementRef, inject, OnInit, ViewChild } from '@angular/core';
 
 import { BarcodeFormat, BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Capacitor } from '@capacitor/core';
 
 import { IonSearchbar, ToastController } from '@ionic/angular';
@@ -534,6 +535,44 @@ export class CajeroPage implements OnInit {
     await this.scanFeedback.preparar();
 
     try {
+      if (!Capacitor.isNativePlatform()) {
+        const soporte = await BarcodeScanner.isSupported().catch(() => ({ supported: false }));
+        if (!soporte.supported) {
+          try {
+            const foto = await Camera.getPhoto({
+              source: CameraSource.Camera,
+              resultType: CameraResultType.Uri,
+              quality: 85,
+              webUseInput: false,
+            });
+            const preview = foto.webPath || foto.path;
+            if (preview && typeof (window as any).BarcodeDetector !== 'undefined') {
+              const img = new Image();
+              img.src = preview;
+              await new Promise((res, rej) => {
+                img.onload = res;
+                img.onerror = rej;
+              });
+              const detector = new (window as any).BarcodeDetector();
+              const detectados = await detector.detect(img);
+              if (detectados.length > 0 && detectados[0].rawValue) {
+                await this.scanFeedback.feedbackLecturaCorrecta();
+                this.busqueda = detectados[0].rawValue.trim();
+                this.agregarDesdeEntrada();
+                return;
+              }
+            }
+            await this.feedback('Cámara utilizada. Escribe el código en la barra de búsqueda si no se autodetectó.', 'warning');
+            return;
+          } catch (camError: unknown) {
+            const mensaje = camError instanceof Error ? camError.message.toLowerCase() : '';
+            if (mensaje.includes('cancel')) return;
+            await this.feedback('Cámara no disponible en este navegador. Puedes escribir el código.', 'warning');
+            return;
+          }
+        }
+      }
+
       const soporte = await BarcodeScanner.isSupported();
 
       if (!soporte.supported) {

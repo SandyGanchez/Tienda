@@ -38,6 +38,8 @@
     "@capacitor/status-bar": "8.0.2",
     "@capgo/capacitor-social-login": "^8.4.5",
     "@ionic/angular": "^8.0.0",
+    "@ionic/pwa-elements": "^3.4.0",
+    "@undecaf/barcode-detector-polyfill": "^0.9.23",
     "ionicons": "^7.0.0",
     "jeep-sqlite": "^2.8.0",
     "jspdf": "^4.2.1",

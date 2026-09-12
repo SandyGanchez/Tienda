@@ -65,7 +65,7 @@
                     (click)="quitarPreview()">
               Descartar cambio
             </button>
-            <button *ngIf="!logoPendiente && sucursalActual?.logoSuc" 
+            <button *ngIf="!logoPendiente && (sucursalActual?.logoSuc || sucursalActual?.logo)" 
                     type="button" 
                     class="text-error hover:bg-error-container/20 px-3 py-2 rounded-xl font-sans font-semibold text-xs transition-colors disabled:opacity-50"
                     [disabled]="guardando"

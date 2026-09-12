@@ -292,7 +292,7 @@ describe('CatalogosService', () => {
 
       const tiendas = await catalogosService.listarTiendaPublica();
       expect(tiendas.length).toBe(1);
-      expect(tiendas[0].nombreSuc).toBe('Matriz');
+      expect((tiendas[0] as any)?.nombreSuc).toBe('Matriz');
     });
   });
 });
