@@ -3,12 +3,9 @@ import { empleadoSeguro } from '../utils/security';
 
 export const normalizarDetalleVenta = (d: any) => {
   const prodId = encodeId(d.idPro || d.productoId || d.id);
-  const detId = encodeId(d.idDetVenta || d.idDetalle || d.idPro || d.id);
   return {
     id: prodId,
     productoId: prodId,
-    idPro: prodId,
-    idDetalle: detId,
     nombre: d.producto?.nombrePro || d.nombrePro || d.nombre || 'Producto',
     imagen: d.producto?.imagenPro || d.imagenPro || d.imagen || null,
     codigoQR: d.producto?.codigoQR || d.codigoQR || null,
@@ -24,7 +21,6 @@ export const toVentaRegistradaDto = (v: any, empleado?: any) => {
   const ventaId = encodeId(v.idVenta);
   return {
     id: ventaId,
-    idVenta: ventaId,
     uuid: v.uuidVenta,
     sesionCajaId: encodeId(v.idSesionCaja),
     fecha: formatearFechaVenta(v.fechaVenta),
@@ -52,7 +48,6 @@ export const toVentaListDto = (v: any) => {
   const ventaId = encodeId(v.idVenta);
   return {
     id: ventaId,
-    idVenta: ventaId,
     uuid: v.uuidVenta || `venta-${v.idVenta}`,
     sesionCajaId: encodeId(v.idSesionCaja),
     fecha: formatearFechaVenta(v.fechaVenta),
@@ -79,7 +74,6 @@ export const toVentaDetalleDto = (v: any) => {
   const ventaId = encodeId(v.idVenta);
   return {
     id: ventaId,
-    idVenta: ventaId,
     uuid: v.uuidVenta || `venta-${v.idVenta}`,
     sesionCajaId: encodeId(v.idSesionCaja),
     fecha: formatearFechaVenta(v.fechaVenta),
@@ -93,7 +87,6 @@ export const toVentaDetalleDto = (v: any) => {
     motivoCancelacion: v.motivoCancelacion || null,
     cajeroCancela: canceladorStr,
     sucursal: v.sucursal?.nombreSuc || v.nombreSuc || 'Doña paty',
-    nombreSuc: v.sucursal?.nombreSuc || v.nombreSuc || 'Doña paty',
     origen,
     cajero: { id: encodeId(Number(v.idEmp)), nombre: cajeroStr },
     items: v.detalles?.map(normalizarDetalleVenta) || [],

@@ -50,7 +50,6 @@ export interface Producto
     ProductoPresentacion,
     ProductoClasificacion,
     ProductoSincronizable {
-  idPro?: string;
   idMarca?: string | null;
   idCat?: string | null;
 }

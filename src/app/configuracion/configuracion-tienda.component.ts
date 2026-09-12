@@ -45,13 +45,13 @@ export class ConfiguracionTiendaComponent implements OnChanges, OnInit {
 
   get opcionesSucursales(): { value: any; label: string }[] {
     return this.sucursales.map((s) => ({
-      value: s.id || s.sucursalId || s.idSuc,
-      label: s.nombre || s.nombreSuc || `Sucursal ${s.id || s.sucursalId || s.idSuc}`,
+      value: s.id,
+      label: s.nombre || `Sucursal ${s.id}`,
     }));
   }
 
   seleccionar(id: number | string): void {
-    const seleccionada = this.sucursales.find((sucursal) => String(sucursal.id || sucursal.sucursalId || sucursal.idSuc) === String(id));
+    const seleccionada = this.sucursales.find((sucursal) => String(sucursal.id) === String(id));
     if (seleccionada) this.sucursalSeleccionada.emit(seleccionada);
   }
 
@@ -71,7 +71,7 @@ export class ConfiguracionTiendaComponent implements OnChanges, OnInit {
 
   async quitarLogoActual(): Promise<void> {
     if (!this.sucursalActual || this.guardando) return;
-    const idSuc = this.sucursalActual.id || this.sucursalActual.sucursalId || this.sucursalActual.idSuc;
+    const idSuc = this.sucursalActual.id;
     if (!idSuc) return;
     this.guardando = true;
     try {
@@ -95,9 +95,9 @@ export class ConfiguracionTiendaComponent implements OnChanges, OnInit {
     }
     this.guardando = true;
     try {
-      const idSucActual = this.sucursalActual ? (this.sucursalActual.id || this.sucursalActual.sucursalId || this.sucursalActual.idSuc) : null;
+      const idSucActual = this.sucursalActual ? this.sucursalActual.id : null;
       if (!this.form.nombreSuc?.trim() && this.sucursalActual) {
-        this.form.nombreSuc = (this.sucursalActual.nombreSuc || this.sucursalActual.nombre || 'Mi Tienda').trim();
+        this.form.nombreSuc = (this.sucursalActual.nombre || 'Mi Tienda').trim();
       }
       let guardada = idSucActual
         ? await firstValueFrom(this.api.actualizarSucursal(idSucActual, this.form))
@@ -105,7 +105,7 @@ export class ConfiguracionTiendaComponent implements OnChanges, OnInit {
       let falloLogo = false;
       if (this.logoPendiente) {
         try {
-          const idSucGuardada = guardada.id || guardada.sucursalId || guardada.idSuc || idSucActual;
+          const idSucGuardada = guardada.id || idSucActual;
           if (idSucGuardada) {
             guardada = await firstValueFrom(this.api.subirLogo(idSucGuardada, this.logoPendiente, this.nombreLogo));
           }
@@ -130,7 +130,7 @@ export class ConfiguracionTiendaComponent implements OnChanges, OnInit {
   }
 
   resolverLogo(): string | null {
-    return this.previewLogo || this.api.resolverImagen(this.sucursalActual?.logoSuc || this.sucursalActual?.logo);
+    return this.previewLogo || this.api.resolverImagen(this.sucursalActual?.logo);
   }
 
   async guardarTransferencia(): Promise<void> {
@@ -156,12 +156,12 @@ export class ConfiguracionTiendaComponent implements OnChanges, OnInit {
     const sucursal = this.sucursalActual;
     this.form = sucursal
       ? {
-          nombreSuc: sucursal.nombreSuc || sucursal.nombre || null,
-          descripcionSuc: sucursal.descripcionSuc ?? sucursal.descripcion ?? null,
-          telefonoSuc: sucursal.telefonoSuc ?? sucursal.telefono ?? null,
-          correoSuc: sucursal.correoSuc ?? sucursal.correo ?? null,
-          paginaWebSuc: sucursal.paginaWebSuc ?? sucursal.paginaWeb ?? null,
-          redSocialSuc: sucursal.redSocialSuc ?? sucursal.redSocial ?? null,
+          nombreSuc: sucursal.nombre || null,
+          descripcionSuc: sucursal.descripcion ?? null,
+          telefonoSuc: sucursal.telefono ?? null,
+          correoSuc: sucursal.correo ?? null,
+          paginaWebSuc: sucursal.paginaWeb ?? null,
+          redSocialSuc: sucursal.redSocial ?? null,
         }
       : this.vacio();
     this.errores = {};

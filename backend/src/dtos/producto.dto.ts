@@ -5,7 +5,6 @@ export const toProductoDto = (producto: any) => {
   const prodId = encodeId(producto.idPro);
   return {
     id: prodId,
-    idPro: prodId,
     nombre: producto.nombrePro,
     precio: Number(producto.precioVentaPro),
     precioVenta: Number(producto.precioVentaPro),
@@ -37,7 +36,6 @@ export const toProductoListDto = (producto: any) => {
   const prodId = encodeId(producto.idPro);
   return {
     id: prodId,
-    idPro: prodId,
     nombre: producto.nombrePro,
     precio: Number(producto.precioVentaPro),
     precioVenta: Number(producto.precioVentaPro),

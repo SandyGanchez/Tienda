@@ -1,23 +1,16 @@
 export interface Sucursal {
   id: string;
-  sucursalId?: string;
-  idSuc?: string;
-  nombre?: string | null;
-  nombreSuc?: string | null;
+  nombre: string;
   descripcion?: string | null;
-  descripcionSuc?: string | null;
   telefono?: string | null;
-  telefonoSuc?: string | null;
   correo?: string | null;
-  correoSuc?: string | null;
   paginaWeb?: string | null;
-  paginaWebSuc?: string | null;
   redSocial?: string | null;
-  redSocialSuc?: string | null;
   logo?: string | null;
-  logoSuc?: string | null;
-  idDir?: string | null;
   direccion?: string | null;
+  // Campos retrocompatibles opcionales para evitar roturas
+  nombreSuc?: string | null;
+  logoSuc?: string | null;
 }
 
 export interface SucursalDto {

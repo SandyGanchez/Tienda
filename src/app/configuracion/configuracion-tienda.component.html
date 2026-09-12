@@ -16,7 +16,7 @@
   <div *ngIf="sucursales.length > 1" class="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-variant/30 space-y-2 max-w-md">
     <label class="block font-sans font-semibold text-xs text-on-surface-variant mb-1 ml-1">Sucursal a configurar</label>
     <app-custom-select
-      [ngModel]="sucursalActual?.id || sucursalActual?.sucursalId || sucursalActual?.idSuc"
+      [ngModel]="sucursalActual?.id"
       (ngModelChange)="seleccionar($event)"
       [options]="opcionesSucursales"
       placeholder="Selecciona una sucursal"

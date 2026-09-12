@@ -29,41 +29,25 @@ export const toSucursalDto = (sucursal: any) => {
           .join(', ') || null
     : null;
 
-  const encodedId = encodeId(sucursal.idSuc);
   return {
-    id: encodedId,
-    idSuc: encodedId,
-    sucursalId: encodedId,
+    id: encodeId(sucursal.idSuc),
     nombre: sucursal.nombreSuc,
-    nombreSuc: sucursal.nombreSuc,
-    descripcion: sucursal.descripcionSuc,
-    descripcionSuc: sucursal.descripcionSuc,
-    telefono: sucursal.telefonoSuc,
-    telefonoSuc: sucursal.telefonoSuc,
-    correo: sucursal.correoSuc,
-    correoSuc: sucursal.correoSuc,
-    paginaWeb: sucursal.paginaWebSuc,
-    paginaWebSuc: sucursal.paginaWebSuc,
-    redSocial: sucursal.redSocialSuc,
-    redSocialSuc: sucursal.redSocialSuc,
-    logo: sucursal.logoSuc,
-    logoSuc: sucursal.logoSuc,
+    descripcion: sucursal.descripcionSuc || null,
+    telefono: sucursal.telefonoSuc || null,
+    correo: sucursal.correoSuc || null,
+    paginaWeb: sucursal.paginaWebSuc || null,
+    redSocial: sucursal.redSocialSuc || null,
+    logo: sucursal.logoSuc || null,
     direccion: direccionStr,
   };
 };
 
 export const toSucursalPublicaDto = (sucursal: any) => {
   if (!sucursal) return null;
-  const encodedId = encodeId(sucursal.idSuc);
   return {
-    id: encodedId,
-    idSuc: encodedId,
-    sucursalId: encodedId,
+    id: encodeId(sucursal.idSuc),
     nombre: sucursal.nombreSuc,
-    nombreSuc: sucursal.nombreSuc,
-    descripcion: sucursal.descripcionSuc,
-    descripcionSuc: sucursal.descripcionSuc,
-    logo: sucursal.logoSuc,
-    logoSuc: sucursal.logoSuc,
+    descripcion: sucursal.descripcionSuc || null,
+    logo: sucursal.logoSuc || null,
   };
 };

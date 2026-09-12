@@ -28,7 +28,6 @@ export interface ConfiguracionTransferenciaDto {
 export interface DetallePedidoCliente {
   id: string;
   productoId: string;
-  idPro?: string;
   nombre: string;
   imagen: string | null;
   presentacion: string | null;
@@ -39,7 +38,6 @@ export interface DetallePedidoCliente {
 
 export interface PedidoClienteResumen {
   id: string;
-  idPedido?: string;
   folio: string;
   uuidPedido: string;
   fechaPedido: string;
@@ -49,7 +47,6 @@ export interface PedidoClienteResumen {
   tieneComprobante: boolean;
   fechaComprobante: string | null;
   motivoRechazo: string | null;
-  idVenta?: string | null;
   ventaId?: string | null;
   fechaRevision: string | null;
 }
@@ -71,19 +68,15 @@ export interface PedidoCliente extends PedidoClienteResumen {
 export interface CrearPedidoItem {
   id: string;
   cantidad: number;
-  productoId?: string;
-  idPro?: string;
 }
 
 export interface CrearPedidoRequest {
   uuidPedido: string;
-  idSuc?: string;
   items: CrearPedidoItem[];
 }
 
 export interface ClientePedidoAdmin {
   id: string;
-  idCliente?: string;
   nombre: string;
   correo: string;
   foto: string | null;
@@ -98,7 +91,6 @@ export interface ComprobantePedidoAdmin {
 
 export interface PedidoAdminResumen {
   id: string;
-  idPedido?: string;
   folio: string;
   uuidPedido: string;
   fechaPedido: string;

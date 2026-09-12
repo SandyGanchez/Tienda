@@ -66,8 +66,6 @@ export interface VentaDetalle {
 export interface DetalleVentaItem {
   id: string;
   productoId: string;
-  idPro?: string;
-  idDetalle?: string;
   nombre: string;
   imagen?: string | null;
   codigoQR?: string | null;
@@ -79,7 +77,6 @@ export interface DetalleVentaItem {
 
 export interface VentaRegistrada {
   id: string;
-  idVenta?: string;
   uuid: string;
   sesionCajaId: string;
   fecha: string;
@@ -96,8 +93,6 @@ export interface VentaRegistrada {
 export interface CrearVentaItem {
   id: string;
   cantidad: number;
-  idPro?: string;
-  productoId?: string;
 }
 
 export interface CrearVentaDto {

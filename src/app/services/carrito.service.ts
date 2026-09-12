@@ -87,15 +87,15 @@ export class CarritoService {
   }
 
   actualizarDisponibilidad(
-    productos: Array<{ id: string; existencia?: number | null; precioVenta?: number; existenciaPro?: number | null; precioVentaPro?: number }>,
+    productos: Array<{ id: string; existencia?: number | null; precioVenta?: number }>,
   ): void {
     const disponibles = new Map(productos.map((producto) => [String(producto.id), producto]));
     const actualizados = this.items.reduce<ItemCarrito[]>((resultado, item) => {
       const producto = disponibles.get(item.id);
       if (!producto) return resultado;
-      const stock = Math.max(0, Math.trunc(Number((producto.existencia ?? producto.existenciaPro) ?? 0)));
+      const stock = Math.max(0, Math.trunc(Number(producto.existencia ?? 0)));
       if (!stock) return resultado;
-      const precio = Number(producto.precioVenta ?? producto.precioVentaPro);
+      const precio = Number(producto.precioVenta ?? item.precioMostrado);
       resultado.push({
         ...item,
         stockConocido: stock,

@@ -96,6 +96,30 @@ export class SqliteProductoRepository {
     ]);
   }
 
+  private rowAProducto(row: any): Productos {
+    return {
+      id: String(row.idPro),
+      nombre: row.nombrePro || '',
+      precio: Number(row.precioVentaPro || 0),
+      precioVenta: Number(row.precioVentaPro || 0),
+      costo: row.costoPro !== null && row.costoPro !== undefined ? Number(row.costoPro) : null,
+      existencia: Number(row.existenciaPro || 0),
+      stockMinimo: row.stockMinimoPro !== null && row.stockMinimoPro !== undefined ? Number(row.stockMinimoPro) : null,
+      tamano: row.tamanoPro || null,
+      presentacion: row.presentacionPro || null,
+      tipo: row.tipoPro || null,
+      codigoQR: row.codigoQR || null,
+      sku: row.skuPro || null,
+      imagen: row.imagenPro || null,
+      activo: true,
+      marca: row.idMarca ? { id: String(row.idMarca), nombre: null } : null,
+      categoria: row.idCat ? { id: String(row.idCat), nombre: null } : null,
+      idMarca: row.idMarca ? String(row.idMarca) : null,
+      idCat: row.idCat ? String(row.idCat) : null,
+      pendienteSync: row.pendienteSync || 0,
+    };
+  }
+
   async buscarPorQR(codigoQR: string): Promise<Productos | null> {
     if (!this.disponible) return null;
     const db = await this.dbService.getDB();
@@ -108,7 +132,7 @@ export class SqliteProductoRepository {
     const result = await db.query(query, [codigoQR]);
 
     if (result.values && result.values.length > 0) {
-      return result.values[0] as Productos;
+      return this.rowAProducto(result.values[0]);
     }
 
     return null;
@@ -119,7 +143,7 @@ export class SqliteProductoRepository {
     const db = await this.dbService.getDB();
 
     const result = await db.query(`SELECT * FROM productos`);
-    return (result.values as Productos[]) || [];
+    return (result.values || []).map((r) => this.rowAProducto(r));
   }
 
   async getPendientesSync(): Promise<Productos[]> {
@@ -131,7 +155,7 @@ export class SqliteProductoRepository {
       WHERE pendienteSync = 1
     `);
 
-    return (result.values as Productos[]) || [];
+    return (result.values || []).map((r) => this.rowAProducto(r));
   }
 
   async marcarSincronizado(idPro: string): Promise<void> {
@@ -152,11 +176,11 @@ export class SqliteProductoRepository {
     if (!this.disponible || !Array.isArray(productos)) return;
     const db = await this.dbService.getDB();
 
-    const idsValidos: number[] = [];
+    const idsValidos: string[] = [];
 
     for (const item of productos) {
-      const idPro = Number(item.id);
-      if (!Number.isInteger(idPro) || idPro <= 0) continue;
+      const idPro = item.id ? String(item.id).trim() : '';
+      if (!idPro) continue;
       idsValidos.push(idPro);
 
       const qr = item.codigoQR ? String(item.codigoQR).trim() : null;
@@ -201,10 +225,10 @@ export class SqliteProductoRepository {
           pendienteSync = 0`,
         [
           idPro,
-          item.nombre || '',
-          item.precioVenta !== undefined && item.precioVenta !== null ? Number(item.precioVenta) : 0,
+          item.nombre,
+          item.precioVenta !== undefined && item.precioVenta !== null ? Number(item.precioVenta) : (item.precio ? Number(item.precio) : 0),
           item.costo !== undefined && item.costo !== null ? Number(item.costo) : null,
-          Number(item.existencia) || 0,
+          item.existencia !== undefined && item.existencia !== null ? Number(item.existencia) : 0,
           item.stockMinimo !== undefined && item.stockMinimo !== null ? Number(item.stockMinimo) : null,
           item.tamano || null,
           item.presentacion || null,
@@ -212,8 +236,8 @@ export class SqliteProductoRepository {
           qr,
           item.sku || null,
           item.imagen || null,
-          item.marca?.id ? Number(item.marca.id) : null,
-          item.categoria?.id ? Number(item.categoria.id) : null,
+          item.marca?.id ? String(item.marca.id) : (item.idMarca ? String(item.idMarca) : null),
+          item.categoria?.id ? String(item.categoria.id) : (item.idCat ? String(item.idCat) : null),
         ],
       );
     }

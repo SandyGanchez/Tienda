@@ -365,12 +365,7 @@ export class CajeroPage implements OnInit {
     this.cargandoProductos = true;
     try {
       const productos = await firstValueFrom(this.ventas.productos());
-
-      this.productos = productos.map((producto) => ({
-        ...producto,
-        precioVentaPro: Number(producto.precioVenta),
-        existenciaPro: Number(producto.existencia) || 0,
-      }));
+      this.productos = productos;
 
       if (this.sqlite.disponible) {
         await this.sqlite.sincronizarCatalogo(this.productos);

@@ -51,7 +51,7 @@ describe('App End-to-End Integration Tests', () => {
       const res = await request(app).get('/public/tienda');
       expect(res.status).toBe(200);
       expect(Array.isArray(res.body)).toBe(true);
-      expect(res.body[0].nombreSuc).toBe('Sucursal Matriz');
+      expect(res.body[0].nombre).toBe('Sucursal Matriz');
     });
 
     it('GET /public/productos debe responder 200 con catálogo público activo', async () => {

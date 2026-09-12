@@ -29,7 +29,6 @@ export function normalizarDetallePedido(d: any) {
   return {
     id: prodId,
     productoId: prodId,
-    idPro: prodId,
     nombre: d.producto?.nombrePro || d.nombrePro || d.nombre || 'Producto',
     imagen: d.producto?.imagenPro || d.imagenPro || d.imagen || null,
     presentacion: d.presentacion ?? ([d.producto?.tamanoPro, d.producto?.presentacionPro].filter(Boolean).join(' · ') || null),
@@ -43,7 +42,6 @@ export function normalizarPedido(row: any) {
   const encodedId = encodeId(Number(row.idPedido));
   return {
     id: encodedId,
-    idPedido: encodedId,
     folio: folioPedido(row.idPedido),
     uuidPedido: row.uuidPedido,
     fechaPedido: row.fechaPedido,
@@ -53,7 +51,6 @@ export function normalizarPedido(row: any) {
     tieneComprobante: Boolean(row.comprobanteRuta),
     fechaComprobante: row.fechaComprobante || null,
     motivoRechazo: row.motivoRechazo || null,
-    idVenta: row.idVenta === null || row.idVenta === undefined ? null : encodeId(Number(row.idVenta)),
     ventaId: row.idVenta === null || row.idVenta === undefined ? null : encodeId(Number(row.idVenta)),
     fechaRevision: row.fechaRevision || null,
   };
@@ -65,7 +62,6 @@ export function normalizarPedidoAdmin(row: any) {
     ...normalizarPedido(row),
     cliente: {
       id: clienteId,
-      idCliente: clienteId,
       nombre: [row.cliente?.nombreCliente, row.cliente?.apellidoPatCliente, row.cliente?.apellidoMatCliente]
         .filter(Boolean)
         .join(' '),

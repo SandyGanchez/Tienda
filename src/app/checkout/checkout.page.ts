@@ -12,10 +12,8 @@ import { PedidosClienteService } from '../services/pedidos-cliente.service';
 
 interface ProductoPublicoStock {
   id: string;
-  existencia?: number | null;
-  precioVenta?: number;
-  existenciaPro?: number | null;
-  precioVentaPro?: number;
+  existencia: number;
+  precioVenta: number;
 }
 
 @Component({
