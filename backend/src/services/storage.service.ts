@@ -12,29 +12,62 @@ import {
   PresignedUploadOptions,
   PresignedUploadResult,
 } from '../config/s3';
-import { comprobantesUploadDir, productosUploadDir, tiendaUploadDir } from '../middlewares/upload.middleware';
+import { comprobantesUploadDir } from '../middlewares/upload.middleware';
 
 /**
- * StorageService: Responsabilidad única de gestionar almacenamiento de archivos,
- * tanto en AWS S3 (modo Serverless) como en el sistema de archivos local (modo desarrollo).
+ * Contrato extensible para drivers de almacenamiento en la nube (OCP).
  */
-export class StorageService {
-  /**
-   * Genera una URL prefirmada para subida directa a AWS S3.
-   */
+export interface ICloudStorageDriver {
+  generarPresignedUpload(opciones: PresignedUploadOptions): Promise<PresignedUploadResult>;
+  generarPresignedDownload(key: string, nombreArchivo?: string | null, mimeType?: string | null): Promise<string>;
+  eliminarObjeto(rutaOKey: string): Promise<void>;
+}
+
+/**
+ * Driver predeterminado para AWS S3 en arquitectura Serverless.
+ */
+export class S3CloudStorageDriver implements ICloudStorageDriver {
   async generarPresignedUpload(opciones: PresignedUploadOptions): Promise<PresignedUploadResult> {
     return generarPresignedUpload(opciones);
   }
 
-  /**
-   * Genera una URL prefirmada para descarga/visualización temporal segura desde AWS S3.
-   */
   async generarPresignedDownload(key: string, nombreArchivo?: string | null, mimeType?: string | null): Promise<string> {
     return generarPresignedDownload(key, nombreArchivo, mimeType);
   }
 
+  async eliminarObjeto(rutaOKey: string): Promise<void> {
+    return eliminarObjetoS3(rutaOKey);
+  }
+}
+
+/**
+ * StorageService: Responsabilidad única de gestionar almacenamiento de archivos,
+ * abierto a extensión mediante drivers (S3, CloudFront, MinIO, Local).
+ */
+export class StorageService {
+  constructor(private cloudDriver: ICloudStorageDriver = new S3CloudStorageDriver()) {}
+
+  setCloudDriver(driver: ICloudStorageDriver): this {
+    this.cloudDriver = driver;
+    return this;
+  }
+
   /**
-   * Elimina un archivo ya sea que resida en AWS S3 o en el almacenamiento local.
+   * Genera una URL prefirmada para subida directa.
+   */
+  async generarPresignedUpload(opciones: PresignedUploadOptions): Promise<PresignedUploadResult> {
+    return this.cloudDriver.generarPresignedUpload(opciones);
+  }
+
+  /**
+   * Genera una URL prefirmada para descarga/visualización temporal segura.
+   */
+  async generarPresignedDownload(key: string, nombreArchivo?: string | null, mimeType?: string | null): Promise<string> {
+    return this.cloudDriver.generarPresignedDownload(key, nombreArchivo, mimeType);
+  }
+
+  /**
+   * Elimina un archivo ya sea que resida en el almacenamiento cloud o local.
    */
   async eliminarArchivo(
     rutaOKey?: string | null,
@@ -44,7 +77,7 @@ export class StorageService {
     if (!rutaOKey) return;
 
     if (esUrlS3(rutaOKey)) {
-      await eliminarObjetoS3(rutaOKey);
+      await this.cloudDriver.eliminarObjeto(rutaOKey);
       return;
     }
 

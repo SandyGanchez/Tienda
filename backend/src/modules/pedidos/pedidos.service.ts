@@ -14,6 +14,7 @@ import {
   configuracionTransferenciaPedido,
 } from '../../dtos/pedido.dto';
 import { storageService } from '../../services/storage.service';
+import { OrderStateMachine, defaultOrderStateMachine } from './pedido-state.machine';
 
 const HORAS_RESERVA_PEDIDO = 2;
 const MAX_TOTAL_PEDIDO_CENTAVOS = 9999999999;
@@ -36,6 +37,8 @@ export function mimeRealComprobante(rutaArchivo: string): string | null {
 
 
 export class PedidosService {
+  constructor(private stateMachine: OrderStateMachine = defaultOrderStateMachine) {}
+
   async obtenerSucursalDisponibleCliente() {
     if (process.env.DYNAMODB_TABLE) return 1;
 
@@ -541,7 +544,7 @@ export class PedidosService {
       where: { idPedido, idCliente },
     });
     if (!pedido) throw errorFuncional('Pedido no encontrado.', 404);
-    if (!['PENDIENTE_PAGO', 'EN_REVISION', 'RECHAZADO'].includes(pedido.estado)) {
+    if (!this.stateMachine.puedeTransicionar('SUBIR_COMPROBANTE', pedido.estado)) {
       throw errorFuncional(`No se puede subir comprobante a un pedido en estado ${pedido.estado}.`, 409);
     }
     return await storageService.generarPresignedUpload({
@@ -569,9 +572,7 @@ export class PedidosService {
         throw errorFuncional('Tu reserva expiró y los productos volvieron al inventario.', 409);
       }
 
-      if (!['PENDIENTE_PAGO', 'EN_REVISION', 'RECHAZADO'].includes(pedido.estado)) {
-        throw errorFuncional(`No se puede adjuntar comprobante a un pedido en estado ${pedido.estado}.`, 409);
-      }
+      this.stateMachine.validarTransicion('SUBIR_COMPROBANTE', pedido.estado);
 
       const anteriorRuta = pedido.comprobanteRuta;
       const key = storageService.extraerKey(keyOUrl) || keyOUrl;
@@ -611,9 +612,7 @@ export class PedidosService {
         where: { idPedido, idSuc },
       });
       if (!pedido) throw errorFuncional('Pedido no encontrado.', 404);
-      if (pedido.estado !== 'EN_REVISION') {
-        throw errorFuncional('Sólo pueden rechazarse pedidos con pago en revisión.', 409);
-      }
+      this.stateMachine.validarTransicion('RECHAZAR_PAGO', pedido.estado);
 
       const anteriorComprobante = pedido.comprobanteRuta;
 
@@ -651,8 +650,7 @@ export class PedidosService {
       });
       if (!pedido) throw errorFuncional('Pedido no encontrado.', 404);
       if (pedido.estado === 'PAGADO' && pedido.idVenta) throw errorFuncional('El pedido ya fue aprobado.', 409);
-      if (pedido.estado !== 'EN_REVISION')
-        throw errorFuncional('Sólo pueden aprobarse pedidos con pago en revisión.', 409);
+      this.stateMachine.validarTransicion('APROBAR_PAGO', pedido.estado);
       if (!pedido.comprobanteRuta || !pedido.fechaComprobante)
         throw errorFuncional('El pedido no tiene un comprobante válido para revisar.', 409);
       if (!esUrlS3(pedido.comprobanteRuta) && !resolverComprobantePrivado(pedido.comprobanteRuta)) {
