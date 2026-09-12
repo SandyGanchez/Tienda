@@ -2,11 +2,11 @@ import fs from 'fs';
 import path from 'path';
 import { prisma, DbClient } from '../../config/prisma';
 import { env } from '../../config/env';
-import { eliminarObjetoS3, esUrlS3, generarPresignedUpload } from '../../config/s3';
 import { productosUploadDir } from '../../middlewares/upload.middleware';
 import { idValido, texto, textoNullable, errorFuncional } from '../../utils/formatters';
 import { toProductoDto, toProductoListDto } from '../../dtos/producto.dto';
 import { productoRepository } from '../../db/repositories/producto.repository';
+import { storageService } from '../../services/storage.service';
 
 
 export function validarProducto(producto: any): string | null {
@@ -44,15 +44,7 @@ export function eliminarUploadControlado(
   directorio = productosUploadDir,
   prefijo = '/uploads/productos/',
 ): void {
-  if (!rutaPublica) return;
-  if (esUrlS3(rutaPublica)) {
-    void eliminarObjetoS3(rutaPublica);
-    return;
-  }
-  if (!rutaPublica.startsWith(prefijo)) return;
-  const nombre = path.basename(rutaPublica);
-  const ruta = path.join(directorio, nombre);
-  if (path.dirname(ruta) === directorio) fs.unlink(ruta, () => undefined);
+  void storageService.eliminarArchivo(rutaPublica, directorio, prefijo);
 }
 
 export class ProductosService {
@@ -318,12 +310,33 @@ export class ProductosService {
     return await this.obtenerProducto(idPro);
   }
 
+  async actualizarImagenLocal(idPro: number, filename: string, filePath?: string) {
+    const productoExistente = await this.obtenerProducto(idPro);
+    if (!productoExistente) {
+      if (filePath) fs.unlink(filePath, () => undefined);
+      throw errorFuncional('Producto no encontrado', 404);
+    }
+
+    const rutaPublica = `/uploads/productos/${filename}`;
+    try {
+      if (process.env.DYNAMODB_TABLE) {
+        await productoRepository.updateProducto(idPro, { imagenPro: rutaPublica });
+      } else {
+        await prisma.producto.update({ where: { idPro }, data: { imagenPro: rutaPublica } });
+      }
+      return await this.obtenerProducto(idPro);
+    } catch (error) {
+      if (filePath) fs.unlink(filePath, () => undefined);
+      throw error;
+    }
+  }
+
   async presignImagen(idPro: number, mimeType: string, extension?: string) {
     const producto = await this.obtenerProducto(idPro);
     if (!producto) {
       throw errorFuncional('Producto no encontrado', 404);
     }
-    return await generarPresignedUpload({
+    return await storageService.generarPresignedUpload({
       folder: 'productos',
       mimeType,
       extensionOriginal: extension,

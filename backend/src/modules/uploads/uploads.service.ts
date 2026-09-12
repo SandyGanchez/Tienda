@@ -1,0 +1,81 @@
+import { prisma } from '../../config/prisma';
+import { authRepository } from '../../db/repositories/auth.repository';
+import { idValido, texto, errorFuncional } from '../../utils/formatters';
+import { storageService } from '../../services/storage.service';
+
+export interface PresignUploadDto {
+  tipo: string;
+  mimeType: string;
+  extension?: string;
+  nombreOriginal?: string;
+}
+
+export class UploadsService {
+  async solicitarPresign(payload: any, dto: PresignUploadDto) {
+    const tipo = texto(dto.tipo).toUpperCase();
+    const mimeType = texto(dto.mimeType).toLowerCase();
+    const extension = texto(dto.extension).toLowerCase();
+
+    const carpetasPorTipo: Record<string, string> = {
+      PRODUCTO: 'productos',
+      TIENDA: 'tienda',
+      COMPROBANTE: 'comprobantes',
+    };
+
+    const carpeta = carpetasPorTipo[tipo];
+    if (!carpeta) {
+      throw errorFuncional('Tipo de upload no válido. Usa PRODUCTO, TIENDA o COMPROBANTE.', 400);
+    }
+
+    if (tipo === 'COMPROBANTE') {
+      if (payload.tipo !== 'CLIENTE' && payload.tipo !== 'EMPLEADO') {
+        throw errorFuncional('No autorizado', 403);
+      }
+      if (!storageService.esMimePermitidoComprobante(mimeType)) {
+        throw errorFuncional('MIME type no permitido para comprobante (JPG, PNG, WEBP, PDF).', 400);
+      }
+    } else {
+      if (payload.tipo !== 'EMPLEADO') {
+        throw errorFuncional('No autorizado', 403);
+      }
+      const idEmp = idValido(payload.sub);
+      let esAdmin = false;
+
+      if (process.env.DYNAMODB_TABLE) {
+        const emp = idEmp ? await authRepository.findEmpleadoById(idEmp) : null;
+        esAdmin = Boolean(emp && emp.estadoEmp && (emp.cargoNombre === 'ADMINISTRADOR' || emp.cargo === 'ADMINISTRADOR'));
+      } else {
+        const emp = idEmp
+          ? await prisma.empleado.findUnique({
+              where: { idEmp },
+              include: { cargo: true },
+            })
+          : null;
+        esAdmin = Boolean(emp && emp.estadoEmp && emp.cargo?.nombreCargo === 'ADMINISTRADOR');
+      }
+
+      if (!esAdmin) {
+        throw errorFuncional('Solo los administradores pueden subir imágenes de productos o tienda', 403);
+      }
+      if (!storageService.esMimePermitidoImagen(mimeType)) {
+        throw errorFuncional('MIME type no permitido para imagen (JPG, PNG, WEBP).', 400);
+      }
+    }
+
+    const nombreLimpio = texto(dto.nombreOriginal);
+    const data = await storageService.generarPresignedUpload({
+      folder: carpeta,
+      mimeType,
+      extensionOriginal: extension || undefined,
+      nombreArchivoOriginal: nombreLimpio || undefined,
+    });
+
+    return {
+      ...data,
+      rutaPublica: data.publicUrl,
+      expiresIn: 900,
+    };
+  }
+}
+
+export const uploadsService = new UploadsService();

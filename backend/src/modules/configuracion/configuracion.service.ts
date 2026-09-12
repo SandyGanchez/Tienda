@@ -1,6 +1,7 @@
 import { prisma } from '../../config/prisma';
 import { texto, errorFuncional } from '../../utils/formatters';
-import { normalizarConfiguracionTransferencia, pedidosService } from '../pedidos/pedidos.service';
+import { normalizarConfiguracionTransferencia } from '../../dtos/pedido.dto';
+import { pedidosService } from '../pedidos/pedidos.service';
 import { configuracionRepository } from '../../db/repositories/configuracion.repository';
 
 function booleanoEstricto(value: unknown): boolean | null {

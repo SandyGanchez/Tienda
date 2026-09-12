@@ -1,126 +1,39 @@
-import crypto from 'crypto';
-import fs from 'fs';
-import path from 'path';
 import { prisma, DbClient } from '../../config/prisma';
 import { env } from '../../config/env';
-import {
-  eliminarObjetoS3,
-  esUrlS3,
-  extraerKeyS3,
-  generarPresignedDownload,
-  generarPresignedUpload,
-  limpiarNombreArchivo,
-  s3Bucket,
-  s3Region,
-} from '../../config/s3';
+import { esUrlS3 } from '../../config/s3';
 import { comprobantesUploadDir } from '../../middlewares/upload.middleware';
-import { dineroCentavos, errorFuncional, idValido,
-  encodeId, texto, uuidValido } from '../../utils/formatters';
+import { dineroCentavos, errorFuncional, idValido, encodeId, texto, uuidValido } from '../../utils/formatters';
 import { pedidoRepository } from '../../db/repositories/pedido.repository';
 import { productoRepository } from '../../db/repositories/producto.repository';
 import { configuracionRepository } from '../../db/repositories/configuracion.repository';
+import {
+  folioPedido,
+  normalizarConfiguracionTransferencia,
+  normalizarPedido,
+  normalizarPedidoAdmin,
+  configuracionTransferenciaPedido,
+} from '../../dtos/pedido.dto';
+import { storageService } from '../../services/storage.service';
 
 const HORAS_RESERVA_PEDIDO = 2;
 const MAX_TOTAL_PEDIDO_CENTAVOS = 9999999999;
 
-export function folioPedido(idPedido: number): string {
-  return `PED-${String(idPedido).padStart(6, '0')}`;
-}
-
-export function normalizarConfiguracionTransferencia(row: any, incluirAdministrativo = false) {
-  if (!row) return null;
-  const configuracion = {
-    banco: row.banco,
-    titular: row.titular,
-    clabe: row.clabe,
-    numeroCuenta: row.numeroCuenta,
-    instrucciones: row.instrucciones,
-  };
-  return incluirAdministrativo
-    ? {
-        idConfiguracion: Number(row.idConfiguracion),
-        idSuc: Number(row.idSuc),
-        ...configuracion,
-        activo: Boolean(row.activo),
-        fechaActualizacion: row.fechaActualizacion,
-      }
-    : configuracion;
-}
-
-export function normalizarPedido(row: any) {
-  return {
-    id: encodeId(Number(row.idPedido)),
-    folio: folioPedido(row.idPedido),
-    uuidPedido: row.uuidPedido,
-    fechaPedido: row.fechaPedido,
-    fechaLimitePago: row.fechaLimitePago,
-    estado: row.estado,
-    total: Number(row.total),
-    tieneComprobante: Boolean(row.comprobanteRuta),
-    fechaComprobante: row.fechaComprobante || null,
-    motivoRechazo: row.motivoRechazo || null,
-    idVenta: row.idVenta === null || row.idVenta === undefined ? null : encodeId(Number(row.idVenta)),
-    fechaRevision: row.fechaRevision || null,
-  };
-}
-
-export function normalizarPedidoAdmin(row: any) {
-  return {
-    ...normalizarPedido(row),
-    cliente: {
-      id: encodeId(Number(row.cliente?.idCliente || row.idCliente)),
-      nombre: [row.cliente?.nombreCliente, row.cliente?.apellidoPatCliente, row.cliente?.apellidoMatCliente]
-        .filter(Boolean)
-        .join(' '),
-      correo: row.cliente?.correoCliente || '',
-      foto: row.cliente?.fotoPerfil || null,
-    },
-  };
-}
-
-export function configuracionTransferenciaPedido(pedido: any) {
-  const tieneSnapshot = [
-    pedido.bancoSnapshot,
-    pedido.titularSnapshot,
-    pedido.clabeSnapshot,
-    pedido.numeroCuentaSnapshot,
-    pedido.instruccionesSnapshot,
-  ].some((valor) => valor !== null && valor !== undefined);
-  if (!tieneSnapshot) return null;
-  return {
-    banco: pedido.bancoSnapshot,
-    titular: pedido.titularSnapshot,
-    clabe: pedido.clabeSnapshot,
-    numeroCuenta: pedido.numeroCuentaSnapshot,
-    instrucciones: pedido.instruccionesSnapshot,
-  };
-}
+export {
+  folioPedido,
+  normalizarConfiguracionTransferencia,
+  normalizarPedido,
+  normalizarPedidoAdmin,
+  configuracionTransferenciaPedido,
+};
 
 export function resolverComprobantePrivado(nombreFisico?: string | null): string | null {
-  if (!nombreFisico || path.basename(nombreFisico) !== nombreFisico) return null;
-  const raiz = path.resolve(comprobantesUploadDir);
-  const ruta = path.resolve(raiz, nombreFisico);
-  const relativa = path.relative(raiz, ruta);
-  if (!relativa || relativa.startsWith('..') || path.isAbsolute(relativa) || !fs.existsSync(ruta)) return null;
-  return ruta;
+  return storageService.resolverComprobantePrivado(nombreFisico);
 }
 
 export function mimeRealComprobante(rutaArchivo: string): string | null {
-  const descriptor = fs.openSync(rutaArchivo, 'r');
-  try {
-    const buffer = Buffer.alloc(12);
-    const leidos = fs.readSync(descriptor, buffer, 0, buffer.length, 0);
-    if (leidos >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return 'image/jpeg';
-    if (leidos >= 8 && buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])))
-      return 'image/png';
-    if (leidos >= 12 && buffer.subarray(0, 4).toString() === 'RIFF' && buffer.subarray(8, 12).toString() === 'WEBP')
-      return 'image/webp';
-    if (leidos >= 5 && buffer.subarray(0, 5).toString() === '%PDF-') return 'application/pdf';
-    return null;
-  } finally {
-    fs.closeSync(descriptor);
-  }
+  return storageService.detectarMimeReal(rutaArchivo);
 }
+
 
 export class PedidosService {
   async obtenerSucursalDisponibleCliente() {
@@ -277,9 +190,9 @@ export class PedidosService {
     let comprobanteUrl: string | null = null;
     if (p.comprobanteRuta) {
       try {
-        if (esUrlS3(p.comprobanteRuta)) {
-          const key = extraerKeyS3(p.comprobanteRuta) || p.comprobanteRuta;
-          comprobanteUrl = await generarPresignedDownload(key, p.comprobanteNombre, p.comprobanteMime);
+        if (storageService.esS3(p.comprobanteRuta)) {
+          const key = storageService.extraerKey(p.comprobanteRuta) || p.comprobanteRuta;
+          comprobanteUrl = await storageService.generarPresignedDownload(key, p.comprobanteNombre, p.comprobanteMime);
         }
       } catch (err) {
         console.error('Error al generar presigned download para comprobante:', err);
@@ -387,9 +300,9 @@ export class PedidosService {
     let comprobanteUrl: string | null = null;
     if (p.comprobanteRuta) {
       try {
-        if (esUrlS3(p.comprobanteRuta)) {
-          const key = extraerKeyS3(p.comprobanteRuta) || p.comprobanteRuta;
-          comprobanteUrl = await generarPresignedDownload(key, p.comprobanteNombre, p.comprobanteMime);
+        if (storageService.esS3(p.comprobanteRuta)) {
+          const key = storageService.extraerKey(p.comprobanteRuta) || p.comprobanteRuta;
+          comprobanteUrl = await storageService.generarPresignedDownload(key, p.comprobanteNombre, p.comprobanteMime);
         }
       } catch (err) {
         console.error('Error al generar presigned download para comprobante admin:', err);
@@ -631,7 +544,7 @@ export class PedidosService {
     if (!['PENDIENTE_PAGO', 'EN_REVISION', 'RECHAZADO'].includes(pedido.estado)) {
       throw errorFuncional(`No se puede subir comprobante a un pedido en estado ${pedido.estado}.`, 409);
     }
-    return await generarPresignedUpload({
+    return await storageService.generarPresignedUpload({
       folder: 'comprobantes',
       mimeType,
       extensionOriginal,
@@ -661,9 +574,10 @@ export class PedidosService {
       }
 
       const anteriorRuta = pedido.comprobanteRuta;
-      const key = extraerKeyS3(keyOUrl) || keyOUrl;
+      const key = storageService.extraerKey(keyOUrl) || keyOUrl;
       const mime = mimeType || 'image/jpeg';
-      const nombreSeguro = limpiarNombreArchivo(nombreOriginal || path.basename(key) || 'comprobante.jpg');
+      const baseFilename = key.includes('/') ? key.split('/').pop() : key;
+      const nombreSeguro = storageService.sanitizarNombre(nombreOriginal || baseFilename || 'comprobante.jpg');
 
       await tx.pedidoCliente.update({
         where: { idPedido },
@@ -678,12 +592,7 @@ export class PedidosService {
       });
 
       if (anteriorRuta && anteriorRuta !== key) {
-        if (esUrlS3(anteriorRuta)) {
-          void eliminarObjetoS3(anteriorRuta);
-        } else {
-          const rutaLocal = resolverComprobantePrivado(anteriorRuta);
-          if (rutaLocal) fs.unlink(rutaLocal, () => undefined);
-        }
+        void storageService.eliminarArchivo(anteriorRuta, comprobantesUploadDir, '');
       }
 
       return await this.obtenerPedidoSeguro(idPedido, idCliente, tx);
@@ -723,12 +632,7 @@ export class PedidosService {
       });
 
       if (anteriorComprobante) {
-        if (esUrlS3(anteriorComprobante)) {
-          void eliminarObjetoS3(anteriorComprobante);
-        } else {
-          const rutaLocal = resolverComprobantePrivado(anteriorComprobante);
-          if (rutaLocal) fs.unlink(rutaLocal, () => undefined);
-        }
+        void storageService.eliminarArchivo(anteriorComprobante, comprobantesUploadDir, '');
       }
 
       return await this.obtenerPedidoAdmin(idPedido, idSuc, tx);

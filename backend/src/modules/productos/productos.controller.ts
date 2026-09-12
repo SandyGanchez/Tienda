@@ -2,7 +2,6 @@ import fs from 'fs';
 import { Request, Response } from 'express';
 import { productosService } from './productos.service';
 import { idValido, texto } from '../../utils/formatters';
-import { prisma } from '../../config/prisma';
 
 export class ProductosController {
   async listarAdmin(req: Request, res: Response): Promise<void> {
@@ -54,19 +53,13 @@ export class ProductosController {
     }
 
     try {
-      const productoExistente = await productosService.obtenerProducto(idPro);
-      if (!productoExistente) {
-        fs.unlink(req.file.path, () => undefined);
+      const producto = await productosService.actualizarImagenLocal(idPro, req.file.filename, req.file.path);
+      res.json(producto);
+    } catch (error: any) {
+      if (error?.status === 404) {
         res.status(404).json({ message: 'Producto no encontrado' });
         return;
       }
-
-      const rutaPublica = `/uploads/productos/${req.file.filename}`;
-      await prisma.producto.update({ where: { idPro }, data: { imagenPro: rutaPublica } });
-      const producto = await productosService.obtenerProducto(idPro);
-      res.json(producto);
-    } catch (error) {
-      fs.unlink(req.file.path, () => undefined);
       throw error;
     }
   }
