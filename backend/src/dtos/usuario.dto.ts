@@ -2,8 +2,10 @@ import { encodeId } from '../utils/formatters';
 
 export const toEmpleadoDto = (empleado: any) => {
   if (!empleado) return null;
+  const encodedId = encodeId(empleado.idEmp);
   return {
-    id: encodeId(empleado.idEmp),
+    id: encodedId,
+    idEmp: encodedId,
     nombreCompleto: [empleado.nombreEmp, empleado.apellidoPatEmp, empleado.apellidoMatEmp].filter(Boolean).join(' '),
     nombre: empleado.nombreEmp,
     apellidoPat: empleado.apellidoPatEmp,
@@ -12,24 +14,27 @@ export const toEmpleadoDto = (empleado: any) => {
     telefono: empleado.telefono,
     fechaIngreso: empleado.fechaIngreso,
     fotoPerfil: empleado.fotoPerfil,
-    estado: empleado.estadoEmp,
-    estadoEmp: empleado.estadoEmp,
+    estado: Boolean(empleado.estadoEmp),
+    estadoEmp: Boolean(empleado.estadoEmp),
     cargo: empleado.cargo?.nombreCargo || empleado.cargo || null,
     sucursal: empleado.cargo?.sucursal?.nombreSuc || empleado.nombreSuc || null,
+    nombreSuc: empleado.cargo?.sucursal?.nombreSuc || empleado.nombreSuc || null,
   };
 };
 
 export const toClienteDto = (cliente: any) => {
   if (!cliente) return null;
+  const encodedId = encodeId(cliente.idCliente);
   return {
-    id: encodeId(cliente.idCliente),
+    id: encodedId,
+    idCliente: encodedId,
     nombreCompleto: [cliente.nombreCliente, cliente.apellidoPatCliente, cliente.apellidoMatCliente].filter(Boolean).join(' '),
     nombre: cliente.nombreCliente,
     apellidoPat: cliente.apellidoPatCliente,
     apellidoMat: cliente.apellidoMatCliente,
-    correo: cliente.correoCliente,
+    correo: cliente.correoCliente || cliente.correo,
     fotoPerfil: cliente.fotoPerfil,
-    estado: cliente.estadoCliente,
+    estado: Boolean(cliente.estadoCliente),
     fechaRegistro: cliente.fechaRegistro,
     ultimoAcceso: cliente.ultimoAcceso,
   };

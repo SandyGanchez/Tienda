@@ -24,9 +24,26 @@ export function normalizarConfiguracionTransferencia(row: any, incluirAdministra
     : configuracion;
 }
 
-export function normalizarPedido(row: any) {
+export function normalizarDetallePedido(d: any) {
+  const prodId = encodeId(d.idPro || d.id || d.productoId);
   return {
-    id: encodeId(Number(row.idPedido)),
+    id: prodId,
+    productoId: prodId,
+    idPro: prodId,
+    nombre: d.producto?.nombrePro || d.nombrePro || d.nombre || 'Producto',
+    imagen: d.producto?.imagenPro || d.imagenPro || d.imagen || null,
+    presentacion: d.presentacion ?? ([d.producto?.tamanoPro, d.producto?.presentacionPro].filter(Boolean).join(' · ') || null),
+    cantidad: Number(d.cantidad || 0),
+    precioUnitario: Number(d.precioUnitario || 0),
+    subtotal: Number(d.subtotal || 0),
+  };
+}
+
+export function normalizarPedido(row: any) {
+  const encodedId = encodeId(Number(row.idPedido));
+  return {
+    id: encodedId,
+    idPedido: encodedId,
     folio: folioPedido(row.idPedido),
     uuidPedido: row.uuidPedido,
     fechaPedido: row.fechaPedido,
@@ -37,15 +54,18 @@ export function normalizarPedido(row: any) {
     fechaComprobante: row.fechaComprobante || null,
     motivoRechazo: row.motivoRechazo || null,
     idVenta: row.idVenta === null || row.idVenta === undefined ? null : encodeId(Number(row.idVenta)),
+    ventaId: row.idVenta === null || row.idVenta === undefined ? null : encodeId(Number(row.idVenta)),
     fechaRevision: row.fechaRevision || null,
   };
 }
 
 export function normalizarPedidoAdmin(row: any) {
+  const clienteId = encodeId(Number(row.cliente?.idCliente || row.idCliente));
   return {
     ...normalizarPedido(row),
     cliente: {
-      id: encodeId(Number(row.cliente?.idCliente || row.idCliente)),
+      id: clienteId,
+      idCliente: clienteId,
       nombre: [row.cliente?.nombreCliente, row.cliente?.apellidoPatCliente, row.cliente?.apellidoMatCliente]
         .filter(Boolean)
         .join(' '),

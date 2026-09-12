@@ -9,6 +9,7 @@ import { configuracionRepository } from '../../db/repositories/configuracion.rep
 import {
   folioPedido,
   normalizarConfiguracionTransferencia,
+  normalizarDetallePedido,
   normalizarPedido,
   normalizarPedidoAdmin,
   configuracionTransferenciaPedido,
@@ -22,6 +23,7 @@ const MAX_TOTAL_PEDIDO_CENTAVOS = 9999999999;
 export {
   folioPedido,
   normalizarConfiguracionTransferencia,
+  normalizarDetallePedido,
   normalizarPedido,
   normalizarPedidoAdmin,
   configuracionTransferenciaPedido,
@@ -199,15 +201,7 @@ export class PedidosService implements IPedidosService {
         fechaRevision: null,
         comprobanteUrl: p.comprobanteUrl || null,
         comprobante: p.comprobanteUrl ? { nombre: 'comprobante', mime: 'image/jpeg', fecha: p.fechaCreacion, url: p.comprobanteUrl } : null,
-        items: (p.detalles || []).map((d: any) => ({
-          productoId: encodeId(d.idPro),
-          nombre: d.nombrePro,
-          imagen: d.imagenPro || null,
-          presentacion: null,
-          cantidad: d.cantidad,
-          precioUnitario: Number(d.precioUnitario),
-          subtotal: Number(d.subtotal),
-        })),
+        items: (p.detalles || []).map(normalizarDetallePedido),
         configuracionTransferencia: null,
       };
     }
@@ -261,15 +255,7 @@ export class PedidosService implements IPedidosService {
             url: comprobanteUrl,
           }
         : null,
-      items: p.detalles.map((d) => ({
-        productoId: encodeId(d.idPro),
-        nombre: d.producto?.nombrePro || 'Producto',
-        imagen: d.producto?.imagenPro || null,
-        presentacion: [d.producto?.tamanoPro, d.producto?.presentacionPro].filter(Boolean).join(' · ') || null,
-        cantidad: d.cantidad,
-        precioUnitario: Number(d.precioUnitario),
-        subtotal: Number(d.subtotal),
-      })),
+      items: p.detalles.map(normalizarDetallePedido),
       configuracionTransferencia,
     };
   }
@@ -302,15 +288,7 @@ export class PedidosService implements IPedidosService {
         comprobante: p.comprobanteUrl ? { nombre: 'comprobante', mime: 'image/jpeg', fecha: p.fechaCreacion, url: p.comprobanteUrl } : null,
         empleadoRevisa: null,
         configuracionTransferencia: null,
-        items: (p.detalles || []).map((item: any) => ({
-          idPro: Number(item.idPro),
-          nombre: item.nombrePro,
-          imagen: item.imagenPro || null,
-          presentacion: null,
-          cantidad: Number(item.cantidad),
-          precioUnitario: Number(item.precioUnitario),
-          subtotal: Number(item.subtotal),
-        })),
+        items: (p.detalles || []).map(normalizarDetallePedido),
       };
     }
 
@@ -373,15 +351,7 @@ export class PedidosService implements IPedidosService {
         : null,
       empleadoRevisa: empRevisa,
       configuracionTransferencia,
-      items: p.detalles.map((item) => ({
-        idPro: Number(item.idPro),
-        nombre: item.producto?.nombrePro || 'Producto',
-        imagen: item.producto?.imagenPro || null,
-        presentacion: [item.producto?.tamanoPro, item.producto?.presentacionPro].filter(Boolean).join(' · ') || null,
-        cantidad: Number(item.cantidad),
-        precioUnitario: Number(item.precioUnitario),
-        subtotal: Number(item.subtotal),
-      })),
+      items: p.detalles.map(normalizarDetallePedido),
     };
   }
 

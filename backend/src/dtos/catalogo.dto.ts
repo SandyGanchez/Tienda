@@ -29,9 +29,11 @@ export const toSucursalDto = (sucursal: any) => {
           .join(', ') || null
     : null;
 
+  const encodedId = encodeId(sucursal.idSuc);
   return {
-    id: encodeId(sucursal.idSuc),
-    idSuc: sucursal.idSuc,
+    id: encodedId,
+    idSuc: encodedId,
+    sucursalId: encodedId,
     nombre: sucursal.nombreSuc,
     nombreSuc: sucursal.nombreSuc,
     descripcion: sucursal.descripcionSuc,
@@ -52,9 +54,11 @@ export const toSucursalDto = (sucursal: any) => {
 
 export const toSucursalPublicaDto = (sucursal: any) => {
   if (!sucursal) return null;
+  const encodedId = encodeId(sucursal.idSuc);
   return {
-    id: encodeId(sucursal.idSuc),
-    idSuc: sucursal.idSuc,
+    id: encodedId,
+    idSuc: encodedId,
+    sucursalId: encodedId,
     nombre: sucursal.nombreSuc,
     nombreSuc: sucursal.nombreSuc,
     descripcion: sucursal.descripcionSuc,

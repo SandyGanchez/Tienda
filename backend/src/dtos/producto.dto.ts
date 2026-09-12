@@ -2,20 +2,22 @@ import { encodeId } from '../utils/formatters';
 
 export const toProductoDto = (producto: any) => {
   if (!producto) return null;
+  const prodId = encodeId(producto.idPro);
   return {
-    id: encodeId(producto.idPro),
+    id: prodId,
+    idPro: prodId,
     nombre: producto.nombrePro,
     precioVenta: Number(producto.precioVentaPro),
     costo: producto.costoPro !== null && producto.costoPro !== undefined ? Number(producto.costoPro) : null,
-    existencia: producto.existenciaPro,
-    stockMinimo: producto.stockMinimoPro,
-    tamano: producto.tamanoPro,
-    presentacion: producto.presentacionPro,
-    tipo: producto.tipoPro,
-    codigoQR: producto.codigoQR,
-    sku: producto.skuPro,
-    imagen: producto.imagenPro,
-    activo: producto.activoPro,
+    existencia: producto.existenciaPro ?? 0,
+    stockMinimo: producto.stockMinimoPro !== null && producto.stockMinimoPro !== undefined ? Number(producto.stockMinimoPro) : null,
+    tamano: producto.tamanoPro || null,
+    presentacion: producto.presentacionPro || null,
+    tipo: producto.tipoPro || null,
+    codigoQR: producto.codigoQR || null,
+    sku: producto.skuPro || null,
+    imagen: producto.imagenPro || null,
+    activo: Boolean(producto.activoPro),
     idMarca: encodeId(producto.idMarca || producto.marca?.idMarca || producto.marca?.id) || null,
     idCat: encodeId(producto.idCat || producto.categoria?.idCat || producto.categoria?.id) || null,
     marca: (producto.idMarca || producto.marca || producto.nombreMarca || producto.marcaNombre) ? {
@@ -31,18 +33,21 @@ export const toProductoDto = (producto: any) => {
 
 export const toProductoListDto = (producto: any) => {
   if (!producto) return null;
+  const prodId = encodeId(producto.idPro);
   return {
-    id: encodeId(producto.idPro),
+    id: prodId,
+    idPro: prodId,
     nombre: producto.nombrePro,
     precioVenta: Number(producto.precioVentaPro),
     costo: producto.costoPro !== null && producto.costoPro !== undefined ? Number(producto.costoPro) : null,
-    existencia: producto.existenciaPro || 0,
-    stockMinimo: producto.stockMinimoPro,
-    codigoQR: producto.codigoQR,
-    sku: producto.skuPro,
-    imagen: producto.imagenPro,
-    tamano: producto.tamanoPro,
-    presentacion: producto.presentacionPro,
+    existencia: producto.existenciaPro ?? 0,
+    stockMinimo: producto.stockMinimoPro !== null && producto.stockMinimoPro !== undefined ? Number(producto.stockMinimoPro) : null,
+    codigoQR: producto.codigoQR || null,
+    sku: producto.skuPro || null,
+    imagen: producto.imagenPro || null,
+    tamano: producto.tamanoPro || null,
+    presentacion: producto.presentacionPro || null,
+    activo: Boolean(producto.activoPro),
     idMarca: encodeId(producto.idMarca || producto.marca?.idMarca || producto.marca?.id) || null,
     idCat: encodeId(producto.idCat || producto.categoria?.idCat || producto.categoria?.id) || null,
     marca: (producto.idMarca || producto.marca || producto.nombreMarca || producto.marcaNombre) ? {
