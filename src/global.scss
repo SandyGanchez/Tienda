@@ -464,4 +464,30 @@ input {
   }
 }
 
+/* ==========================================================================
+   Custom Datepicker Popover & Datetime
+   ========================================================================== */
+ion-popover.custom-datepicker-popover {
+  --width: 350px;
+  --max-width: 95vw;
+  --border-radius: 20px;
+
+  &::part(content) {
+    border-radius: 20px;
+    box-shadow: 0 16px 40px -4px rgba(47, 45, 50, 0.22);
+    border: 1px solid rgba(149, 142, 148, 0.2);
+    overflow: hidden;
+  }
+}
+
+ion-datetime.custom-ion-datetime {
+  --background: transparent;
+  font-family: inherit;
+  border-radius: 16px;
+
+  &::part(calendar-day) {
+    border-radius: 12px;
+  }
+}
+
 

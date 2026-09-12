@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, switchMap } from 'rxjs';
+import { catchError, Observable, switchMap } from 'rxjs';
 import { CrearProductoDto, Producto, ProductoResponse } from '../models/productos';
 import { environment } from '../../environments/environment';
 import { ImagenesService } from './imagenes.service';
@@ -76,6 +76,11 @@ export class ProductosService {
               ),
             ),
         ),
+        catchError(() => {
+          const formData = new FormData();
+          formData.append('imagen', imagen, nombreArchivo || 'producto.jpg');
+          return this.http.post<ProductoResponse>(`${this.apiUrl}/${idPro}/imagen`, formData);
+        }),
       );
   }
 

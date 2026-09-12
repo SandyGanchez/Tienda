@@ -545,6 +545,14 @@ export class ProductosPage implements OnInit {
     this.leyendoCodigo = true;
     await this.scanFeedback.preparar();
     try {
+      if (!Capacitor.isNativePlatform()) {
+        const soporte = await BarcodeScanner.isSupported().catch(() => ({ supported: false }));
+        if (!soporte.supported) {
+          this.leyendoCodigo = false;
+          await this.tomarFotoParaCodigo();
+          return;
+        }
+      }
       const soporte = await BarcodeScanner.isSupported();
       if (!soporte.supported) {
         this.mensajeBusqueda = 'La cámara no está disponible. Puedes escribir el código manualmente.';
@@ -596,7 +604,7 @@ export class ProductosPage implements OnInit {
     this.leyendoCodigo = true;
     await this.scanFeedback.preparar();
     try {
-      if (origen === CameraSource.Camera) {
+      if (origen === CameraSource.Camera && Capacitor.isNativePlatform()) {
         const permisos = await Camera.checkPermissions();
         const estado =
           permisos.camera === 'granted' ? permisos : await Camera.requestPermissions({ permissions: ['camera'] });
@@ -604,7 +612,7 @@ export class ProductosPage implements OnInit {
           this.mensajeBusqueda = 'Necesitas permitir acceso a la cámara. Puedes escribir el código manualmente.';
           return;
         }
-      } else if (origen === CameraSource.Photos) {
+      } else if (origen === CameraSource.Photos && Capacitor.isNativePlatform()) {
         try {
           const permisos = await Camera.checkPermissions();
           if (permisos.photos !== 'granted') {
@@ -620,13 +628,34 @@ export class ProductosPage implements OnInit {
       }
       const foto = await this.obtenerFoto(origen);
       // En dispositivos nativos (Android/iOS), readBarcodesFromImage requiere una URI de archivo local válida
-      // (por ejemplo file:///data/user/0/... o content://...).
-      // foto.webPath es una URL HTTP de WebView (http://localhost/_capacitor_file_/...) que ContentResolver en Android NO puede abrir.
-      // Por eso priorizamos foto.path y nos aseguramos de que tenga el esquema file:// si es una ruta absoluta.
       let ruta = foto.path || foto.webPath;
       if (!ruta) throw new Error('No se obtuvo una imagen');
       if (ruta.startsWith('/') && !ruta.startsWith('file://') && !ruta.startsWith('content://')) {
         ruta = `file://${ruta}`;
+      }
+
+      if (!Capacitor.isNativePlatform()) {
+        if (typeof (window as any).BarcodeDetector !== 'undefined') {
+          try {
+            const img = new Image();
+            img.src = foto.webPath || ruta;
+            await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
+            const detector = new (window as any).BarcodeDetector();
+            const detectados = await detector.detect(img);
+            if (detectados.length > 0) {
+              const codigo = detectados[0].rawValue?.trim();
+              if (codigo) {
+                await this.scanFeedback.feedbackLecturaCorrecta();
+                await this.procesarCodigo(codigo);
+                return;
+              }
+            }
+          } catch (e) {
+            console.warn('BarcodeDetector web:', e);
+          }
+        }
+        this.mensajeBusqueda = 'Foto tomada. Puedes escribir o confirmar el código en el campo de texto.';
+        return;
       }
 
       const resultado = await BarcodeScanner.readBarcodesFromImage({
@@ -774,13 +803,13 @@ export class ProductosPage implements OnInit {
       allowEditing: false,
       saveToGallery: false,
       correctOrientation: true,
-      webUseInput: true,
+      webUseInput: false,
     });
   }
 
   private async prepararFotoProducto(origen: CameraSource): Promise<void> {
     try {
-      if (origen === CameraSource.Camera) {
+      if (origen === CameraSource.Camera && Capacitor.isNativePlatform()) {
         const permisos = await Camera.checkPermissions();
         const estado =
           permisos.camera === 'granted' ? permisos : await Camera.requestPermissions({ permissions: ['camera'] });
@@ -809,10 +838,37 @@ export class ProductosPage implements OnInit {
       this.previewFotoPendiente = preview;
     } catch (error: unknown) {
       if (!this.esCancelacionCamara(error)) {
-        console.error('No se pudo preparar la foto del producto', error);
-        await this.mostrarFeedback('No pudimos preparar la fotografía seleccionada.', 'danger');
+        console.warn('Fallo Camera.getPhoto en producto, abriendo input web fallback:', error);
+        this.abrirInputWebFotoProducto(origen);
       }
     }
+  }
+
+  private abrirInputWebFotoProducto(origen: CameraSource): void {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/jpeg,image/png,image/webp';
+    if (origen === CameraSource.Camera) {
+      input.capture = 'environment';
+    }
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const tiposPermitidos = ['image/jpeg', 'image/png', 'image/webp'];
+      if (!tiposPermitidos.includes(file.type)) {
+        await this.mostrarFeedback('Selecciona una imagen JPEG, PNG o WEBP.', 'warning');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        await this.mostrarFeedback('La imagen no puede superar 5 MB.', 'warning');
+        return;
+      }
+      const extension = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+      this.fotoProductoPendiente = file;
+      this.nombreFotoPendiente = `producto.${extension}`;
+      this.previewFotoPendiente = URL.createObjectURL(file);
+    };
+    input.click();
   }
 
   private reiniciarFotoPendiente(): void {

@@ -96,6 +96,9 @@ export class ConfiguracionTiendaComponent implements OnChanges, OnInit {
     this.guardando = true;
     try {
       const idSucActual = this.sucursalActual ? (this.sucursalActual.id || this.sucursalActual.sucursalId || this.sucursalActual.idSuc) : null;
+      if (!this.form.nombreSuc?.trim() && this.sucursalActual) {
+        this.form.nombreSuc = (this.sucursalActual.nombreSuc || this.sucursalActual.nombre || 'Mi Tienda').trim();
+      }
       let guardada = idSucActual
         ? await firstValueFrom(this.api.actualizarSucursal(idSucActual, this.form))
         : await firstValueFrom(this.api.crearSucursal(this.form));
@@ -127,7 +130,7 @@ export class ConfiguracionTiendaComponent implements OnChanges, OnInit {
   }
 
   resolverLogo(): string | null {
-    return this.previewLogo || this.api.resolverImagen(this.sucursalActual?.logoSuc);
+    return this.previewLogo || this.api.resolverImagen(this.sucursalActual?.logoSuc || this.sucursalActual?.logo);
   }
 
   async guardarTransferencia(): Promise<void> {
@@ -153,12 +156,12 @@ export class ConfiguracionTiendaComponent implements OnChanges, OnInit {
     const sucursal = this.sucursalActual;
     this.form = sucursal
       ? {
-          nombreSuc: sucursal.nombreSuc,
-          descripcionSuc: sucursal.descripcionSuc,
-          telefonoSuc: sucursal.telefonoSuc,
-          correoSuc: sucursal.correoSuc,
-          paginaWebSuc: sucursal.paginaWebSuc,
-          redSocialSuc: sucursal.redSocialSuc,
+          nombreSuc: sucursal.nombreSuc || sucursal.nombre || null,
+          descripcionSuc: sucursal.descripcionSuc ?? sucursal.descripcion ?? null,
+          telefonoSuc: sucursal.telefonoSuc ?? sucursal.telefono ?? null,
+          correoSuc: sucursal.correoSuc ?? sucursal.correo ?? null,
+          paginaWebSuc: sucursal.paginaWebSuc ?? sucursal.paginaWeb ?? null,
+          redSocialSuc: sucursal.redSocialSuc ?? sucursal.redSocial ?? null,
         }
       : this.vacio();
     this.errores = {};
@@ -243,7 +246,12 @@ export class ConfiguracionTiendaComponent implements OnChanges, OnInit {
 
   private async prepararLogo(source: CameraSource): Promise<void> {
     try {
-      const foto = await Camera.getPhoto({ quality: 85, resultType: CameraResultType.Uri, source });
+      const foto = await Camera.getPhoto({
+        quality: 85,
+        resultType: CameraResultType.Uri,
+        source,
+        webUseInput: false,
+      });
       const preview = foto.webPath || foto.path;
       if (!preview) throw new Error('No se recibió una imagen');
       const blob = await (await fetch(preview)).blob();
@@ -260,8 +268,35 @@ export class ConfiguracionTiendaComponent implements OnChanges, OnInit {
       this.nombreLogo = `logo.${blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : 'jpg'}`;
     } catch (error: unknown) {
       const mensaje = error instanceof Error ? error.message.toLowerCase() : '';
-      if (!mensaje.includes('cancel')) await this.feedback('No pudimos preparar el logo.', 'danger');
+      if (!mensaje.includes('cancel')) {
+        this.abrirInputWebLogo(source);
+      }
     }
+  }
+
+  private abrirInputWebLogo(source: CameraSource): void {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/jpeg,image/png,image/webp';
+    if (source === CameraSource.Camera) {
+      input.capture = 'environment';
+    }
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+        await this.feedback('Selecciona una imagen JPEG, PNG o WEBP.', 'warning');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        await this.feedback('El logo no puede superar 5 MB.', 'warning');
+        return;
+      }
+      this.logoPendiente = file;
+      this.previewLogo = URL.createObjectURL(file);
+      this.nombreLogo = `logo.${file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'}`;
+    };
+    input.click();
   }
 
   private async feedback(message: string, color: 'success' | 'danger' | 'warning'): Promise<void> {

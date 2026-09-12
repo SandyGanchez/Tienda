@@ -10,7 +10,8 @@ import { sucursalRepository } from '../../db/repositories/sucursal.repository';
 
 
 export function validarSucursal(sucursal: any): string | null {
-  if (!texto(sucursal.nombreSuc)) return 'El nombre de la sucursal es obligatorio';
+  const nombre = texto(sucursal.nombreSuc || sucursal.nombre);
+  if (!nombre) return 'El nombre de la sucursal es obligatorio';
   const limites: Record<string, number> = {
     nombreSuc: 100,
     descripcionSuc: 255,
@@ -19,16 +20,24 @@ export function validarSucursal(sucursal: any): string | null {
     paginaWebSuc: 100,
     redSocialSuc: 100,
   };
+  const mapeados: Record<string, any> = {
+    nombreSuc: sucursal.nombreSuc || sucursal.nombre,
+    descripcionSuc: sucursal.descripcionSuc ?? sucursal.descripcion,
+    telefonoSuc: sucursal.telefonoSuc ?? sucursal.telefono,
+    correoSuc: sucursal.correoSuc ?? sucursal.correo,
+    paginaWebSuc: sucursal.paginaWebSuc ?? sucursal.paginaWeb,
+    redSocialSuc: sucursal.redSocialSuc ?? sucursal.redSocial,
+  };
   for (const [campo, limite] of Object.entries(limites)) {
-    if (texto(sucursal[campo]).length > limite) {
+    if (texto(mapeados[campo]).length > limite) {
       return `El campo ${campo} no puede superar ${limite} caracteres`;
     }
   }
-  const correo = texto(sucursal.correoSuc);
+  const correo = texto(mapeados.correoSuc);
   if (correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
     return 'El correo no tiene un formato válido';
   }
-  const paginaWeb = texto(sucursal.paginaWebSuc);
+  const paginaWeb = texto(mapeados.paginaWebSuc);
   if (paginaWeb) {
     try {
       const url = new URL(paginaWeb);
@@ -198,15 +207,20 @@ export class CatalogosService {
     if (errorValidacion) {
       throw errorFuncional(errorValidacion, 400);
     }
+    const datosNormalizados = {
+      nombreSuc: texto(body.nombreSuc || body.nombre),
+      descripcionSuc: textoNullable(body.descripcionSuc ?? body.descripcion),
+      telefonoSuc: textoNullable(body.telefonoSuc ?? body.telefono),
+      correoSuc: textoNullable(body.correoSuc ?? body.correo),
+      paginaWebSuc: textoNullable(body.paginaWebSuc ?? body.paginaWeb),
+      redSocialSuc: textoNullable(body.redSocialSuc ?? body.redSocial),
+    };
+    if (process.env.DYNAMODB_TABLE) {
+      const creada = await sucursalRepository.create(datosNormalizados);
+      return toSucursalDto(creada);
+    }
     const nueva = await prisma.sucursal.create({
-      data: {
-        nombreSuc: texto(body.nombreSuc),
-        descripcionSuc: textoNullable(body.descripcionSuc),
-        telefonoSuc: textoNullable(body.telefonoSuc),
-        correoSuc: textoNullable(body.correoSuc),
-        paginaWebSuc: textoNullable(body.paginaWebSuc),
-        redSocialSuc: textoNullable(body.redSocialSuc),
-      },
+      data: datosNormalizados,
     });
     return await this.obtenerSucursal(nueva.idSuc);
   }
@@ -216,16 +230,21 @@ export class CatalogosService {
     if (errorValidacion) {
       throw errorFuncional(errorValidacion, 400);
     }
+    const datosNormalizados = {
+      nombreSuc: texto(body.nombreSuc || body.nombre),
+      descripcionSuc: textoNullable(body.descripcionSuc ?? body.descripcion),
+      telefonoSuc: textoNullable(body.telefonoSuc ?? body.telefono),
+      correoSuc: textoNullable(body.correoSuc ?? body.correo),
+      paginaWebSuc: textoNullable(body.paginaWebSuc ?? body.paginaWeb),
+      redSocialSuc: textoNullable(body.redSocialSuc ?? body.redSocial),
+    };
+    if (process.env.DYNAMODB_TABLE) {
+      await sucursalRepository.update(idSuc, datosNormalizados);
+      return await this.obtenerSucursal(idSuc);
+    }
     await prisma.sucursal.update({
       where: { idSuc },
-      data: {
-        nombreSuc: texto(body.nombreSuc),
-        descripcionSuc: textoNullable(body.descripcionSuc),
-        telefonoSuc: textoNullable(body.telefonoSuc),
-        correoSuc: textoNullable(body.correoSuc),
-        paginaWebSuc: textoNullable(body.paginaWebSuc),
-        redSocialSuc: textoNullable(body.redSocialSuc),
-      },
+      data: datosNormalizados,
     });
     return await this.obtenerSucursal(idSuc);
   }
@@ -296,9 +315,9 @@ export class CatalogosService {
   async listarTiendaPublica() {
     if (process.env.DYNAMODB_TABLE) {
       const sucursales = await sucursalRepository.getPublic(1);
-      return sucursales.map(toSucursalPublicaDto);
+      return sucursales.map(toSucursalPublicaDto).filter(Boolean);
     }
-    return await prisma.sucursal.findMany({
+    const sucursales = await prisma.sucursal.findMany({
       orderBy: { idSuc: 'asc' },
       select: {
         idSuc: true,
@@ -307,6 +326,7 @@ export class CatalogosService {
         logoSuc: true,
       },
     });
+    return sucursales.map(toSucursalPublicaDto).filter(Boolean);
   }
 
 }
