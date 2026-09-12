@@ -6,11 +6,39 @@ import { normalizarCaja } from '../../dtos/caja.dto';
 
 export { normalizarCaja };
 
+/**
+ * =========================================================================
+ * Dependency Inversion Principle (DIP) - Caja
+ * =========================================================================
+ * Abstracción ICajaService para desacoplar CajaController y permitir
+ * inyección de dependencias de repositorios.
+ */
+export interface ICajaService {
+  obtenerCajaActual(idEmp: number, client?: DbClient): Promise<any>;
+  calcularResumenCaja(caja: any, client?: DbClient): Promise<any>;
+  abrirCaja(idEmp: number, idSuc: number, uuidInput: string, fondoInicialInput: number | string): Promise<any>;
+  registrarMovimiento(
+    idEmp: number,
+    uuidInput: string,
+    tipoMovimiento: string,
+    conceptoInput: string,
+    montoInput: number | string,
+  ): Promise<any>;
+  listarMovimientos(idEmp: number): Promise<any>;
+  cerrarCaja(idEmp: number, efectivoContadoInput: number | string, observacionesInput?: string): Promise<any>;
+  historial(empleado: { idEmp: number; idSuc: number; cargo: string }, query: any): Promise<any>;
+  detalle(idSesionCaja: number, empleado: { idEmp: number; idSuc: number; cargo: string }): Promise<any>;
+}
 
-export class CajaService {
+export class CajaService implements ICajaService {
+  constructor(
+    private cajaRepo: any = cajaRepository,
+    private ventaRepo: any = ventaRepository,
+  ) {}
+
   async obtenerCajaActual(idEmp: number, client: DbClient = prisma) {
     if (process.env.DYNAMODB_TABLE) {
-      const abierta = await cajaRepository.getSesionAbierta(1);
+      const abierta = await this.cajaRepo.getSesionAbierta(1);
       return normalizarCaja(abierta);
     }
     const row = await client.sesionCaja.findFirst({
@@ -34,7 +62,7 @@ export class CajaService {
     }
 
     if (process.env.DYNAMODB_TABLE) {
-      const ventas = await ventaRepository.listVentas(caja.idSuc || 1, { idSesionCaja });
+      const ventas = await this.ventaRepo.listVentas(caja.idSuc || 1, { idSesionCaja });
       let totalVentas = 0;
       let totalEfectivo = 0;
       let totalTarjeta = 0;
@@ -129,11 +157,11 @@ export class CajaService {
     if (fondo === null || fondo < 0) throw errorFuncional('El fondo inicial no es válido', 400);
 
     if (process.env.DYNAMODB_TABLE) {
-      const activa = await cajaRepository.getSesionAbierta(idSuc);
+      const activa = await this.cajaRepo.getSesionAbierta(idSuc);
       if (activa) {
         throw errorFuncional('Ya tienes una caja abierta.', 409);
       }
-      const nueva = await cajaRepository.abrirSesion({
+      const nueva = await this.cajaRepo.abrirSesion({
         idSuc,
         idEmp,
         fondoInicial: fondo / 100,
@@ -197,7 +225,7 @@ export class CajaService {
       throw errorFuncional('El concepto es obligatorio y admite hasta 255 caracteres', 400);
 
     if (process.env.DYNAMODB_TABLE) {
-      const caja = await cajaRepository.getSesionAbierta(1);
+      const caja = await this.cajaRepo.getSesionAbierta(1);
       if (!caja) throw errorFuncional('No tienes una caja abierta.', 409);
       return {
         idMovimientoCaja: 1,
@@ -266,13 +294,13 @@ export class CajaService {
     if (observaciones.length > 1000) throw errorFuncional('Las observaciones son demasiado largas', 400);
 
     if (process.env.DYNAMODB_TABLE) {
-      const abierta = await cajaRepository.getSesionAbierta(1);
+      const abierta = await this.cajaRepo.getSesionAbierta(1);
       if (!abierta) throw errorFuncional('No tienes una caja abierta.', 409);
 
       const resumen = await this.calcularResumenCaja(abierta);
       const diferencia = contado / 100 - resumen.efectivoEsperado;
 
-      const cerrada = await cajaRepository.cerrarSesion(
+      const cerrada = await this.cajaRepo.cerrarSesion(
         abierta.idSesionCaja,
         {
           montoReal: contado / 100,
@@ -326,7 +354,7 @@ export class CajaService {
 
   async historial(empleado: { idEmp: number; idSuc: number; cargo: string }, query: any) {
     if (process.env.DYNAMODB_TABLE) {
-      const sesiones = await cajaRepository.listSesiones(empleado.idSuc || 1);
+      const sesiones = await this.cajaRepo.listSesiones(empleado.idSuc || 1);
       return sesiones.map(normalizarCaja);
     }
 

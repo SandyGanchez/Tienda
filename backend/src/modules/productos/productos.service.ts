@@ -5,8 +5,8 @@ import { env } from '../../config/env';
 import { productosUploadDir } from '../../middlewares/upload.middleware';
 import { idValido, texto, textoNullable, errorFuncional } from '../../utils/formatters';
 import { toProductoDto, toProductoListDto } from '../../dtos/producto.dto';
-import { productoRepository } from '../../db/repositories/producto.repository';
-import { storageService } from '../../services/storage.service';
+import { productoRepository, IProductoRepository } from '../../db/repositories/producto.repository';
+import { storageService, IStorageService } from '../../services/storage.service';
 import { CompositeProductLookupProvider, defaultProductLookupProvider } from './product-lookup.provider';
 
 
@@ -80,11 +80,15 @@ export interface IProductosService
     IProductoPosService {}
 
 export class ProductosService implements IProductosService {
-  constructor(private lookupProvider: CompositeProductLookupProvider = defaultProductLookupProvider) {}
+  constructor(
+    private lookupProvider: CompositeProductLookupProvider = defaultProductLookupProvider,
+    private repo: IProductoRepository = productoRepository,
+    private storage: IStorageService = storageService,
+  ) {}
 
   async obtenerProducto(idPro: number, client: DbClient = prisma) {
     if (process.env.DYNAMODB_TABLE) {
-      const p = await productoRepository.getProductoById(idPro);
+      const p = await this.repo.getProductoById(idPro);
       if (!p) return null;
       return toProductoDto(p);
     }
@@ -114,7 +118,7 @@ export class ProductosService implements IProductosService {
     const codigo = texto(codigoQR);
     if (!codigo) return false;
     if (process.env.DYNAMODB_TABLE) {
-      const existente = await productoRepository.findByCodigoQR(codigo);
+      const existente = await this.repo.findByCodigoQR(codigo);
       return Boolean(existente && existente.idPro !== Number(idPro));
     }
     const existente = await prisma.producto.findFirst({
@@ -129,8 +133,8 @@ export class ProductosService implements IProductosService {
 
   async listarAdmin() {
     if (process.env.DYNAMODB_TABLE) {
-      const prods = await productoRepository.listProductos(1);
-      return prods.map((p) => toProductoListDto(p));
+      const prods = await this.repo.listProductos(1);
+      return prods.map((p: any) => toProductoListDto(p));
     }
     const productos = await prisma.producto.findMany({
       orderBy: { nombrePro: 'asc' },
@@ -144,8 +148,8 @@ export class ProductosService implements IProductosService {
 
   async listarPos() {
     if (process.env.DYNAMODB_TABLE) {
-      const prods = await productoRepository.listProductos(1, { soloActivos: true });
-      return prods.map((p) => toProductoListDto(p));
+      const prods = await this.repo.listProductos(1, { soloActivos: true });
+      return prods.map((p: any) => toProductoListDto(p));
     }
     const productos = await prisma.producto.findMany({
       where: { activoPro: true },
@@ -160,8 +164,8 @@ export class ProductosService implements IProductosService {
 
   async listarPublico() {
     if (process.env.DYNAMODB_TABLE) {
-      const prods = await productoRepository.listProductos(1, { soloActivos: true });
-      return prods.map((p) => toProductoListDto(p));
+      const prods = await this.repo.listProductos(1, { soloActivos: true });
+      return prods.map((p: any) => toProductoListDto(p));
     }
     const productos = await prisma.producto.findMany({
       where: { activoPro: true },
@@ -176,7 +180,7 @@ export class ProductosService implements IProductosService {
 
   async buscarPorQR(codigoQR: string) {
     if (process.env.DYNAMODB_TABLE) {
-      const p = await productoRepository.findByCodigoQR(codigoQR);
+      const p = await this.repo.findByCodigoQR(codigoQR);
       if (!p) return null;
       return toProductoDto(p);
     }
@@ -212,7 +216,7 @@ export class ProductosService implements IProductosService {
     }
 
     if (process.env.DYNAMODB_TABLE) {
-      const nuevo = await productoRepository.createProducto({
+      const nuevo = await this.repo.createProducto({
         idSuc: 1,
         nombrePro: texto(body.nombre),
         precioVentaPro: Number(body.precio !== undefined ? body.precio : body.precioVenta),
@@ -273,7 +277,7 @@ export class ProductosService implements IProductosService {
     }
 
     if (process.env.DYNAMODB_TABLE) {
-      await productoRepository.updateProducto(idPro, {
+      await this.repo.updateProducto(idPro, {
         nombrePro: texto(body.nombre),
         precioVentaPro: Number(body.precio),
         costoPro: body.costo !== null && body.costo !== undefined && body.costo !== '' ? Number(body.costo) : 0,
@@ -324,7 +328,7 @@ export class ProductosService implements IProductosService {
     const rutaPublica = `/uploads/productos/${filename}`;
     try {
       if (process.env.DYNAMODB_TABLE) {
-        await productoRepository.updateProducto(idPro, { imagenPro: rutaPublica });
+        await this.repo.updateProducto(idPro, { imagenPro: rutaPublica });
       } else {
         await prisma.producto.update({ where: { idPro }, data: { imagenPro: rutaPublica } });
       }
@@ -340,7 +344,7 @@ export class ProductosService implements IProductosService {
     if (!producto) {
       throw errorFuncional('Producto no encontrado', 404);
     }
-    return await storageService.generarPresignedUpload({
+    return await this.storage.generarPresignedUpload({
       folder: 'productos',
       mimeType,
       extensionOriginal: extension,
@@ -359,7 +363,7 @@ export class ProductosService implements IProductosService {
       : `https://${env.AWS_BUCKET_NAME}.s3.${env.AWS_REGION}.amazonaws.com/${keyOUrl}`;
 
     if (process.env.DYNAMODB_TABLE) {
-      await productoRepository.updateProducto(idPro, { imagenPro: rutaFinal });
+      await this.repo.updateProducto(idPro, { imagenPro: rutaFinal });
     } else {
       await prisma.producto.update({
         where: { idPro },
@@ -368,7 +372,7 @@ export class ProductosService implements IProductosService {
     }
 
     if (anterior.imagen && anterior.imagen !== rutaFinal) {
-      eliminarUploadControlado(anterior.imagen, productosUploadDir, '/uploads/productos/');
+      void this.storage.eliminarArchivo(anterior.imagen, productosUploadDir, '/uploads/productos/');
     }
 
     return await this.obtenerProducto(idPro);
@@ -382,9 +386,9 @@ export class ProductosService implements IProductosService {
 
     if (process.env.DYNAMODB_TABLE) {
       if (producto.imagen) {
-        eliminarUploadControlado(producto.imagen, productosUploadDir, '/uploads/productos/');
+        void this.storage.eliminarArchivo(producto.imagen, productosUploadDir, '/uploads/productos/');
       }
-      await productoRepository.deleteProducto(idPro);
+      await this.repo.deleteProducto(idPro);
       return { message: 'Producto eliminado correctamente' };
     }
 
@@ -403,7 +407,7 @@ export class ProductosService implements IProductosService {
     }
 
     if (producto.imagen) {
-      eliminarUploadControlado(producto.imagen, productosUploadDir, '/uploads/productos/');
+      void this.storage.eliminarArchivo(producto.imagen, productosUploadDir, '/uploads/productos/');
     }
 
     await prisma.producto.delete({ where: { idPro } });

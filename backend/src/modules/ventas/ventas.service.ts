@@ -16,12 +16,24 @@ import { productoRepository } from '../../db/repositories/producto.repository';
 import { ventaRepository } from '../../db/repositories/venta.repository';
 import { PaymentStrategyRegistry, defaultPaymentRegistry } from './payment.strategy';
 
-export class VentasService {
-  constructor(private paymentRegistry: PaymentStrategyRegistry = defaultPaymentRegistry) {}
+export interface IVentasService {
+  obtenerVentaRegistrada(idVenta: number, empleado: any, client?: DbClient): Promise<any>;
+  crearVenta(empleado: any, body: any, client?: DbClient): Promise<any>;
+  cancelarVenta(idVenta: number, idEmp: number, idSuc: number, motivo?: string, client?: DbClient): Promise<any>;
+  listarVentas(filtros: any, empleado: any, client?: DbClient): Promise<any>;
+}
+
+export class VentasService implements IVentasService {
+  constructor(
+    private paymentRegistry: PaymentStrategyRegistry = defaultPaymentRegistry,
+    private cajaRepo: any = cajaRepository,
+    private prodRepo: any = productoRepository,
+    private ventaRepo: any = ventaRepository,
+  ) {}
 
   async obtenerVentaRegistrada(idVenta: number, empleado: any, client: DbClient = prisma) {
     if (process.env.DYNAMODB_TABLE) {
-      const v = await ventaRepository.getVentaById(idVenta, empleado?.idSuc || 1);
+      const v = await this.ventaRepo.getVentaById(idVenta, empleado?.idSuc || 1);
       if (!v) return null;
       return toVentaRegistradaDto(v, empleado);
     }
@@ -65,7 +77,7 @@ export class VentasService {
     strategy.validarEntrada(body);
 
     if (process.env.DYNAMODB_TABLE) {
-      const caja = await cajaRepository.getSesionAbierta(empleado?.idSuc || 1);
+      const caja = await this.cajaRepo.getSesionAbierta(empleado?.idSuc || 1);
       if (!caja) {
         throw errorFuncional('Debes abrir caja antes de registrar ventas.', 409);
       }
@@ -73,7 +85,7 @@ export class VentasService {
       let totalCalculado = 0;
       const itemsParaVenta = [];
       for (const [idPro, cantidad] of cantidades.entries()) {
-        const prod = await productoRepository.getProductoById(idPro, empleado?.idSuc || 1);
+        const prod = await this.prodRepo.getProductoById(idPro, empleado?.idSuc || 1);
         if (!prod) throw errorFuncional(`El producto no existe`, 404);
         if (prod.existenciaPro < cantidad) {
           throw errorFuncional(`Existencias insuficientes para "${prod.nombrePro}". Disponibles: ${prod.existenciaPro}`, 409);
@@ -90,7 +102,7 @@ export class VentasService {
 
       const pagoResult = strategy.validarYCalcular(totalCalculado, body);
 
-      const venta = await ventaRepository.createVenta({
+      const venta = await this.ventaRepo.createVenta({
         idSuc: empleado?.idSuc || 1,
         idEmp: empleado?.idEmp || 1,
         idSesionCaja: caja.idSesionCaja,
@@ -257,7 +269,7 @@ export class VentasService {
 
   async listarVentas(empleado: { idEmp: number; idSuc: number; cargo: string }) {
     if (process.env.DYNAMODB_TABLE) {
-      const ventas = await ventaRepository.listVentas(empleado?.idSuc || 1);
+      const ventas = await this.ventaRepo.listVentas(empleado?.idSuc || 1);
       return ventas.map(toVentaListDto);
     }
     const where = empleado.cargo === 'CAJERO' ? { idEmp: empleado.idEmp } : { idSuc: empleado.idSuc };
@@ -276,7 +288,7 @@ export class VentasService {
 
   async detalleVenta(idVenta: number, empleado: { idEmp: number; idSuc: number; cargo: string }) {
     if (process.env.DYNAMODB_TABLE) {
-      const v = await ventaRepository.getVentaById(idVenta, empleado?.idSuc || 1);
+      const v = await this.ventaRepo.getVentaById(idVenta, empleado?.idSuc || 1);
       if (!v) return null;
       return toVentaDetalleDto(v);
     }
