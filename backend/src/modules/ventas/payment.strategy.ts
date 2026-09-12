@@ -7,15 +7,29 @@ export interface PaymentResult {
   readonly montoRecibidoDb: number | null;
 }
 
-export interface IPaymentStrategy {
-  readonly metodo: string;
+/**
+ * =========================================================================
+ * Interface Segregation Principle (ISP) - Pagos
+ * =========================================================================
+ * Segregación de responsabilidades:
+ * - IPaymentInputValidator: Validadores de carga útil previos a verificación de caja/stock
+ * - IPaymentCalculator: Motores de cálculo financiero
+ */
+export interface IPaymentInputValidator {
   validarEntrada(body: any): void;
+}
+
+export interface IPaymentCalculator {
   validarYCalcular(totalVenta: number, body: any): PaymentResult;
+}
+
+export interface IPaymentStrategy extends IPaymentInputValidator, IPaymentCalculator {
+  readonly metodo: string;
 }
 
 /**
  * BasePaymentStrategy: Supertipo abstracto para todas las estrategias de pago.
- * Implementa el Principio de Sustitución de Liskov (LSP):
+ * Implementa el Principio de Sustitución de Liskov (LSP) y Segregación de Interfaces (ISP):
  * - Garantiza que las precondiciones no se endurezcan arbitrariamente en los subtipos.
  * - Garantiza que las postcondiciones e invariantes financieros (pagoCon >= totalVenta,
  *   cambio >= 0, consistencia matemática) sean preservados por cualquier subtipo.

@@ -15,6 +15,58 @@ import {
 import { comprobantesUploadDir } from '../middlewares/upload.middleware';
 
 /**
+ * =========================================================================
+ * Interface Segregation Principle (ISP) - Almacenamiento
+ * =========================================================================
+ * En lugar de obligar a los clientes a depender de una interfaz monolítica
+ * de almacenamiento con métodos que no utilizan, segregamos contratos
+ * específicos por rol:
+ * - Subida prefirmada (clientes, usuarios subiendo comprobantes o fotos)
+ * - Descarga/visualización segura (administradores consultando comprobantes)
+ * - Limpieza/eliminación de archivos huérfanos
+ * - Inspección y validación de seguridad de comprobantes
+ */
+
+export interface IPresignedUploadService {
+  generarPresignedUpload(opciones: PresignedUploadOptions): Promise<PresignedUploadResult>;
+}
+
+export interface IPresignedDownloadService {
+  generarPresignedDownload(key: string, nombreArchivo?: string | null, mimeType?: string | null): Promise<string>;
+}
+
+export interface IFileDeletionService {
+  eliminarArchivo(
+    rutaOKey?: string | null,
+    directorioLocal?: string,
+    prefijoLocal?: string,
+  ): Promise<void>;
+}
+
+export interface IComprobanteInspectorService {
+  resolverComprobantePrivado(nombreFisico?: string | null): string | null;
+  detectarMimeReal(rutaArchivo: string): string | null;
+}
+
+export interface IFileMetadataValidator {
+  esS3(ruta?: string | null): boolean;
+  extraerKey(ruta?: string | null): string | null;
+  sanitizarNombre(nombre?: string | null, fallback?: string): string;
+  esMimePermitidoImagen(mimeType: string): boolean;
+  esMimePermitidoComprobante(mimeType: string): boolean;
+}
+
+/**
+ * Contrato compuesto de alto nivel para almacenamiento completo.
+ */
+export interface IStorageService
+  extends IPresignedUploadService,
+    IPresignedDownloadService,
+    IFileDeletionService,
+    IComprobanteInspectorService,
+    IFileMetadataValidator {}
+
+/**
  * Contrato base para drivers de almacenamiento en la nube o local.
  */
 export interface ICloudStorageDriver {
@@ -130,10 +182,9 @@ export class LocalStorageDriver extends BaseStorageDriver {
 
 /**
  * StorageService: Responsabilidad única de gestionar almacenamiento de archivos.
- * Abierto a extensión (OCP) y respetando el Principio de Sustitución de Liskov (LSP):
- * cualquier driver que implemente IStorageDriver o ICloudStorageDriver puede ser inyectado.
+ * Implementa IStorageService, cumpliendo con el Principio de Segregación de Interfaces (ISP).
  */
-export class StorageService {
+export class StorageService implements IStorageService {
   private localDriver = new LocalStorageDriver();
 
   constructor(private cloudDriver: IStorageDriver = new S3CloudStorageDriver()) {}
@@ -161,22 +212,21 @@ export class StorageService {
   }
 
   /**
-   * Genera una URL prefirmada para subida directa.
+   * Genera una URL prefirmada para subida directa (IPresignedUploadService).
    */
   async generarPresignedUpload(opciones: PresignedUploadOptions): Promise<PresignedUploadResult> {
     return this.cloudDriver.generarPresignedUpload(opciones);
   }
 
   /**
-   * Genera una URL prefirmada para descarga/visualización temporal segura.
+   * Genera una URL prefirmada para descarga/visualización temporal segura (IPresignedDownloadService).
    */
   async generarPresignedDownload(key: string, nombreArchivo?: string | null, mimeType?: string | null): Promise<string> {
     return this.cloudDriver.generarPresignedDownload(key, nombreArchivo, mimeType);
   }
 
   /**
-   * Elimina un archivo ya sea que resida en el almacenamiento cloud o local,
-   * delegando al driver correspondiente según LSP.
+   * Elimina un archivo ya sea que resida en el almacenamiento cloud o local (IFileDeletionService).
    */
   async eliminarArchivo(
     rutaOKey?: string | null,
@@ -196,7 +246,7 @@ export class StorageService {
   }
 
   /**
-   * Resuelve y valida una ruta local de comprobante asegurando que no haya Path Traversal.
+   * Resuelve y valida una ruta local de comprobante asegurando que no haya Path Traversal (IComprobanteInspectorService).
    */
   resolverComprobantePrivado(nombreFisico?: string | null): string | null {
     if (!nombreFisico || path.basename(nombreFisico) !== nombreFisico) return null;
@@ -208,7 +258,7 @@ export class StorageService {
   }
 
   /**
-   * Inspecciona los magic bytes del archivo físico para verificar su MIME real de forma segura.
+   * Inspecciona los magic bytes del archivo físico para verificar su MIME real de forma segura (IComprobanteInspectorService).
    */
   detectarMimeReal(rutaArchivo: string): string | null {
     try {
