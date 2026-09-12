@@ -1,7 +1,5 @@
-import { DeleteCommand, GetCommand, PutCommand, QueryCommand, TransactWriteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
-import { docClient, TABLE_NAME } from '../dynamo.client';
 import { getNextSequence, Keys } from '../dynamo.keys';
-import { errorFuncional } from '../../utils/formatters';
+import { BaseDynamoRepository } from '../base.repository';
 
 export interface SesionCajaEntity {
   idSesionCaja: number;
@@ -18,49 +16,36 @@ export interface SesionCajaEntity {
   observaciones?: string | null;
 }
 
-export class CajaRepository {
+/**
+ * CajaRepository: Repositorio para sesiones de caja en DynamoDB Single-Table.
+ * Hereda de BaseDynamoRepository cumpliendo el Principio de Sustitución de Liskov (LSP).
+ */
+export class CajaRepository extends BaseDynamoRepository<SesionCajaEntity> {
   async getSesionAbierta(idSuc = 1, idEmp?: number): Promise<SesionCajaEntity | null> {
     if (idEmp) {
-      const activaRes = await docClient.send(
-        new GetCommand({
-          TableName: TABLE_NAME,
-          Key: {
-            PK: `SUC#${idSuc}`,
-            SK: `SESION_ACTIVA#${idEmp}`,
-          },
-          ConsistentRead: true,
-        }),
-      );
-      if (activaRes.Item?.idSesionCaja) {
-        return await this.getSesionById(activaRes.Item.idSesionCaja, idSuc);
+      const activaRes = await this.getByKey({
+        PK: `SUC#${idSuc}`,
+        SK: `SESION_ACTIVA#${idEmp}`,
+      });
+      if ((activaRes as any)?.idSesionCaja) {
+        return await this.getSesionById((activaRes as any).idSesionCaja, idSuc);
       }
     }
 
-    const res = await docClient.send(
-      new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
-        ExpressionAttributeValues: {
-          ':pk': `SUC#${idSuc}`,
-          ':skPrefix': 'SESION#',
-        },
-        ConsistentRead: true,
-      }),
+    const sesiones = await this.queryItems(
+      'PK = :pk AND begins_with(SK, :skPrefix)',
+      {
+        ':pk': `SUC#${idSuc}`,
+        ':skPrefix': 'SESION#',
+      },
+      { consistentRead: true },
     );
-    const sesiones = (res.Items || []) as SesionCajaEntity[];
     const abierta = sesiones.find((s) => s.estado === 'ABIERTA');
     return abierta || null;
   }
 
   async getSesionById(idSesionCaja: number, idSuc = 1): Promise<SesionCajaEntity | null> {
-    const res = await docClient.send(
-      new GetCommand({
-        TableName: TABLE_NAME,
-        Key: Keys.sesionCaja(idSuc, idSesionCaja),
-        ConsistentRead: true,
-      }),
-    );
-    return (res.Item as SesionCajaEntity) || null;
+    return this.getByKey(Keys.sesionCaja(idSuc, idSesionCaja));
   }
 
   async abrirSesion(data: { idSuc: number; idEmp: number; fondoInicial: number; empleadoNombre?: string }): Promise<SesionCajaEntity> {
@@ -80,7 +65,7 @@ export class CajaRepository {
     const transactItems = [
       {
         Put: {
-          TableName: TABLE_NAME,
+          TableName: this.tableName,
           Item: {
             ...Keys.sesionCaja(data.idSuc, idSesionCaja),
             GSI1PK: `EMP#${data.idEmp}#SESIONES`,
@@ -92,7 +77,7 @@ export class CajaRepository {
       },
       {
         Put: {
-          TableName: TABLE_NAME,
+          TableName: this.tableName,
           Item: {
             PK: `SUC#${data.idSuc}`,
             SK: `SESION_ACTIVA#${data.idEmp}`,
@@ -106,15 +91,11 @@ export class CajaRepository {
       },
     ];
 
-    try {
-      await docClient.send(new TransactWriteCommand({ TransactItems: transactItems }));
-      return item;
-    } catch (error: any) {
-      if (error.name === 'TransactionCanceledException') {
-        throw errorFuncional('Ya tienes una sesión de caja abierta en esta sucursal', 409);
-      }
-      throw error;
-    }
+    await this.executeTransaction(
+      transactItems,
+      'Ya tienes una sesión de caja abierta en esta sucursal',
+    );
+    return item;
   }
 
   async cerrarSesion(
@@ -137,7 +118,7 @@ export class CajaRepository {
     const transactItems = [
       {
         Put: {
-          TableName: TABLE_NAME,
+          TableName: this.tableName,
           Item: {
             ...Keys.sesionCaja(idSuc, idSesionCaja),
             GSI1PK: `EMP#${updated.idEmp}#SESIONES`,
@@ -148,7 +129,7 @@ export class CajaRepository {
       },
       {
         Delete: {
-          TableName: TABLE_NAME,
+          TableName: this.tableName,
           Key: {
             PK: `SUC#${idSuc}`,
             SK: `SESION_ACTIVA#${updated.idEmp}`,
@@ -157,24 +138,19 @@ export class CajaRepository {
       },
     ];
 
-    await docClient.send(new TransactWriteCommand({ TransactItems: transactItems }));
+    await this.executeTransaction(transactItems);
     return updated;
   }
 
   async listSesiones(idSuc = 1): Promise<SesionCajaEntity[]> {
-    const res = await docClient.send(
-      new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
-        ExpressionAttributeValues: {
-          ':pk': `SUC#${idSuc}`,
-          ':skPrefix': 'SESION#',
-        },
-        ScanIndexForward: false,
-        ConsistentRead: true,
-      }),
+    return this.queryItems(
+      'PK = :pk AND begins_with(SK, :skPrefix)',
+      {
+        ':pk': `SUC#${idSuc}`,
+        ':skPrefix': 'SESION#',
+      },
+      { scanIndexForward: false, consistentRead: true },
     );
-    return (res.Items || []) as SesionCajaEntity[];
   }
 }
 

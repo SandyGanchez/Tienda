@@ -15,7 +15,7 @@ import {
 import { comprobantesUploadDir } from '../middlewares/upload.middleware';
 
 /**
- * Contrato extensible para drivers de almacenamiento en la nube (OCP).
+ * Contrato base para drivers de almacenamiento en la nube o local.
  */
 export interface ICloudStorageDriver {
   generarPresignedUpload(opciones: PresignedUploadOptions): Promise<PresignedUploadResult>;
@@ -24,9 +24,50 @@ export interface ICloudStorageDriver {
 }
 
 /**
- * Driver predeterminado para AWS S3 en arquitectura Serverless.
+ * Contrato unificado de almacenamiento que cumple con el Principio de Sustitución de Liskov (LSP).
+ * Cualquier implementación (S3, Local, CloudFront, MinIO, Memoria para tests)
+ * es completamente sustituible sin alterar la corrección del programa.
  */
-export class S3CloudStorageDriver implements ICloudStorageDriver {
+export interface IStorageDriver extends ICloudStorageDriver {
+  readonly tipo: string;
+  puedeManejar(rutaOKey?: string | null): boolean;
+  eliminar(rutaOKey: string, directorioLocal?: string, prefijoLocal?: string): Promise<void>;
+}
+
+/**
+ * Supertipo abstracto que define el comportamiento común y garantiza invariantes LSP.
+ */
+export abstract class BaseStorageDriver implements IStorageDriver {
+  abstract readonly tipo: string;
+
+  abstract puedeManejar(rutaOKey?: string | null): boolean;
+
+  abstract generarPresignedUpload(opciones: PresignedUploadOptions): Promise<PresignedUploadResult>;
+
+  abstract generarPresignedDownload(
+    key: string,
+    nombreArchivo?: string | null,
+    mimeType?: string | null,
+  ): Promise<string>;
+
+  abstract eliminarObjeto(rutaOKey: string): Promise<void>;
+
+  async eliminar(rutaOKey: string, directorioLocal?: string, prefijoLocal?: string): Promise<void> {
+    await this.eliminarObjeto(rutaOKey);
+  }
+}
+
+/**
+ * Driver predeterminado para AWS S3 en arquitectura Serverless.
+ * Totalmente sustituible bajo LSP.
+ */
+export class S3CloudStorageDriver extends BaseStorageDriver {
+  readonly tipo = 'S3';
+
+  override puedeManejar(rutaOKey?: string | null): boolean {
+    return esUrlS3(rutaOKey);
+  }
+
   async generarPresignedUpload(opciones: PresignedUploadOptions): Promise<PresignedUploadResult> {
     return generarPresignedUpload(opciones);
   }
@@ -38,16 +79,83 @@ export class S3CloudStorageDriver implements ICloudStorageDriver {
   async eliminarObjeto(rutaOKey: string): Promise<void> {
     return eliminarObjetoS3(rutaOKey);
   }
+
+  override async eliminar(rutaOKey: string): Promise<void> {
+    await this.eliminarObjeto(rutaOKey);
+  }
 }
 
 /**
- * StorageService: Responsabilidad única de gestionar almacenamiento de archivos,
- * abierto a extensión mediante drivers (S3, CloudFront, MinIO, Local).
+ * Driver para almacenamiento local en disco (desarrollo, pruebas y fallback).
+ * Sustituye limpiamente a S3CloudStorageDriver bajo LSP sin romper el contrato.
+ */
+export class LocalStorageDriver extends BaseStorageDriver {
+  readonly tipo = 'LOCAL';
+
+  override puedeManejar(rutaOKey?: string | null): boolean {
+    return !esUrlS3(rutaOKey);
+  }
+
+  async generarPresignedUpload(opciones: PresignedUploadOptions): Promise<PresignedUploadResult> {
+    const ext = opciones.extensionOriginal || '.bin';
+    const fileName = `${Date.now()}-${opciones.nombreArchivoOriginal || 'archivo'}${ext}`;
+    const key = `${opciones.folder}/${fileName}`;
+    return {
+      uploadUrl: `/uploads/local/${key}`,
+      key,
+      publicUrl: `/uploads/local/${key}`,
+      fileName,
+    };
+  }
+
+  async generarPresignedDownload(key: string): Promise<string> {
+    return `/uploads/local/${key}`;
+  }
+
+  async eliminarObjeto(rutaOKey: string): Promise<void> {
+    await this.eliminar(rutaOKey);
+  }
+
+  override async eliminar(rutaOKey: string, directorioLocal?: string, prefijoLocal?: string): Promise<void> {
+    if (!rutaOKey) return;
+    if (directorioLocal && prefijoLocal && rutaOKey.startsWith(prefijoLocal)) {
+      const nombre = path.basename(rutaOKey);
+      const ruta = path.join(directorioLocal, nombre);
+      if (path.dirname(ruta) === directorioLocal && fs.existsSync(ruta)) {
+        fs.unlink(ruta, () => undefined);
+      }
+    }
+  }
+}
+
+/**
+ * StorageService: Responsabilidad única de gestionar almacenamiento de archivos.
+ * Abierto a extensión (OCP) y respetando el Principio de Sustitución de Liskov (LSP):
+ * cualquier driver que implemente IStorageDriver o ICloudStorageDriver puede ser inyectado.
  */
 export class StorageService {
-  constructor(private cloudDriver: ICloudStorageDriver = new S3CloudStorageDriver()) {}
+  private localDriver = new LocalStorageDriver();
+
+  constructor(private cloudDriver: IStorageDriver = new S3CloudStorageDriver()) {}
 
   setCloudDriver(driver: ICloudStorageDriver): this {
+    if ('puedeManejar' in driver && 'eliminar' in driver) {
+      this.cloudDriver = driver as IStorageDriver;
+    } else {
+      // Adaptador para drivers que implementan la interfaz base ICloudStorageDriver
+      this.cloudDriver = {
+        tipo: 'CUSTOM',
+        puedeManejar: (r) => esUrlS3(r),
+        generarPresignedUpload: (opt) => driver.generarPresignedUpload(opt),
+        generarPresignedDownload: (k, n, m) => driver.generarPresignedDownload(k, n, m),
+        eliminarObjeto: (r) => driver.eliminarObjeto(r),
+        eliminar: (r) => driver.eliminarObjeto(r),
+      };
+    }
+    return this;
+  }
+
+  setDriver(driver: IStorageDriver): this {
     this.cloudDriver = driver;
     return this;
   }
@@ -67,7 +175,8 @@ export class StorageService {
   }
 
   /**
-   * Elimina un archivo ya sea que resida en el almacenamiento cloud o local.
+   * Elimina un archivo ya sea que resida en el almacenamiento cloud o local,
+   * delegando al driver correspondiente según LSP.
    */
   async eliminarArchivo(
     rutaOKey?: string | null,
@@ -76,17 +185,13 @@ export class StorageService {
   ): Promise<void> {
     if (!rutaOKey) return;
 
-    if (esUrlS3(rutaOKey)) {
-      await this.cloudDriver.eliminarObjeto(rutaOKey);
+    if (this.cloudDriver.puedeManejar(rutaOKey)) {
+      await this.cloudDriver.eliminar(rutaOKey, directorioLocal, prefijoLocal);
       return;
     }
 
-    if (directorioLocal && prefijoLocal && rutaOKey.startsWith(prefijoLocal)) {
-      const nombre = path.basename(rutaOKey);
-      const ruta = path.join(directorioLocal, nombre);
-      if (path.dirname(ruta) === directorioLocal && fs.existsSync(ruta)) {
-        fs.unlink(ruta, () => undefined);
-      }
+    if (this.localDriver.puedeManejar(rutaOKey)) {
+      await this.localDriver.eliminar(rutaOKey, directorioLocal, prefijoLocal);
     }
   }
 

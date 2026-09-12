@@ -20,12 +20,65 @@ export interface IProductLookupProvider {
 }
 
 /**
- * Proveedor de catálogo externo vía Open Food Facts API.
+ * BaseProductLookupProvider: Clase base abstracta que implementa el Principio de Sustitución
+ * de Liskov (LSP) para proveedores de catálogos externos.
+ * - Garantiza precondiciones uniformes (sanitización de códigos de barras).
+ * - Garantiza postcondiciones uniformes (estructura normalizada e inmutable de ExternalProductResult).
+ * - Todos los subtipos son 100% intercambiables dentro de CompositeProductLookupProvider.
  */
-export class OpenFoodFactsLookupProvider implements IProductLookupProvider {
-  readonly nombreProveedor = 'Open Food Facts';
+export abstract class BaseProductLookupProvider implements IProductLookupProvider {
+  abstract readonly nombreProveedor: string;
 
   async consultar(codigo: string): Promise<ExternalProductResult | null> {
+    const codigoNormalizado = String(codigo || '').trim();
+    if (!codigoNormalizado) {
+      return {
+        encontrado: false,
+        fuente: this.nombreProveedor,
+        codigoQR: '',
+      };
+    }
+
+    try {
+      const parcial = await this.buscarEnFuente(codigoNormalizado);
+      if (!parcial || !parcial.encontrado) {
+        return {
+          encontrado: false,
+          fuente: this.nombreProveedor,
+          codigoQR: codigoNormalizado,
+        };
+      }
+
+      return {
+        encontrado: true,
+        fuente: parcial.fuente || this.nombreProveedor,
+        codigoQR: codigoNormalizado,
+        nombre: parcial.nombre,
+        marca: parcial.marca,
+        categoria: parcial.categoria,
+        tamano: parcial.tamano,
+        presentacion: parcial.presentacion,
+        imagenUrl: parcial.imagenUrl,
+      };
+    } catch (err: any) {
+      if (err && typeof err === 'object' && 'status' in err) {
+        throw err;
+      }
+      throw errorFuncional('El proveedor de información no está disponible', 502);
+    }
+  }
+
+  protected abstract buscarEnFuente(codigo: string): Promise<ExternalProductResult | null>;
+}
+
+/**
+ * Proveedor de catálogo externo vía Open Food Facts API.
+ * Hereda de BaseProductLookupProvider cumpliendo el principio LSP.
+ */
+export class OpenFoodFactsLookupProvider extends BaseProductLookupProvider {
+  readonly nombreProveedor = 'Open Food Facts';
+
+  protected async buscarEnFuente(codigo: string): Promise<ExternalProductResult | null> {
     const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(codigo)}.json`, {
       headers: {
         'User-Agent': env.OPEN_FOOD_FACTS_USER_AGENT,
@@ -34,7 +87,7 @@ export class OpenFoodFactsLookupProvider implements IProductLookupProvider {
     });
 
     if (res.status === 404) {
-      return { encontrado: false, fuente: this.nombreProveedor, codigoQR: codigo };
+      return null;
     }
     if (!res.ok) {
       throw errorFuncional('El proveedor de información no está disponible', 502);
@@ -43,7 +96,7 @@ export class OpenFoodFactsLookupProvider implements IProductLookupProvider {
     const data: any = await res.json();
     const producto = data?.product;
     if (!producto) {
-      return { encontrado: false, fuente: this.nombreProveedor, codigoQR: codigo };
+      return null;
     }
 
     return {
@@ -63,7 +116,7 @@ export class OpenFoodFactsLookupProvider implements IProductLookupProvider {
 /**
  * Cadena de proveedores de catálogo (Composite / Chain):
  * Permite agregar nuevos proveedores (UPCItemDB, Base Interna, BarcodeLookup)
- * sin modificar ProductosService, satisfaciendo el principio Open/Closed.
+ * sustituibles bajo LSP sin modificar ProductosService.
  */
 export class CompositeProductLookupProvider {
   private providers: IProductLookupProvider[] = [];

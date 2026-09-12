@@ -14,21 +14,71 @@ export interface IPaymentStrategy {
 }
 
 /**
+ * BasePaymentStrategy: Supertipo abstracto para todas las estrategias de pago.
+ * Implementa el Principio de Sustitución de Liskov (LSP):
+ * - Garantiza que las precondiciones no se endurezcan arbitrariamente en los subtipos.
+ * - Garantiza que las postcondiciones e invariantes financieros (pagoCon >= totalVenta,
+ *   cambio >= 0, consistencia matemática) sean preservados por cualquier subtipo.
+ * - Permite sustituir cualquier estrategia de pago sin romper la lógica del consumidor.
+ */
+export abstract class BasePaymentStrategy implements IPaymentStrategy {
+  abstract readonly metodo: string;
+
+  validarEntrada(_body: any): void {
+    // Por defecto no requiere campos adicionales obligatorios.
+    // Subtipos como Efectivo pueden sobrescribir para validar efectivo recibido.
+  }
+
+  validarYCalcular(totalVenta: number, body: any): PaymentResult {
+    // Precondición general uniforme (LSP)
+    if (!Number.isFinite(Number(totalVenta)) || Number(totalVenta) < 0) {
+      throw errorFuncional('El total de la venta no es válido', 400);
+    }
+
+    // Ejecución polimórfica del cálculo específico del subtipo
+    const resultado = this.calcularPago(totalVenta, body);
+
+    // Invariantes financieros inmutables (LSP: ningún subtipo puede violar estas reglas)
+    this.verificarInvariantes(totalVenta, resultado);
+
+    return resultado;
+  }
+
+  protected abstract calcularPago(totalVenta: number, body: any): PaymentResult;
+
+  protected verificarInvariantes(totalVenta: number, resultado: PaymentResult): void {
+    if (resultado.metodoPago !== this.metodo) {
+      throw errorFuncional('Inconsistencia en el método de pago devuelto', 500);
+    }
+    if (resultado.pagoCon < totalVenta) {
+      throw errorFuncional('El monto recibido es menor al total de la venta', 400);
+    }
+    if (resultado.cambio < 0) {
+      throw errorFuncional('El efectivo recibido es insuficiente.', 400);
+    }
+    const diferencia = Number((resultado.pagoCon - resultado.cambio - totalVenta).toFixed(2));
+    if (Math.abs(diferencia) > 0.01) {
+      throw errorFuncional('Inconsistencia en el cálculo matemático del pago', 500);
+    }
+  }
+}
+
+/**
  * Estrategia de pago para EFECTIVO:
  * Valida que el monto recibido sea válido y mayor o igual al total,
  * calculando el cambio correspondiente.
  */
-export class EfectivoPaymentStrategy implements IPaymentStrategy {
+export class EfectivoPaymentStrategy extends BasePaymentStrategy {
   readonly metodo = 'EFECTIVO';
 
-  validarEntrada(body: any): void {
+  override validarEntrada(body: any): void {
     const montoRecibidoCentavos = dineroCentavos(body?.montoRecibido);
     if (montoRecibidoCentavos === null || montoRecibidoCentavos < 0) {
       throw errorFuncional('El monto recibido no es válido', 400);
     }
   }
 
-  validarYCalcular(totalVenta: number, body: any): PaymentResult {
+  protected override calcularPago(totalVenta: number, body: any): PaymentResult {
     this.validarEntrada(body);
 
     const totalCentavos = dineroCentavos(totalVenta);
@@ -59,12 +109,10 @@ export class EfectivoPaymentStrategy implements IPaymentStrategy {
  * Estrategia de pago para TARJETA:
  * El pago se realiza por el monto exacto, sin cambio.
  */
-export class TarjetaPaymentStrategy implements IPaymentStrategy {
+export class TarjetaPaymentStrategy extends BasePaymentStrategy {
   readonly metodo = 'TARJETA';
 
-  validarEntrada(_body: any): void {}
-
-  validarYCalcular(totalVenta: number, _body: any): PaymentResult {
+  protected override calcularPago(totalVenta: number, _body: any): PaymentResult {
     return {
       metodoPago: this.metodo,
       pagoCon: Number(totalVenta.toFixed(2)),
@@ -78,12 +126,10 @@ export class TarjetaPaymentStrategy implements IPaymentStrategy {
  * Estrategia de pago para TRANSFERENCIA:
  * El pago se liquida por el monto exacto, sin cambio.
  */
-export class TransferenciaPaymentStrategy implements IPaymentStrategy {
+export class TransferenciaPaymentStrategy extends BasePaymentStrategy {
   readonly metodo = 'TRANSFERENCIA';
 
-  validarEntrada(_body: any): void {}
-
-  validarYCalcular(totalVenta: number, _body: any): PaymentResult {
+  protected override calcularPago(totalVenta: number, _body: any): PaymentResult {
     return {
       metodoPago: this.metodo,
       pagoCon: Number(totalVenta.toFixed(2)),
@@ -94,8 +140,9 @@ export class TransferenciaPaymentStrategy implements IPaymentStrategy {
 }
 
 /**
- * Registro de estrategias de pago: Cumple OCP permitiendo registrar nuevos métodos
- * de pago (ej. SPEI, Vales, Stripe, PayPal) sin modificar la clase VentasService.
+ * Registro de estrategias de pago: Cumple OCP y LSP permitiendo registrar nuevos métodos
+ * de pago (ej. SPEI, Vales, Stripe, PayPal) que heredan de BasePaymentStrategy
+ * garantizando total sustituibilidad.
  */
 export class PaymentStrategyRegistry {
   private strategies = new Map<string, IPaymentStrategy>();
