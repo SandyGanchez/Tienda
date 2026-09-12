@@ -14,9 +14,11 @@ import { toVentaRegistradaDto, toVentaListDto, toVentaDetalleDto } from '../../d
 import { cajaRepository } from '../../db/repositories/caja.repository';
 import { productoRepository } from '../../db/repositories/producto.repository';
 import { ventaRepository } from '../../db/repositories/venta.repository';
-
+import { PaymentStrategyRegistry, defaultPaymentRegistry } from './payment.strategy';
 
 export class VentasService {
+  constructor(private paymentRegistry: PaymentStrategyRegistry = defaultPaymentRegistry) {}
+
   async obtenerVentaRegistrada(idVenta: number, empleado: any, client: DbClient = prisma) {
     if (process.env.DYNAMODB_TABLE) {
       const v = await ventaRepository.getVentaById(idVenta, empleado?.idSuc || 1);
@@ -43,8 +45,7 @@ export class VentasService {
     if (!uuidVenta) throw errorFuncional('uuidVenta no es válido', 400);
 
     const metodoPago = texto(body.metodoPago).toUpperCase();
-    const metodosValidos = new Set(['EFECTIVO', 'TARJETA', 'TRANSFERENCIA']);
-    if (!metodosValidos.has(metodoPago)) throw errorFuncional('El método de pago no es válido', 400);
+    const strategy = this.paymentRegistry.get(metodoPago);
 
     if (!Array.isArray(body.items) || !body.items.length) {
       throw errorFuncional('La venta no contiene productos', 400);
@@ -61,10 +62,7 @@ export class VentasService {
     }
 
     const ids = [...cantidades.keys()].sort((a, b) => a - b);
-    const montoRecibidoCentavos = metodoPago === 'EFECTIVO' ? dineroCentavos(body.montoRecibido) : null;
-    if (metodoPago === 'EFECTIVO' && (montoRecibidoCentavos === null || montoRecibidoCentavos < 0)) {
-      throw errorFuncional('El monto recibido no es válido', 400);
-    }
+    strategy.validarEntrada(body);
 
     if (process.env.DYNAMODB_TABLE) {
       const caja = await cajaRepository.getSesionAbierta(empleado?.idSuc || 1);
@@ -90,19 +88,15 @@ export class VentasService {
         });
       }
 
-      const pagoCon = montoRecibidoCentavos ? montoRecibidoCentavos / 100 : totalCalculado;
-      const cambio = metodoPago === 'EFECTIVO' ? Number((pagoCon - totalCalculado).toFixed(2)) : 0;
-      if (cambio < 0) {
-        throw errorFuncional('El monto recibido es menor al total de la venta', 400);
-      }
+      const pagoResult = strategy.validarYCalcular(totalCalculado, body);
 
       const venta = await ventaRepository.createVenta({
         idSuc: empleado?.idSuc || 1,
         idEmp: empleado?.idEmp || 1,
         idSesionCaja: caja.idSesionCaja,
         totalVenta: totalCalculado,
-        pagoCon,
-        cambio,
+        pagoCon: pagoResult.pagoCon,
+        cambio: pagoResult.cambio,
         metodoPago,
         items: itemsParaVenta,
       });
@@ -165,11 +159,7 @@ export class VentasService {
         };
       });
 
-      if (metodoPago === 'EFECTIVO' && montoRecibidoCentavos! < totalCentavos) {
-        throw errorFuncional('El efectivo recibido es insuficiente.', 400);
-      }
-      const cambioCentavos = metodoPago === 'EFECTIVO' ? montoRecibidoCentavos! - totalCentavos : 0;
-      const montoDb = metodoPago === 'EFECTIVO' ? montoRecibidoCentavos! / 100 : null;
+      const pagoResult = strategy.validarYCalcular(totalCentavos / 100, body);
 
       const ahora = new Date();
 
@@ -180,8 +170,8 @@ export class VentasService {
           horaVenta: ahora,
           total: totalCentavos / 100,
           metodoPago,
-          montoRecibido: montoDb,
-          cambio: cambioCentavos / 100,
+          montoRecibido: pagoResult.montoRecibidoDb,
+          cambio: pagoResult.cambio,
           estadoVenta: 'COMPLETADA',
           idEmp: empleado.idEmp,
           idSuc: empleado.idSuc,

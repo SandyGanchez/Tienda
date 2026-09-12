@@ -7,6 +7,7 @@ import { idValido, texto, textoNullable, errorFuncional } from '../../utils/form
 import { toProductoDto, toProductoListDto } from '../../dtos/producto.dto';
 import { productoRepository } from '../../db/repositories/producto.repository';
 import { storageService } from '../../services/storage.service';
+import { CompositeProductLookupProvider, defaultProductLookupProvider } from './product-lookup.provider';
 
 
 export function validarProducto(producto: any): string | null {
@@ -48,6 +49,8 @@ export function eliminarUploadControlado(
 }
 
 export class ProductosService {
+  constructor(private lookupProvider: CompositeProductLookupProvider = defaultProductLookupProvider) {}
+
   async obtenerProducto(idPro: number, client: DbClient = prisma) {
     if (process.env.DYNAMODB_TABLE) {
       const p = await productoRepository.getProductoById(idPro);
@@ -159,37 +162,7 @@ export class ProductosService {
 
 
   async consultarExterno(codigo: string) {
-    const response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(codigo)}.json`, {
-      headers: {
-        'User-Agent': env.OPEN_FOOD_FACTS_USER_AGENT,
-      },
-      signal: AbortSignal.timeout(8000),
-    });
-
-    if (response.status === 404) {
-      return { encontrado: false, fuente: 'Open Food Facts', codigoQR: codigo };
-    }
-    if (!response.ok) {
-      throw errorFuncional('El proveedor de información no está disponible', 502);
-    }
-
-    const data: any = await response.json();
-    const producto = data.product;
-    if (!producto) {
-      return { encontrado: false, fuente: 'Open Food Facts', codigoQR: codigo };
-    }
-
-    return {
-      encontrado: true,
-      fuente: 'Open Food Facts',
-      codigoQR: codigo,
-      nombre: texto(producto.product_name),
-      marca: texto(producto.brands).split(',')[0],
-      categoria: texto(producto.categories).split(',')[0],
-      tamano: texto(producto.quantity),
-      presentacion: texto(producto.quantity),
-      imagenUrl: texto(producto.image_front_url),
-    };
+    return this.lookupProvider.consultar(codigo);
   }
 
   async crear(body: any) {
