@@ -9,6 +9,7 @@ import {
   mimeRealComprobante,
 } from '../../../src/modules/pedidos/pedidos.service';
 import { prisma } from '../../../src/config/prisma';
+import { crearPedidoSchema } from '../../../src/schemas/pedido.schema';
 
 describe('PedidosService Complete Branch Coverage', () => {
   const dummyProducto = {
@@ -134,6 +135,16 @@ describe('PedidosService Complete Branch Coverage', () => {
   });
 
   describe('crearPedidoCliente validaciones y ramas', () => {
+    it('crearPedidoSchema debe aceptar items con id, idPro o productoId', async () => {
+      const parsed = await crearPedidoSchema.parseAsync({
+        uuidPedido: '4915e834-87e6-4dbd-89cf-df8730e0f62b',
+        items: [{ id: 'lakJ85ZE', cantidad: 1 }, { idPro: 2, cantidad: 3 }, { productoId: 'abc', cantidad: 1 }],
+      });
+      expect(parsed.items[0].idPro).toBe('lakJ85ZE');
+      expect(parsed.items[1].idPro).toBe(2);
+      expect(parsed.items[2].idPro).toBe('abc');
+    });
+
     it('debe validar items y productos', async () => {
       await expect(pedidosService.crearPedidoCliente(1, { items: [] })).rejects.toMatchObject({ status: 400 });
       await expect(pedidosService.crearPedidoCliente(1, { items: [{ idPro: 'invalido', cantidad: 1 }] })).rejects.toMatchObject({ status: 400 });

@@ -112,3 +112,6 @@ terraform/*.zip
 # Stitch designs
 stitch-designs/
 /stitch-designs/
+
+# APK builds
+*.apk

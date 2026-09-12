@@ -76,7 +76,12 @@ export class CheckoutPage implements OnInit {
       const pedido = await firstValueFrom(
         this.pedidos.crearPedido({
           uuidPedido: this.uuidIntento(),
-          items: this.carrito.items.map((item) => ({ id: item.id, cantidad: item.cantidad })),
+          items: this.carrito.items.map((item) => ({
+            id: item.id,
+            idPro: item.id,
+            productoId: item.id,
+            cantidad: item.cantidad,
+          })),
         }),
       );
       this.pedido = pedido;
