@@ -5,27 +5,23 @@ import { CrearProductoDto, Producto, ProductoResponse } from '../models/producto
 import { environment } from '../../environments/environment';
 import { ImagenesService } from './imagenes.service';
 
-export interface ProductoPublico {
-  id: string;
-  nombre: string;
-  precioVenta: number;
-  existencia: number;
-  codigoQR: string | null;
-  sku: string | null;
-  imagen: string | null;
-  tamano: string | null;
-  presentacion: string | null;
-  marca: string | null;
-  categoria: string | null;
-  encontrado?: boolean;
-  fuente?: string;
-  imagenUrl?: string;
-}
+import {
+  ProductoPublico,
+  ProductosOperations,
+} from './productos.interface';
+export { ProductoPublico };
 
+/**
+ * =========================================================================
+ * Interface Segregation Principle (ISP) - Productos Service
+ * =========================================================================
+ * Implementa la interfaz compuesta ProductosOperations que agrupa contratos
+ * segregados (ProductoReader, ProductoWriter, ProductoMediaHandler, ProductoExternalLookup).
+ */
 @Injectable({
   providedIn: 'root',
 })
-export class ProductosService {
+export class ProductosService implements ProductosOperations {
   private readonly apiUrl = `${environment.API_BASE_URL}/productos`;
   private readonly http = inject(HttpClient);
   private readonly imagenes = inject(ImagenesService);

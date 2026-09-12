@@ -28,10 +28,12 @@ export { ItemColaSync, ResumenCajaLocal };
  * - SqliteSyncQueueRepository: Gestión de la cola Outbox ('cola_sync').
  * - SqliteAuthRepository: Credenciales y autenticación offline.
  */
+import { SqliteFullOperations } from './sqlite/sqlite-operations.interface';
+
 @Injectable({
   providedIn: 'root',
 })
-export class SqliteService {
+export class SqliteService implements SqliteFullOperations {
   private readonly dbService = inject(SqliteDatabaseService);
   private readonly productoRepo = inject(SqliteProductoRepository);
   private readonly catalogoRepo = inject(SqliteCatalogoRepository);
