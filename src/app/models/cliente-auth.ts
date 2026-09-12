@@ -1,5 +1,6 @@
 export interface ClienteSesion {
-  idCliente: number;
+  id: string;
+  idCliente?: string | number;
   nombre: string;
   apellidoPat: string | null;
   apellidoMat: string | null;

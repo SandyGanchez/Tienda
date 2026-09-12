@@ -78,8 +78,6 @@ export class CheckoutPage implements OnInit {
           uuidPedido: this.uuidIntento(),
           items: this.carrito.items.map((item) => ({
             id: item.id,
-            idPro: item.id,
-            productoId: item.id,
             cantidad: item.cantidad,
           })),
         }),

@@ -361,8 +361,8 @@ export class ProductosPage implements OnInit {
       codigoQR: producto.codigoQR || '',
       sku: producto.sku || '',
       imagen: producto.imagen || '',
-      idMarca: producto.marca?.id ? String(producto.marca.id) : ((producto as any).idMarca ? String((producto as any).idMarca) : null),
-      idCat: producto.categoria?.id ? String(producto.categoria.id) : ((producto as any).idCat ? String((producto as any).idCat) : null),
+      idMarca: producto.marca?.id ? String(producto.marca.id) : (producto.idMarca ? String(producto.idMarca) : null),
+      idCat: producto.categoria?.id ? String(producto.categoria.id) : (producto.idCat ? String(producto.idCat) : null),
     };
     this.reiniciarFotoPendiente();
     this.erroresProducto = {};

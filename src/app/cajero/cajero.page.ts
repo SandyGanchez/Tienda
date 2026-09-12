@@ -664,8 +664,6 @@ export class CajeroPage implements OnInit {
 
       items: this.carrito.map((item) => ({
         id: item.id,
-        idPro: item.id,
-
         cantidad: item.cantidad,
       })),
 

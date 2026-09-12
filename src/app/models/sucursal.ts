@@ -1,7 +1,7 @@
 export interface Sucursal {
-  id?: string;
-  sucursalId?: string | number;
-  idSuc?: string | number;
+  id: string;
+  sucursalId?: string;
+  idSuc?: string;
   nombre?: string | null;
   nombreSuc?: string | null;
   descripcion?: string | null;
@@ -16,7 +16,7 @@ export interface Sucursal {
   redSocialSuc?: string | null;
   logo?: string | null;
   logoSuc?: string | null;
-  idDir?: string | number | null;
+  idDir?: string | null;
   direccion?: string | null;
 }
 

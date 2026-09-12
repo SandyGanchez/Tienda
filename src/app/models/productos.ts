@@ -11,6 +11,7 @@ export interface ProductoIdentidad {
 
 export interface ProductoPrecios {
   precioVenta: number;
+  precio?: number;
   costo: number | null;
 }
 
@@ -48,7 +49,11 @@ export interface Producto
     ProductoCodigos,
     ProductoPresentacion,
     ProductoClasificacion,
-    ProductoSincronizable {}
+    ProductoSincronizable {
+  idPro?: string;
+  idMarca?: string | null;
+  idCat?: string | null;
+}
 
 export interface CrearProductoDto {
   nombre: string;
