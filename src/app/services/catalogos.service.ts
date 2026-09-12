@@ -16,12 +16,14 @@ export { CatalogoDto };
  * Los consumidores pueden inyectar o tipar este servicio según la funcionalidad
  * específica que consumen sin acoplarse al resto del catálogo.
  */
+import { API_BASE_URL } from './tokens';
+
 @Injectable({
   providedIn: 'root',
 })
 export class CatalogosService implements MarcaCatalogService, CategoriaCatalogService {
   private readonly http = inject(HttpClient);
-  private readonly apiBaseUrl = environment.API_BASE_URL;
+  private readonly apiBaseUrl = inject(API_BASE_URL);
 
   getMarcas(): Observable<Marca[]> {
     return this.http.get<Marca[]>(`${this.apiBaseUrl}/marca`);

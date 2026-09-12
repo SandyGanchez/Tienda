@@ -1,21 +1,20 @@
 import { inject, Injectable } from '@angular/core';
 import { ItemCarrito } from '../models/carrito';
-import { LocalStorageDriver } from './storage/local-storage.driver';
+import { STORAGE_DRIVER } from './tokens';
 
 /**
  * =========================================================================
- * Single Responsibility & Liskov Substitution Principle (SRP / LSP)
+ * Single Responsibility, LSP & DIP (SOLID)
  * =========================================================================
- * Responsabilidad única: Persistencia, serialización y saneamiento de los ítems
- * del carrito. Utiliza StorageDriver para que cualquier controlador de
- * almacenamiento (LocalStorageDriver, MemoryStorageDriver, etc.) sea sustituible.
+ * Responsabilidad única: Persistencia, serialización y saneamiento del carrito.
+ * Inversión de Dependencias: Depende de la abstracción STORAGE_DRIVER.
  */
 @Injectable({
   providedIn: 'root',
 })
 export class CartStorageService {
   private readonly storageKey = 'tienda.cliente.carrito';
-  private readonly driver = inject(LocalStorageDriver);
+  private readonly driver = inject(STORAGE_DRIVER);
 
   leer(): ItemCarrito[] {
     try {
