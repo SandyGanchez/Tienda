@@ -13,7 +13,7 @@ import {
   normalizarPedidoAdmin,
   configuracionTransferenciaPedido,
 } from '../../dtos/pedido.dto';
-import { storageService } from '../../services/storage.service';
+import { storageService, IStorageService } from '../../services/storage.service';
 import { OrderStateMachine, defaultOrderStateMachine } from './pedido-state.machine';
 
 const HORAS_RESERVA_PEDIDO = 2;
@@ -37,17 +37,21 @@ export function mimeRealComprobante(rutaArchivo: string): string | null {
 
 /**
  * =========================================================================
- * Interface Segregation Principle (ISP) - Pedidos
+ * Interface Segregation & Dependency Inversion Principle (ISP / DIP) - Pedidos
  * =========================================================================
  * Segregación entre la operativa de cara al cliente y la administración:
  * - IClientePedidoService: Operaciones públicas de compras y comprobantes
  * - IAdminPedidoService: Operaciones de backoffice (aprobación, rechazo, entrega)
+ * Con soporte para inyección de dependencias desacopladas en el constructor.
  */
 export interface IClientePedidoService {
   obtenerSucursalDisponibleCliente(): Promise<number>;
   obtenerConfiguracionTransferencia(idSuc: number, exigirActiva?: boolean): Promise<any>;
+  crearPedidoCliente(idCliente: number, body: any): Promise<any>;
+  liberarPedidosExpirados(idCliente?: number): Promise<any>;
   listarPedidosCliente(idCliente: number): Promise<any>;
   obtenerPedidoSeguro(idPedido: number, idCliente: number, tx?: DbClient): Promise<any>;
+  cancelarPedidoCliente(idPedido: number, idCliente: number): Promise<any>;
   presignComprobante(
     idPedido: number,
     idCliente: number,
@@ -75,7 +79,13 @@ export interface IAdminPedidoService {
 export interface IPedidosService extends IClientePedidoService, IAdminPedidoService {}
 
 export class PedidosService implements IPedidosService {
-  constructor(private stateMachine: OrderStateMachine = defaultOrderStateMachine) {}
+  constructor(
+    private stateMachine: OrderStateMachine = defaultOrderStateMachine,
+    private storage: IStorageService = storageService,
+    private pedidoRepo: any = pedidoRepository,
+    private prodRepo: any = productoRepository,
+    private configRepo: any = configuracionRepository,
+  ) {}
 
   async obtenerSucursalDisponibleCliente() {
     if (process.env.DYNAMODB_TABLE) return 1;
@@ -94,7 +104,7 @@ export class PedidosService implements IPedidosService {
 
   async obtenerConfiguracionTransferencia(idSuc: number, exigirActiva = true) {
     if (process.env.DYNAMODB_TABLE) {
-      const conf = await configuracionRepository.getConfiguracion(idSuc);
+      const conf = await this.configRepo.getConfiguracion(idSuc);
       if (!conf || (exigirActiva && !conf.activo)) {
         throw errorFuncional('Los pagos por transferencia no están disponibles en este momento.', 409);
       }
@@ -172,7 +182,7 @@ export class PedidosService implements IPedidosService {
 
   async obtenerPedidoSeguro(idPedido: number, idCliente: number, client: DbClient = prisma) {
     if (process.env.DYNAMODB_TABLE) {
-      const p = await pedidoRepository.getPedidoById(idCliente, idPedido);
+      const p = await this.pedidoRepo.getPedidoById(idCliente, idPedido);
       if (!p) return null;
       return {
         id: encodeId(p.idPedido),
@@ -231,9 +241,9 @@ export class PedidosService implements IPedidosService {
     let comprobanteUrl: string | null = null;
     if (p.comprobanteRuta) {
       try {
-        if (storageService.esS3(p.comprobanteRuta)) {
-          const key = storageService.extraerKey(p.comprobanteRuta) || p.comprobanteRuta;
-          comprobanteUrl = await storageService.generarPresignedDownload(key, p.comprobanteNombre, p.comprobanteMime);
+        if (this.storage.esS3(p.comprobanteRuta)) {
+          const key = this.storage.extraerKey(p.comprobanteRuta) || p.comprobanteRuta;
+          comprobanteUrl = await this.storage.generarPresignedDownload(key, p.comprobanteNombre, p.comprobanteMime);
         }
       } catch (err) {
         console.error('Error al generar presigned download para comprobante:', err);
@@ -266,8 +276,8 @@ export class PedidosService implements IPedidosService {
 
   async obtenerPedidoAdmin(idPedido: number, idSuc: number, client: DbClient = prisma) {
     if (process.env.DYNAMODB_TABLE) {
-      const pedidos = await pedidoRepository.listPedidosAdmin(idSuc);
-      const p = pedidos.find((item) => item.idPedido === idPedido);
+      const pedidos = await this.pedidoRepo.listPedidosAdmin(idSuc);
+      const p = pedidos.find((item: any) => item.idPedido === idPedido);
       if (!p) return null;
       return {
         id: encodeId(p.idPedido),
@@ -292,7 +302,7 @@ export class PedidosService implements IPedidosService {
         comprobante: p.comprobanteUrl ? { nombre: 'comprobante', mime: 'image/jpeg', fecha: p.fechaCreacion, url: p.comprobanteUrl } : null,
         empleadoRevisa: null,
         configuracionTransferencia: null,
-        items: (p.detalles || []).map((item) => ({
+        items: (p.detalles || []).map((item: any) => ({
           idPro: Number(item.idPro),
           nombre: item.nombrePro,
           imagen: item.imagenPro || null,
@@ -341,9 +351,9 @@ export class PedidosService implements IPedidosService {
     let comprobanteUrl: string | null = null;
     if (p.comprobanteRuta) {
       try {
-        if (storageService.esS3(p.comprobanteRuta)) {
-          const key = storageService.extraerKey(p.comprobanteRuta) || p.comprobanteRuta;
-          comprobanteUrl = await storageService.generarPresignedDownload(key, p.comprobanteNombre, p.comprobanteMime);
+        if (this.storage.esS3(p.comprobanteRuta)) {
+          const key = this.storage.extraerKey(p.comprobanteRuta) || p.comprobanteRuta;
+          comprobanteUrl = await this.storage.generarPresignedDownload(key, p.comprobanteNombre, p.comprobanteMime);
         }
       } catch (err) {
         console.error('Error al generar presigned download para comprobante admin:', err);
@@ -405,7 +415,7 @@ export class PedidosService implements IPedidosService {
       const itemsPedido = [];
       let totalCentavos = 0;
       for (const [idPro, cantidad] of cantidades.entries()) {
-        const prod = await productoRepository.getProductoById(idPro, idSuc);
+        const prod = await this.prodRepo.getProductoById(idPro, idSuc);
         if (!prod) {
           throw errorFuncional('Uno de los productos ya no está disponible.', 404, { idPro });
         }
@@ -430,7 +440,7 @@ export class PedidosService implements IPedidosService {
         });
       }
 
-      const pedido = await pedidoRepository.createPedido({
+      const pedido = await this.pedidoRepo.createPedido({
         idCliente,
         idSuc,
         totalPedido: totalCentavos / 100,
@@ -585,7 +595,7 @@ export class PedidosService implements IPedidosService {
     if (!this.stateMachine.puedeTransicionar('SUBIR_COMPROBANTE', pedido.estado)) {
       throw errorFuncional(`No se puede subir comprobante a un pedido en estado ${pedido.estado}.`, 409);
     }
-    return await storageService.generarPresignedUpload({
+    return await this.storage.generarPresignedUpload({
       folder: 'comprobantes',
       mimeType,
       extensionOriginal,
@@ -613,10 +623,10 @@ export class PedidosService implements IPedidosService {
       this.stateMachine.validarTransicion('SUBIR_COMPROBANTE', pedido.estado);
 
       const anteriorRuta = pedido.comprobanteRuta;
-      const key = storageService.extraerKey(keyOUrl) || keyOUrl;
+      const key = this.storage.extraerKey(keyOUrl) || keyOUrl;
       const mime = mimeType || 'image/jpeg';
       const baseFilename = key.includes('/') ? key.split('/').pop() : key;
-      const nombreSeguro = storageService.sanitizarNombre(nombreOriginal || baseFilename || 'comprobante.jpg');
+      const nombreSeguro = this.storage.sanitizarNombre(nombreOriginal || baseFilename || 'comprobante.jpg');
 
       await tx.pedidoCliente.update({
         where: { idPedido },
@@ -631,7 +641,7 @@ export class PedidosService implements IPedidosService {
       });
 
       if (anteriorRuta && anteriorRuta !== key) {
-        void storageService.eliminarArchivo(anteriorRuta, comprobantesUploadDir, '');
+        void this.storage.eliminarArchivo(anteriorRuta, comprobantesUploadDir, '');
       }
 
       return await this.obtenerPedidoSeguro(idPedido, idCliente, tx);
@@ -669,7 +679,7 @@ export class PedidosService implements IPedidosService {
       });
 
       if (anteriorComprobante) {
-        void storageService.eliminarArchivo(anteriorComprobante, comprobantesUploadDir, '');
+        void this.storage.eliminarArchivo(anteriorComprobante, comprobantesUploadDir, '');
       }
 
       return await this.obtenerPedidoAdmin(idPedido, idSuc, tx);
@@ -762,10 +772,10 @@ export class PedidosService implements IPedidosService {
     if (!idPedido) throw errorFuncional('El pedido no es válido.', 400);
 
     if (process.env.DYNAMODB_TABLE) {
-      const pedidos = await pedidoRepository.listPedidosAdmin(idSuc);
-      const pedido = pedidos.find((p) => p.idPedido === idPedido);
+      const pedidos = await this.pedidoRepo.listPedidosAdmin(idSuc);
+      const pedido = pedidos.find((p: any) => p.idPedido === idPedido);
       if (!pedido) throw errorFuncional('Pedido no encontrado.', 404);
-      await pedidoRepository.updateEstado(pedido.idCliente, idPedido, estadoNuevo as any);
+      await this.pedidoRepo.updateEstado(pedido.idCliente, idPedido, estadoNuevo as any);
       return await this.obtenerPedidoAdmin(idPedido, idSuc);
     }
 
@@ -788,8 +798,8 @@ export class PedidosService implements IPedidosService {
 
   async listarPedidosCliente(idCliente: number) {
     if (process.env.DYNAMODB_TABLE) {
-      const rows = await pedidoRepository.listPedidosCliente(idCliente);
-      return rows.map((r) => ({
+      const rows = await this.pedidoRepo.listPedidosCliente(idCliente);
+      return rows.map((r: any) => ({
         id: encodeId(r.idPedido),
         folio: folioPedido(r.idPedido),
         uuidPedido: `pedido-${r.idPedido}`,
@@ -813,8 +823,8 @@ export class PedidosService implements IPedidosService {
 
   async listarPedidosAdmin(idSuc: number) {
     if (process.env.DYNAMODB_TABLE) {
-      const rows = await pedidoRepository.listPedidosAdmin(idSuc);
-      return rows.map((r) => ({
+      const rows = await this.pedidoRepo.listPedidosAdmin(idSuc);
+      return rows.map((r: any) => ({
         id: encodeId(r.idPedido),
         folio: folioPedido(r.idPedido),
         uuidPedido: `pedido-${r.idPedido}`,

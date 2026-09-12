@@ -1,7 +1,7 @@
 import { prisma } from '../../config/prisma';
 import { authRepository } from '../../db/repositories/auth.repository';
 import { idValido, texto, errorFuncional } from '../../utils/formatters';
-import { storageService } from '../../services/storage.service';
+import { storageService, IStorageService } from '../../services/storage.service';
 
 export interface PresignUploadDto {
   tipo: string;
@@ -10,7 +10,23 @@ export interface PresignUploadDto {
   nombreOriginal?: string;
 }
 
-export class UploadsService {
+/**
+ * =========================================================================
+ * Dependency Inversion Principle (DIP) - Uploads
+ * =========================================================================
+ * - IUploadsService: Abstracción consumida por UploadsController
+ * - Inyección de dependencias de IStorageService en UploadsService
+ */
+export interface IUploadsService {
+  solicitarPresign(payload: any, dto: PresignUploadDto): Promise<any>;
+}
+
+export class UploadsService implements IUploadsService {
+  constructor(
+    private storage: IStorageService = storageService,
+    private authRepo: any = authRepository,
+  ) {}
+
   async solicitarPresign(payload: any, dto: PresignUploadDto) {
     const tipo = texto(dto.tipo).toUpperCase();
     const mimeType = texto(dto.mimeType).toLowerCase();
@@ -31,7 +47,7 @@ export class UploadsService {
       if (payload.tipo !== 'CLIENTE' && payload.tipo !== 'EMPLEADO') {
         throw errorFuncional('No autorizado', 403);
       }
-      if (!storageService.esMimePermitidoComprobante(mimeType)) {
+      if (!this.storage.esMimePermitidoComprobante(mimeType)) {
         throw errorFuncional('MIME type no permitido para comprobante (JPG, PNG, WEBP, PDF).', 400);
       }
     } else {
@@ -42,7 +58,7 @@ export class UploadsService {
       let esAdmin = false;
 
       if (process.env.DYNAMODB_TABLE) {
-        const emp = idEmp ? await authRepository.findEmpleadoById(idEmp) : null;
+        const emp = idEmp ? await this.authRepo.findEmpleadoById(idEmp) : null;
         esAdmin = Boolean(emp && emp.estadoEmp && (emp.cargoNombre === 'ADMINISTRADOR' || emp.cargo === 'ADMINISTRADOR'));
       } else {
         const emp = idEmp
@@ -57,13 +73,13 @@ export class UploadsService {
       if (!esAdmin) {
         throw errorFuncional('Solo los administradores pueden subir imágenes de productos o tienda', 403);
       }
-      if (!storageService.esMimePermitidoImagen(mimeType)) {
+      if (!this.storage.esMimePermitidoImagen(mimeType)) {
         throw errorFuncional('MIME type no permitido para imagen (JPG, PNG, WEBP).', 400);
       }
     }
 
     const nombreLimpio = texto(dto.nombreOriginal);
-    const data = await storageService.generarPresignedUpload({
+    const data = await this.storage.generarPresignedUpload({
       folder: carpeta,
       mimeType,
       extensionOriginal: extension || undefined,

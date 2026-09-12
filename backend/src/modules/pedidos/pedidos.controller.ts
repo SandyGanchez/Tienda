@@ -5,6 +5,7 @@ import {
   normalizarPedido,
   normalizarPedidoAdmin,
   pedidosService,
+  IPedidosService,
   resolverComprobantePrivado,
 } from './pedidos.service';
 import { idValido, texto } from '../../utils/formatters';
@@ -18,14 +19,16 @@ import {
 } from '../../config/s3';
 
 export class PedidosController {
+  constructor(private service: IPedidosService = pedidosService) {}
+
   // CLIENTE
   async crearPedido(req: Request, res: Response): Promise<void> {
     if (!req.cliente) {
       res.status(401).json({ message: 'Sesión no válida' });
       return;
     }
-    const pedido = await pedidosService.crearPedidoCliente(req.cliente.idCliente, req.body);
-      res.status(201).json(pedido);
+    const pedido = await this.service.crearPedidoCliente(req.cliente.idCliente, req.body);
+    res.status(201).json(pedido);
   }
 
   async listarPedidosCliente(req: Request, res: Response): Promise<void> {
@@ -33,8 +36,8 @@ export class PedidosController {
       res.status(401).json({ message: 'Sesión no válida' });
       return;
     }
-    await pedidosService.liberarPedidosExpirados(req.cliente.idCliente);
-    const pedidos = await pedidosService.listarPedidosCliente(req.cliente.idCliente);
+    await this.service.liberarPedidosExpirados(req.cliente.idCliente);
+    const pedidos = await this.service.listarPedidosCliente(req.cliente.idCliente);
     res.json(pedidos);
   }
 
@@ -48,13 +51,13 @@ export class PedidosController {
       res.status(401).json({ message: 'Sesión no válida' });
       return;
     }
-    await pedidosService.liberarPedidosExpirados(req.cliente.idCliente);
-      const pedido = await pedidosService.obtenerPedidoSeguro(idPedido, req.cliente.idCliente);
-      if (!pedido) {
-              res.status(404).json({ message: 'Pedido no encontrado.' });
-              return;
-            }
-      res.json(pedido);
+    await this.service.liberarPedidosExpirados(req.cliente.idCliente);
+    const pedido = await this.service.obtenerPedidoSeguro(idPedido, req.cliente.idCliente);
+    if (!pedido) {
+      res.status(404).json({ message: 'Pedido no encontrado.' });
+      return;
+    }
+    res.json(pedido);
   }
 
   async cancelarPedidoCliente(req: Request, res: Response): Promise<void> {
@@ -67,8 +70,8 @@ export class PedidosController {
       res.status(401).json({ message: 'Sesión no válida' });
       return;
     }
-    const pedido = await pedidosService.cancelarPedidoCliente(idPedido, req.cliente.idCliente);
-      res.json(pedido);
+    const pedido = await this.service.cancelarPedidoCliente(idPedido, req.cliente.idCliente);
+    res.json(pedido);
   }
 
   async subirComprobanteLocal(req: Request, res: Response): Promise<void> {
@@ -96,7 +99,7 @@ export class PedidosController {
     }
 
     try {
-      const pedido = await pedidosService.confirmarComprobante(
+      const pedido = await this.service.confirmarComprobante(
         idPedido,
         req.cliente.idCliente,
         req.file.filename,
@@ -133,14 +136,14 @@ export class PedidosController {
       return;
     }
 
-    const presigned = await pedidosService.presignComprobante(
-              idPedido,
-              req.cliente.idCliente,
-              mimeType,
-              extension,
-              filename,
-            );
-      res.json({ ...presigned, idPedido, expiresIn: 900 });
+    const presigned = await this.service.presignComprobante(
+      idPedido,
+      req.cliente.idCliente,
+      mimeType,
+      extension,
+      filename,
+    );
+    res.json({ ...presigned, idPedido, expiresIn: 900 });
   }
 
   async confirmarComprobante(req: Request, res: Response): Promise<void> {
@@ -162,14 +165,14 @@ export class PedidosController {
       return;
     }
 
-    const pedido = await pedidosService.confirmarComprobante(
-              idPedido,
-              req.cliente.idCliente,
-              key,
-              filename,
-              mimeType,
-            );
-      res.json(pedido);
+    const pedido = await this.service.confirmarComprobante(
+      idPedido,
+      req.cliente.idCliente,
+      key,
+      filename,
+      mimeType,
+    );
+    res.json(pedido);
   }
 
   async verComprobanteCliente(req: Request, res: Response): Promise<void> {
@@ -233,8 +236,8 @@ export class PedidosController {
       res.status(409).json({ message: 'El administrador no tiene una sucursal asignada.' });
       return;
     }
-    await pedidosService.liberarPedidosExpirados();
-    const pedidos = await pedidosService.listarPedidosAdmin(idSuc);
+    await this.service.liberarPedidosExpirados();
+    const pedidos = await this.service.listarPedidosAdmin(idSuc);
     res.json(pedidos);
   }
 
@@ -249,12 +252,12 @@ export class PedidosController {
       res.status(409).json({ message: 'El administrador no tiene una sucursal asignada.' });
       return;
     }
-    const pedido = await pedidosService.obtenerPedidoAdmin(idPedido, idSuc);
-      if (!pedido) {
-              res.status(404).json({ message: 'Pedido no encontrado.' });
-              return;
-            }
-      res.json(pedido);
+    const pedido = await this.service.obtenerPedidoAdmin(idPedido, idSuc);
+    if (!pedido) {
+      res.status(404).json({ message: 'Pedido no encontrado.' });
+      return;
+    }
+    res.json(pedido);
   }
 
   async verComprobanteAdmin(req: Request, res: Response): Promise<void> {
@@ -269,47 +272,47 @@ export class PedidosController {
       return;
     }
     const pedido = await prisma.pedidoCliente.findFirst({
-              where: {
-                idPedido,
-                idSuc,
-                comprobanteRuta: { not: null },
-              },
-              select: {
-                comprobanteRuta: true,
-                comprobanteMime: true,
-                comprobanteNombre: true,
-              },
-            });
-      if (!pedido || !pedido.comprobanteRuta) {
-              res.status(404).json({ message: 'Comprobante no encontrado.' });
-              return;
-            }
-      if (esUrlS3(pedido.comprobanteRuta)) {
-              const key = extraerKeyS3(pedido.comprobanteRuta) || pedido.comprobanteRuta;
-              const downloadUrl = await generarPresignedDownload(key, pedido.comprobanteNombre, pedido.comprobanteMime);
-              if (req.query.json === 'true') {
-                res.json({
-                  downloadUrl,
-                  key,
-                  mime: pedido.comprobanteMime,
-                  nombre: pedido.comprobanteNombre,
-                });
-                return;
-              }
-              res.redirect(downloadUrl);
-              return;
-            }
-      const rutaFisica = resolverComprobantePrivado(pedido.comprobanteRuta);
-      if (!rutaFisica) {
-              res.status(404).json({ message: 'Comprobante no encontrado.' });
-              return;
-            }
-      res.type(pedido.comprobanteMime || 'application/octet-stream');
-      res.setHeader(
-              'Content-Disposition',
-              `inline; filename*=UTF-8''${encodeURIComponent(pedido.comprobanteNombre || 'comprobante')}`,
-            );
-      res.sendFile(rutaFisica);
+      where: {
+        idPedido,
+        idSuc,
+        comprobanteRuta: { not: null },
+      },
+      select: {
+        comprobanteRuta: true,
+        comprobanteMime: true,
+        comprobanteNombre: true,
+      },
+    });
+    if (!pedido || !pedido.comprobanteRuta) {
+      res.status(404).json({ message: 'Comprobante no encontrado.' });
+      return;
+    }
+    if (esUrlS3(pedido.comprobanteRuta)) {
+      const key = extraerKeyS3(pedido.comprobanteRuta) || pedido.comprobanteRuta;
+      const downloadUrl = await generarPresignedDownload(key, pedido.comprobanteNombre, pedido.comprobanteMime);
+      if (req.query.json === 'true') {
+        res.json({
+          downloadUrl,
+          key,
+          mime: pedido.comprobanteMime,
+          nombre: pedido.comprobanteNombre,
+        });
+        return;
+      }
+      res.redirect(downloadUrl);
+      return;
+    }
+    const rutaFisica = resolverComprobantePrivado(pedido.comprobanteRuta);
+    if (!rutaFisica) {
+      res.status(404).json({ message: 'Comprobante no encontrado.' });
+      return;
+    }
+    res.type(pedido.comprobanteMime || 'application/octet-stream');
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename*=UTF-8''${encodeURIComponent(pedido.comprobanteNombre || 'comprobante')}`,
+    );
+    res.sendFile(rutaFisica);
   }
 
   async rechazarPedidoAdmin(req: Request, res: Response): Promise<void> {
@@ -323,8 +326,8 @@ export class PedidosController {
       res.status(401).json({ message: 'Sesión no válida' });
       return;
     }
-    const pedido = await pedidosService.rechazarPedidoAdmin(idPedido, idSuc, req.empleado.idEmp, req.body?.motivo);
-      res.json(pedido);
+    const pedido = await this.service.rechazarPedidoAdmin(idPedido, idSuc, req.empleado.idEmp, req.body?.motivo);
+    res.json(pedido);
   }
 
   async aprobarPedidoAdmin(req: Request, res: Response): Promise<void> {
@@ -338,8 +341,8 @@ export class PedidosController {
       res.status(401).json({ message: 'Sesión no válida' });
       return;
     }
-    const pedido = await pedidosService.aprobarPedidoAdmin(idPedido, idSuc, req.empleado.idEmp);
-      res.json(pedido);
+    const pedido = await this.service.aprobarPedidoAdmin(idPedido, idSuc, req.empleado.idEmp);
+    res.json(pedido);
   }
 
   async cambiarEstadoListo(req: Request, res: Response): Promise<void> {
@@ -353,8 +356,8 @@ export class PedidosController {
       res.status(409).json({ message: 'El administrador no tiene una sucursal asignada.' });
       return;
     }
-    const pedido = await pedidosService.cambiarEstadoOperativo(idPedido, idSuc, 'PAGADO', 'LISTO');
-      res.json(pedido);
+    const pedido = await this.service.cambiarEstadoOperativo(idPedido, idSuc, 'PAGADO', 'LISTO');
+    res.json(pedido);
   }
 
   async cambiarEstadoEntregar(req: Request, res: Response): Promise<void> {
@@ -368,8 +371,8 @@ export class PedidosController {
       res.status(409).json({ message: 'El administrador no tiene una sucursal asignada.' });
       return;
     }
-    const pedido = await pedidosService.cambiarEstadoOperativo(idPedido, idSuc, 'LISTO', 'ENTREGADO');
-      res.json(pedido);
+    const pedido = await this.service.cambiarEstadoOperativo(idPedido, idSuc, 'LISTO', 'ENTREGADO');
+    res.json(pedido);
   }
 }
 
