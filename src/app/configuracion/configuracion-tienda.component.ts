@@ -259,8 +259,8 @@ export class ConfiguracionTiendaComponent implements OnChanges, OnInit {
         await this.feedback('Selecciona una imagen JPEG, PNG o WEBP.', 'warning');
         return;
       }
-      if (blob.size > 5 * 1024 * 1024) {
-        await this.feedback('El logo no puede superar 5 MB.', 'warning');
+      if (blob.size > 10 * 1024 * 1024) {
+        await this.feedback('El logo no puede superar 10 MB.', 'warning');
         return;
       }
       this.logoPendiente = blob;
@@ -288,8 +288,8 @@ export class ConfiguracionTiendaComponent implements OnChanges, OnInit {
         await this.feedback('Selecciona una imagen JPEG, PNG o WEBP.', 'warning');
         return;
       }
-      if (file.size > 5 * 1024 * 1024) {
-        await this.feedback('El logo no puede superar 5 MB.', 'warning');
+      if (file.size > 10 * 1024 * 1024) {
+        await this.feedback('El logo no puede superar 10 MB.', 'warning');
         return;
       }
       this.logoPendiente = file;

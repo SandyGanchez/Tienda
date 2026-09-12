@@ -8,7 +8,7 @@ import {
   ViewChild,
 } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
-import { IonDatetime, IonPopover } from '@ionic/angular';
+import { IonDatetime, IonModal } from '@ionic/angular';
 
 let nextDatePickerId = 0;
 
@@ -25,7 +25,7 @@ let nextDatePickerId = 0;
   ],
 })
 export class CustomDatepickerComponent implements ControlValueAccessor {
-  @ViewChild('popover') popover?: IonPopover;
+  @ViewChild('modal') modal?: IonModal;
   @ViewChild('datetime') datetime?: IonDatetime;
 
   @Input() label = '';
@@ -44,7 +44,8 @@ export class CustomDatepickerComponent implements ControlValueAccessor {
 
   selectedValue: string | null = null;
   internalIso = '';
-  isOpen = false;
+  tempSelectedValue: string | null = null;
+  isModalOpen = false;
 
   private onChange: (value: string | null) => void = () => {};
   private onTouched: () => void = () => {};
@@ -79,50 +80,62 @@ export class CustomDatepickerComponent implements ControlValueAccessor {
 
   setDisabledState(isDisabled: boolean): void {
     this.disabled = isDisabled;
-    if (isDisabled && this.popover) {
-      this.popover.dismiss();
+    if (isDisabled && this.isModalOpen) {
+      this.closeModal();
     }
   }
 
-  onPopoverWillPresent(): void {
-    this.isOpen = true;
+  openModal(): void {
+    if (this.disabled) return;
     if (this.selectedValue) {
       this.internalIso = this.toFullIso(this.selectedValue);
+      this.tempSelectedValue = this.selectedValue;
     } else {
       this.internalIso = this.getTodayIso();
+      this.tempSelectedValue = this.formatDateToYmd(new Date());
     }
+    this.isModalOpen = true;
   }
 
-  onPopoverDismiss(): void {
-    this.isOpen = false;
+  closeModal(): void {
+    this.isModalOpen = false;
     this.onTouched();
   }
 
-  onDateChanged(event: any): void {
+  onModalDismiss(): void {
+    this.isModalOpen = false;
+    this.onTouched();
+  }
+
+  onDatePicked(event: any): void {
     const rawVal = event.detail.value;
     if (!rawVal) return;
     const clean = Array.isArray(rawVal) ? rawVal[0]?.split('T')[0] : rawVal.split('T')[0];
     if (clean) {
-      this.selectedValue = clean;
+      this.tempSelectedValue = clean;
       this.internalIso = this.toFullIso(clean);
+    }
+  }
+
+  confirmSelection(): void {
+    if (this.tempSelectedValue) {
+      this.selectedValue = this.tempSelectedValue;
+      this.internalIso = this.toFullIso(this.tempSelectedValue);
       this.onChange(this.selectedValue);
       this.dateChange.emit(this.selectedValue);
-      if (this.popover) {
-        this.popover.dismiss();
-      }
     }
+    this.closeModal();
   }
 
   setToday(event?: Event): void {
     if (event) event.stopPropagation();
     const today = this.formatDateToYmd(new Date());
     this.selectedValue = today;
+    this.tempSelectedValue = today;
     this.internalIso = this.toFullIso(today);
     this.onChange(this.selectedValue);
     this.dateChange.emit(this.selectedValue);
-    if (this.popover) {
-      this.popover.dismiss();
-    }
+    this.closeModal();
   }
 
   setYesterday(event?: Event): void {
@@ -131,24 +144,22 @@ export class CustomDatepickerComponent implements ControlValueAccessor {
     yesterday.setDate(yesterday.getDate() - 1);
     const ymd = this.formatDateToYmd(yesterday);
     this.selectedValue = ymd;
+    this.tempSelectedValue = ymd;
     this.internalIso = this.toFullIso(ymd);
     this.onChange(this.selectedValue);
     this.dateChange.emit(this.selectedValue);
-    if (this.popover) {
-      this.popover.dismiss();
-    }
+    this.closeModal();
   }
 
   clearSelection(event?: Event): void {
     if (event) event.stopPropagation();
     this.selectedValue = null;
+    this.tempSelectedValue = null;
     this.internalIso = this.getTodayIso();
     this.onChange(null);
     this.dateChange.emit(null);
     this.onTouched();
-    if (this.popover) {
-      this.popover.dismiss();
-    }
+    this.closeModal();
   }
 
   get selectedLabel(): string {

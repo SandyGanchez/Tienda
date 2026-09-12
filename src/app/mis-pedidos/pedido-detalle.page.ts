@@ -52,11 +52,11 @@ export class PedidoDetallePage implements OnInit {
     if (
       !archivo ||
       !['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(archivo.type) ||
-      archivo.size > 5 * 1024 * 1024
+      archivo.size > 10 * 1024 * 1024
     ) {
       this.archivo = null;
       input.value = '';
-      void this.feedback('Selecciona una imagen JPG, PNG, WEBP o un PDF de máximo 5 MB.', 'warning');
+      void this.feedback('Selecciona una imagen JPG, PNG, WEBP o un PDF de máximo 10 MB.', 'warning');
       return;
     }
     this.archivo = archivo;

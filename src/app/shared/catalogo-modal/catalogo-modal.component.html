@@ -11,7 +11,8 @@
       <div>
         <label class="block font-sans font-semibold text-xs text-on-surface-variant mb-1 ml-1">Nombre *</label>
         <input
-          class="w-full bg-surface-container border border-outline-variant/30 rounded-xl py-3 px-4 font-sans text-sm text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+          #nombreInput
+          class="w-full bg-surface-container border border-outline-variant/30 rounded-xl py-3 px-4 font-sans text-sm text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all select-text"
           [class.border-error]="!!errorNombre"
           type="text"
           placeholder="Nombre..."
@@ -25,7 +26,7 @@
       <div>
         <label class="block font-sans font-semibold text-xs text-on-surface-variant mb-1 ml-1">Descripción</label>
         <textarea
-          class="w-full bg-surface-container border border-outline-variant/30 rounded-xl py-3 px-4 font-sans text-sm text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all resize-y min-h-[100px]"
+          class="w-full bg-surface-container border border-outline-variant/30 rounded-xl py-3 px-4 font-sans text-sm text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all resize-y min-h-[100px] select-text"
           placeholder="Descripción opcional..."
           [(ngModel)]="descripcion"
         ></textarea>

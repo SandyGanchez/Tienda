@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, OnInit } from '@angular/core';
-import { ToastController } from '@ionic/angular';
+import { AlertController, ToastController } from '@ionic/angular';
 import { Capacitor } from '@capacitor/core';
 import { Camera, CameraResultType, CameraSource, Photo } from '@capacitor/camera';
 import { BarcodeFormat, BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
@@ -106,6 +106,7 @@ export class ProductosPage implements OnInit {
   private readonly catalogosApi = inject(CatalogosService);
   private readonly sqlite = inject(SqliteService);
   private readonly toastController = inject(ToastController);
+  private readonly alertController = inject(AlertController);
   private readonly dialog = inject(DialogService);
   private readonly scanFeedback = inject(ScanFeedbackService);
   readonly sync = inject(SyncService);
@@ -244,21 +245,38 @@ export class ProductosPage implements OnInit {
   }
 
   async crearNuevaCategoriaRapida(sugerencia?: string): Promise<void> {
-    const nombre = await this.dialog.prompt({
-      title: 'Nueva categoría',
-      message: 'Ingresa el nombre de la categoría para agregarla al catálogo.',
-      placeholder: 'Ej. Bebidas, Botanas, Lácteos...',
-      initialValue: (sugerencia || '').trim(),
-      confirmText: 'Crear categoría',
-      cancelText: 'Cancelar',
-      minLength: 2,
-      maxLength: 60,
-      isTextarea: false,
+    const alert = await this.alertController.create({
+      header: 'Nueva categoría',
+      subHeader: 'Ingresa el nombre de la categoría para agregarla al catálogo.',
+      cssClass: 'pastel-alert',
+      inputs: [
+        {
+          name: 'nombre',
+          type: 'text',
+          placeholder: 'Ej. Bebidas, Botanas, Lácteos...',
+          value: (sugerencia || '').trim(),
+          attributes: {
+            maxlength: 60,
+          },
+        },
+      ],
+      buttons: [
+        {
+          text: 'Cancelar',
+          role: 'cancel',
+        },
+        {
+          text: 'Crear',
+          role: 'confirm',
+        },
+      ],
     });
 
-    if (!nombre || !nombre.trim()) return;
+    await alert.present();
+    const { data, role } = await alert.onDidDismiss();
+    if (role !== 'confirm' || !data?.values?.nombre?.trim()) return;
 
-    const nombreLimpio = nombre.trim();
+    const nombreLimpio = data.values.nombre.trim();
     try {
       const nueva = await firstValueFrom(
         this.catalogosApi.crearCategoria({
@@ -279,21 +297,38 @@ export class ProductosPage implements OnInit {
   }
 
   async crearNuevaMarcaRapida(sugerencia?: string): Promise<void> {
-    const nombre = await this.dialog.prompt({
-      title: 'Nueva marca',
-      message: 'Ingresa el nombre de la marca para agregarla al catálogo.',
-      placeholder: 'Ej. Coca-Cola, Bimbo, Sabritas...',
-      initialValue: (sugerencia || '').trim(),
-      confirmText: 'Crear marca',
-      cancelText: 'Cancelar',
-      minLength: 2,
-      maxLength: 60,
-      isTextarea: false,
+    const alert = await this.alertController.create({
+      header: 'Nueva marca',
+      subHeader: 'Ingresa el nombre de la marca para agregarla al catálogo.',
+      cssClass: 'pastel-alert',
+      inputs: [
+        {
+          name: 'nombre',
+          type: 'text',
+          placeholder: 'Ej. Coca-Cola, Bimbo, Sabritas...',
+          value: (sugerencia || '').trim(),
+          attributes: {
+            maxlength: 60,
+          },
+        },
+      ],
+      buttons: [
+        {
+          text: 'Cancelar',
+          role: 'cancel',
+        },
+        {
+          text: 'Crear',
+          role: 'confirm',
+        },
+      ],
     });
 
-    if (!nombre || !nombre.trim()) return;
+    await alert.present();
+    const { data, role } = await alert.onDidDismiss();
+    if (role !== 'confirm' || !data?.values?.nombre?.trim()) return;
 
-    const nombreLimpio = nombre.trim();
+    const nombreLimpio = data.values.nombre.trim();
     try {
       const nueva = await firstValueFrom(
         this.catalogosApi.crearMarca({
@@ -361,8 +396,8 @@ export class ProductosPage implements OnInit {
       codigoQR: producto.codigoQR || '',
       sku: producto.sku || '',
       imagen: producto.imagen || '',
-      idMarca: producto.marca?.id ?? null,
-      idCat: producto.categoria?.id ?? null,
+      idMarca: producto.marca?.id ? String(producto.marca.id) : ((producto as any).idMarca ? String((producto as any).idMarca) : null),
+      idCat: producto.categoria?.id ? String(producto.categoria.id) : ((producto as any).idCat ? String((producto as any).idCat) : null),
     };
     this.reiniciarFotoPendiente();
     this.erroresProducto = {};
@@ -828,8 +863,8 @@ export class ProductosPage implements OnInit {
         await this.mostrarFeedback('Selecciona una imagen JPEG, PNG o WEBP.', 'warning');
         return;
       }
-      if (blob.size > 5 * 1024 * 1024) {
-        await this.mostrarFeedback('La imagen no puede superar 5 MB.', 'warning');
+      if (blob.size > 10 * 1024 * 1024) {
+        await this.mostrarFeedback('La imagen no puede superar 10 MB.', 'warning');
         return;
       }
       const extension = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : 'jpg';
@@ -859,8 +894,8 @@ export class ProductosPage implements OnInit {
         await this.mostrarFeedback('Selecciona una imagen JPEG, PNG o WEBP.', 'warning');
         return;
       }
-      if (file.size > 5 * 1024 * 1024) {
-        await this.mostrarFeedback('La imagen no puede superar 5 MB.', 'warning');
+      if (file.size > 10 * 1024 * 1024) {
+        await this.mostrarFeedback('La imagen no puede superar 10 MB.', 'warning');
         return;
       }
       const extension = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';

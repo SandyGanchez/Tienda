@@ -6,6 +6,7 @@ import { productosUploadDir } from '../../middlewares/upload.middleware';
 import { idValido, texto, textoNullable, errorFuncional } from '../../utils/formatters';
 import { toProductoDto, toProductoListDto } from '../../dtos/producto.dto';
 import { productoRepository, IProductoRepository } from '../../db/repositories/producto.repository';
+import { catalogoRepository } from '../../db/repositories/catalogo.repository';
 import { storageService, IStorageService } from '../../services/storage.service';
 import { CompositeProductLookupProvider, defaultProductLookupProvider } from './product-lookup.provider';
 
@@ -90,7 +91,17 @@ export class ProductosService implements IProductosService {
     if (process.env.DYNAMODB_TABLE) {
       const p = await this.repo.getProductoById(idPro);
       if (!p) return null;
-      return toProductoDto(p);
+      let nombreMarca: string | null = null;
+      let nombreCat: string | null = null;
+      if (p.idMarca) {
+        const m = await catalogoRepository.getMarcaById(p.idMarca);
+        nombreMarca = m?.nombreMarca || null;
+      }
+      if (p.idCat) {
+        const c = await catalogoRepository.getCategoriaById(p.idCat);
+        nombreCat = c?.nombreCat || null;
+      }
+      return toProductoDto({ ...p, nombreMarca, nombreCat });
     }
     const p = await client.producto.findUnique({
       where: { idPro },
@@ -133,8 +144,20 @@ export class ProductosService implements IProductosService {
 
   async listarAdmin() {
     if (process.env.DYNAMODB_TABLE) {
-      const prods = await this.repo.listProductos(1);
-      return prods.map((p: any) => toProductoListDto(p));
+      const [prods, marcas, cats] = await Promise.all([
+        this.repo.listProductos(1),
+        catalogoRepository.listMarcas(),
+        catalogoRepository.listCategorias(),
+      ]);
+      const marcasMap = new Map(marcas.map((m) => [m.idMarca, m.nombreMarca]));
+      const catsMap = new Map(cats.map((c) => [c.idCat, c.nombreCat]));
+      return prods.map((p: any) =>
+        toProductoListDto({
+          ...p,
+          nombreMarca: p.idMarca ? marcasMap.get(p.idMarca) : null,
+          nombreCat: p.idCat ? catsMap.get(p.idCat) : null,
+        }),
+      );
     }
     const productos = await prisma.producto.findMany({
       orderBy: { nombrePro: 'asc' },
@@ -148,8 +171,20 @@ export class ProductosService implements IProductosService {
 
   async listarPos() {
     if (process.env.DYNAMODB_TABLE) {
-      const prods = await this.repo.listProductos(1, { soloActivos: true });
-      return prods.map((p: any) => toProductoListDto(p));
+      const [prods, marcas, cats] = await Promise.all([
+        this.repo.listProductos(1, { soloActivos: true }),
+        catalogoRepository.listMarcas(),
+        catalogoRepository.listCategorias(),
+      ]);
+      const marcasMap = new Map(marcas.map((m) => [m.idMarca, m.nombreMarca]));
+      const catsMap = new Map(cats.map((c) => [c.idCat, c.nombreCat]));
+      return prods.map((p: any) =>
+        toProductoListDto({
+          ...p,
+          nombreMarca: p.idMarca ? marcasMap.get(p.idMarca) : null,
+          nombreCat: p.idCat ? catsMap.get(p.idCat) : null,
+        }),
+      );
     }
     const productos = await prisma.producto.findMany({
       where: { activoPro: true },
@@ -263,7 +298,8 @@ export class ProductosService implements IProductosService {
       throw errorFuncional(errorValidacion, 400);
     }
 
-    if (!(await this.obtenerProducto(idPro))) {
+    const productoExistente = await this.obtenerProducto(idPro);
+    if (!productoExistente) {
       throw errorFuncional('Producto no encontrado', 404);
     }
 
@@ -275,6 +311,15 @@ export class ProductosService implements IProductosService {
     if (await this.codigoEnUso(body.codigoQR, idPro)) {
       throw errorFuncional('El código de barras ya pertenece a otro producto', 409);
     }
+
+    // Preserve existing image if body.imagen is undefined (not sent)
+    const imagenPro = body.imagen !== undefined ? textoNullable(body.imagen) : (productoExistente.imagen || null);
+    const idMarca = body.idMarca !== undefined
+      ? (body.idMarca ? Number(idValido(body.idMarca)) : null)
+      : (productoExistente.idMarca ? Number(idValido(productoExistente.idMarca)) : null);
+    const idCat = body.idCat !== undefined
+      ? (body.idCat ? Number(idValido(body.idCat)) : null)
+      : (productoExistente.idCat ? Number(idValido(productoExistente.idCat)) : null);
 
     if (process.env.DYNAMODB_TABLE) {
       await this.repo.updateProducto(idPro, {
@@ -288,15 +333,14 @@ export class ProductosService implements IProductosService {
         tipoPro: textoNullable(body.tipo),
         codigoQR: textoNullable(body.codigoQR),
         skuPro: textoNullable(body.sku),
-        imagenPro: textoNullable(body.imagen),
-        idMarca: body.idMarca ? Number(idValido(body.idMarca)) : null,
-        idCat: body.idCat ? Number(idValido(body.idCat)) : null,
+        imagenPro,
+        idMarca,
+        idCat,
       });
       return await this.obtenerProducto(idPro);
     }
 
     await prisma.producto.update({
-
       where: { idPro },
       data: {
         nombrePro: texto(body.nombre),
@@ -309,9 +353,9 @@ export class ProductosService implements IProductosService {
         tipoPro: textoNullable(body.tipo),
         codigoQR: textoNullable(body.codigoQR),
         skuPro: textoNullable(body.sku),
-        imagenPro: textoNullable(body.imagen),
-        idMarca: body.idMarca ? idValido(body.idMarca) : null,
-        idCat: body.idCat ? idValido(body.idCat) : null,
+        imagenPro,
+        idMarca: idMarca ? idValido(idMarca) : null,
+        idCat: idCat ? idValido(idCat) : null,
       },
     });
 

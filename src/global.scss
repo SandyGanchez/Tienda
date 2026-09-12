@@ -111,6 +111,30 @@ ion-modal.modal-shell-full {
     border-radius: 0;
   }
 }
+
+ion-modal.centered-datepicker-modal {
+  --width: 92%;
+  --max-width: 370px;
+  --height: auto;
+  --border-radius: 28px;
+  align-items: center;
+  justify-content: center;
+
+  &::part(content) {
+    border-radius: 28px;
+    overflow: hidden;
+    box-shadow: 0 25px 50px -12px rgba(47, 45, 50, 0.28);
+    background: #ffffff;
+  }
+}
+
+.custom-centered-datetime {
+  border-radius: 20px;
+  --background: transparent;
+  width: 100%;
+  max-width: 320px;
+  margin: 0 auto;
+}
 ion-alert.pastel-alert .alert-wrapper {
   border-radius: 22px;
   background: #fff7fc;
