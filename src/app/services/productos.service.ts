@@ -18,11 +18,14 @@ export { ProductoPublico };
  * Implementa la interfaz compuesta ProductosOperations que agrupa contratos
  * segregados (ProductoReader, ProductoWriter, ProductoMediaHandler, ProductoExternalLookup).
  */
+import { API_BASE_URL } from './tokens';
+
 @Injectable({
   providedIn: 'root',
 })
 export class ProductosService implements ProductosOperations {
-  private readonly apiUrl = `${environment.API_BASE_URL}/productos`;
+  private readonly apiBaseUrl = inject(API_BASE_URL);
+  private readonly apiUrl = `${this.apiBaseUrl}/productos`;
   private readonly http = inject(HttpClient);
   private readonly imagenes = inject(ImagenesService);
 
