@@ -19,6 +19,7 @@ export interface CatalogoFormData {
 })
 export class CatalogoModalComponent implements OnChanges {
   @ViewChild('nombreInput') nombreInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('descInput') descInput?: ElementRef<HTMLTextAreaElement>;
 
   @Input() isOpen = false;
   @Input() tipo = 'categoría';
@@ -37,11 +38,26 @@ export class CatalogoModalComponent implements OnChanges {
       this.nombre = this.item?.nombre || '';
       this.descripcion = this.item?.descripcion || '';
       this.errorNombre = '';
-      if (this.isOpen) {
-        setTimeout(() => {
-          this.nombreInput?.nativeElement?.focus();
-        }, 200);
-      }
+    }
+  }
+
+  onModalPresented(): void {
+    setTimeout(() => {
+      this.enfocarInput();
+    }, 60);
+  }
+
+  enfocarInput(): void {
+    const input = this.nombreInput?.nativeElement;
+    if (input) {
+      input.focus();
+    }
+  }
+
+  enfocarTextarea(): void {
+    const textarea = this.descInput?.nativeElement;
+    if (textarea) {
+      textarea.focus();
     }
   }
 

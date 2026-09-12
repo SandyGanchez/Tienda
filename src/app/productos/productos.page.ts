@@ -14,6 +14,7 @@ import { SqliteService } from '../services/sqlite.service';
 import { ScanFeedbackService } from '../services/scan-feedback.service';
 import { SyncService } from '../services/sync.service';
 import { DialogService } from '../services/dialog.service';
+import { CatalogoFormData, CatalogoItem } from '../shared/catalogo-modal/catalogo-modal.component';
 
 type ModoProducto = 'crear' | 'editar';
 
@@ -90,6 +91,11 @@ export class ProductosPage implements OnInit {
   fotoProductoPendiente: Blob | null = null;
   nombreFotoPendiente = '';
   previewFotoPendiente: string | null = null;
+
+  mostrarModalCatalogoRapido = false;
+  tipoCatalogoRapido: 'categoría' | 'marca' = 'categoría';
+  itemEditandoRapido: CatalogoItem | null = null;
+  guardandoCatalogoRapido = false;
 
   private readonly formatosComerciales = [
     BarcodeFormat.Ean13,
@@ -244,107 +250,66 @@ export class ProductosPage implements OnInit {
     });
   }
 
-  async crearNuevaCategoriaRapida(sugerencia?: string): Promise<void> {
-    const alert = await this.alertController.create({
-      header: 'Nueva categoría',
-      subHeader: 'Ingresa el nombre de la categoría para agregarla al catálogo.',
-      cssClass: 'pastel-alert',
-      inputs: [
-        {
-          name: 'nombre',
-          type: 'text',
-          placeholder: 'Ej. Bebidas, Botanas, Lácteos...',
-          value: (sugerencia || '').trim(),
-          attributes: {
-            maxlength: 60,
-          },
-        },
-      ],
-      buttons: [
-        {
-          text: 'Cancelar',
-          role: 'cancel',
-        },
-        {
-          text: 'Crear',
-          role: 'confirm',
-        },
-      ],
-    });
-
-    await alert.present();
-    const { data, role } = await alert.onDidDismiss();
-    if (role !== 'confirm' || !data?.values?.nombre?.trim()) return;
-
-    const nombreLimpio = data.values.nombre.trim();
-    try {
-      const nueva = await firstValueFrom(
-        this.catalogosApi.crearCategoria({
-          nombre: nombreLimpio,
-          descripcion: '',
-        }),
-      );
-      this.categorias = this.reemplazarPorId(this.categorias, nueva, 'id');
-      if (this.sqlite.disponible) {
-        void this.sqlite.sincronizarCategorias(this.categorias);
-      }
-      this.formProducto.idCat = String(nueva.id);
-      delete this.erroresProducto.idCat;
-      await this.mostrarFeedback(`Categoría "${nueva.nombre}" creada y seleccionada.`, 'success');
-    } catch (error: unknown) {
-      await this.mostrarFeedback(this.mensajeErrorHttp(error, 'No pudimos crear la categoría.'), 'danger');
-    }
+  crearNuevaCategoriaRapida(sugerencia?: string): void {
+    this.tipoCatalogoRapido = 'categoría';
+    this.itemEditandoRapido = sugerencia ? { nombre: sugerencia.trim() } : null;
+    this.mostrarModalCatalogoRapido = true;
   }
 
-  async crearNuevaMarcaRapida(sugerencia?: string): Promise<void> {
-    const alert = await this.alertController.create({
-      header: 'Nueva marca',
-      subHeader: 'Ingresa el nombre de la marca para agregarla al catálogo.',
-      cssClass: 'pastel-alert',
-      inputs: [
-        {
-          name: 'nombre',
-          type: 'text',
-          placeholder: 'Ej. Coca-Cola, Bimbo, Sabritas...',
-          value: (sugerencia || '').trim(),
-          attributes: {
-            maxlength: 60,
-          },
-        },
-      ],
-      buttons: [
-        {
-          text: 'Cancelar',
-          role: 'cancel',
-        },
-        {
-          text: 'Crear',
-          role: 'confirm',
-        },
-      ],
-    });
+  crearNuevaMarcaRapida(sugerencia?: string): void {
+    this.tipoCatalogoRapido = 'marca';
+    this.itemEditandoRapido = sugerencia ? { nombre: sugerencia.trim() } : null;
+    this.mostrarModalCatalogoRapido = true;
+  }
 
-    await alert.present();
-    const { data, role } = await alert.onDidDismiss();
-    if (role !== 'confirm' || !data?.values?.nombre?.trim()) return;
+  cancelarModalCatalogoRapido(): void {
+    this.mostrarModalCatalogoRapido = false;
+    this.itemEditandoRapido = null;
+  }
 
-    const nombreLimpio = data.values.nombre.trim();
+  async guardarCatalogoRapido(datos: CatalogoFormData): Promise<void> {
+    if (this.guardandoCatalogoRapido) return;
+    this.guardandoCatalogoRapido = true;
+
     try {
-      const nueva = await firstValueFrom(
-        this.catalogosApi.crearMarca({
-          nombre: nombreLimpio,
-          descripcion: '',
-        }),
-      );
-      this.marcas = this.reemplazarPorId(this.marcas, nueva, 'id');
-      if (this.sqlite.disponible) {
-        void this.sqlite.sincronizarMarcas(this.marcas);
+      if (this.tipoCatalogoRapido === 'categoría') {
+        const nueva = await firstValueFrom(
+          this.catalogosApi.crearCategoria({
+            nombre: datos.nombre,
+            descripcion: datos.descripcion,
+          }),
+        );
+        this.categorias = this.reemplazarPorId(this.categorias, nueva, 'id');
+        if (this.sqlite.disponible) {
+          void this.sqlite.sincronizarCategorias(this.categorias);
+        }
+        this.formProducto.idCat = String(nueva.id);
+        delete this.erroresProducto.idCat;
+        await this.mostrarFeedback(`Categoría "${nueva.nombre}" creada y seleccionada.`, 'success');
+      } else {
+        const nueva = await firstValueFrom(
+          this.catalogosApi.crearMarca({
+            nombre: datos.nombre,
+            descripcion: datos.descripcion,
+          }),
+        );
+        this.marcas = this.reemplazarPorId(this.marcas, nueva, 'id');
+        if (this.sqlite.disponible) {
+          void this.sqlite.sincronizarMarcas(this.marcas);
+        }
+        this.formProducto.idMarca = String(nueva.id);
+        delete this.erroresProducto.idMarca;
+        await this.mostrarFeedback(`Marca "${nueva.nombre}" creada y seleccionada.`, 'success');
       }
-      this.formProducto.idMarca = String(nueva.id);
-      delete this.erroresProducto.idMarca;
-      await this.mostrarFeedback(`Marca "${nueva.nombre}" creada y seleccionada.`, 'success');
+      this.mostrarModalCatalogoRapido = false;
+      this.itemEditandoRapido = null;
     } catch (error: unknown) {
-      await this.mostrarFeedback(this.mensajeErrorHttp(error, 'No pudimos crear la marca.'), 'danger');
+      await this.mostrarFeedback(
+        this.mensajeErrorHttp(error, `No pudimos crear la ${this.tipoCatalogoRapido}.`),
+        'danger',
+      );
+    } finally {
+      this.guardandoCatalogoRapido = false;
     }
   }
 
