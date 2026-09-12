@@ -1,22 +1,25 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { ItemCarrito } from '../models/carrito';
+import { LocalStorageDriver } from './storage/local-storage.driver';
 
 /**
  * =========================================================================
- * Single Responsibility Principle (SRP) - Cart Storage Service
+ * Single Responsibility & Liskov Substitution Principle (SRP / LSP)
  * =========================================================================
- * Responsabilidad única: Persistencia, serialización, deserialización y
- * saneamiento de los ítems del carrito de compras en el almacenamiento local.
+ * Responsabilidad única: Persistencia, serialización y saneamiento de los ítems
+ * del carrito. Utiliza StorageDriver para que cualquier controlador de
+ * almacenamiento (LocalStorageDriver, MemoryStorageDriver, etc.) sea sustituible.
  */
 @Injectable({
   providedIn: 'root',
 })
 export class CartStorageService {
   private readonly storageKey = 'tienda.cliente.carrito';
+  private readonly driver = inject(LocalStorageDriver);
 
   leer(): ItemCarrito[] {
     try {
-      const raw = localStorage.getItem(this.storageKey);
+      const raw = this.driver.getItem(this.storageKey);
       if (!raw) return [];
       const parsed = JSON.parse(raw);
       if (!Array.isArray(parsed)) return [];
@@ -29,11 +32,7 @@ export class CartStorageService {
   }
 
   guardar(items: ItemCarrito[]): void {
-    try {
-      localStorage.setItem(this.storageKey, JSON.stringify(items));
-    } catch {
-      // Ignorar errores de quota en almacenamiento local
-    }
+    this.driver.setItem(this.storageKey, JSON.stringify(items));
   }
 
   private esItemValido(valor: unknown): valor is ItemCarrito {
@@ -56,10 +55,6 @@ export class CartStorageService {
   }
 
   limpiar(): void {
-    try {
-      localStorage.removeItem(this.storageKey);
-    } catch {
-      // Ignorar errores de almacenamiento local
-    }
+    this.driver.removeItem(this.storageKey);
   }
 }
