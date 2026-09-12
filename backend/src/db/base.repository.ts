@@ -8,10 +8,6 @@ import {
 import { docClient, TABLE_NAME } from './dynamo.client';
 import { errorFuncional } from '../utils/formatters';
 
-export interface IRepository<T> {
-  readonly tableName: string;
-}
-
 export interface QueryOptions {
   indexName?: string;
   scanIndexForward?: boolean;
@@ -20,12 +16,40 @@ export interface QueryOptions {
 }
 
 /**
+ * =========================================================================
+ * Interface Segregation Principle (ISP) - Repositorios
+ * =========================================================================
+ * Clientes de sólo lectura (como catálogos públicos o validadores de stock)
+ * no deben depender de métodos destructivos (deleteByKey) ni de transacciones.
+ */
+export interface IReadOnlyRepository<T> {
+  readonly tableName: string;
+  getByKey(key: Record<string, any>, consistentRead?: boolean): Promise<T | null>;
+  queryItems(keyCondition: string, values: Record<string, any>, options?: QueryOptions): Promise<T[]>;
+}
+
+export interface IWriteOnlyRepository<T> {
+  putItem(item: Record<string, any>, conditionExpression?: string): Promise<void>;
+  deleteByKey(key: Record<string, any>): Promise<void>;
+}
+
+export interface ITransactionalRepository {
+  executeTransaction(transactItems: any[], conflictErrorMessage?: string): Promise<void>;
+}
+
+/**
+ * Contrato completo compuesto para repositorios que requieren lectura, escritura y transacciones.
+ */
+export interface IRepository<T>
+  extends IReadOnlyRepository<T>,
+    IWriteOnlyRepository<T>,
+    ITransactionalRepository {}
+
+/**
  * BaseDynamoRepository: Supertipo abstracto para repositorios en AWS DynamoDB Single-Table.
- * Cumple el Principio de Sustitución de Liskov (LSP):
+ * Cumple LSP e ISP:
+ * - Implementa interfaces segregadas permitiendo que los consumidores utilicen sólo la interfaz requerida.
  * - Garantiza un contrato consistente para todas las operaciones de persistencia.
- * - Centraliza el manejo de excepciones de DynamoDB (TransactionCanceledException, ConditionCheckFailed).
- * - Permite sustituir implementaciones de repositorio (DynamoDB, In-Memory para testing, etc.)
- *   sin alterar el comportamiento esperado ni los tipos retornados a los servicios consumidores.
  */
 export abstract class BaseDynamoRepository<T> implements IRepository<T> {
   readonly tableName: string;
@@ -37,7 +61,7 @@ export abstract class BaseDynamoRepository<T> implements IRepository<T> {
   /**
    * Obtiene un registro por su clave primaria (PK y opcional SK).
    */
-  protected async getByKey(key: Record<string, any>, consistentRead = true): Promise<T | null> {
+  async getByKey(key: Record<string, any>, consistentRead = true): Promise<T | null> {
     const res = await docClient.send(
       new GetCommand({
         TableName: this.tableName,
@@ -51,7 +75,7 @@ export abstract class BaseDynamoRepository<T> implements IRepository<T> {
   /**
    * Consulta registros utilizando expresión de condición de clave (GSI o clave principal).
    */
-  protected async queryItems(
+  async queryItems(
     keyCondition: string,
     values: Record<string, any>,
     options?: QueryOptions,
@@ -73,7 +97,7 @@ export abstract class BaseDynamoRepository<T> implements IRepository<T> {
   /**
    * Guarda o reemplaza un ítem completo en DynamoDB.
    */
-  protected async putItem(item: Record<string, any>, conditionExpression?: string): Promise<void> {
+  async putItem(item: Record<string, any>, conditionExpression?: string): Promise<void> {
     await docClient.send(
       new PutCommand({
         TableName: this.tableName,
@@ -86,7 +110,7 @@ export abstract class BaseDynamoRepository<T> implements IRepository<T> {
   /**
    * Elimina un ítem por su clave primaria.
    */
-  protected async deleteByKey(key: Record<string, any>): Promise<void> {
+  async deleteByKey(key: Record<string, any>): Promise<void> {
     await docClient.send(
       new DeleteCommand({
         TableName: this.tableName,
@@ -97,9 +121,9 @@ export abstract class BaseDynamoRepository<T> implements IRepository<T> {
 
   /**
    * Ejecuta transacciones atómicas de escritura en DynamoDB con manejo consistente
-   * de excepciones (LSP: garantiza postcondición de error normalizado).
+   * de excepciones.
    */
-  protected async executeTransaction(
+  async executeTransaction(
     transactItems: any[],
     conflictErrorMessage = 'Conflicto de concurrencia o integridad referencial en DynamoDB',
   ): Promise<void> {

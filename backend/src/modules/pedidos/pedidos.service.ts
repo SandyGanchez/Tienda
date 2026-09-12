@@ -35,8 +35,46 @@ export function mimeRealComprobante(rutaArchivo: string): string | null {
   return storageService.detectarMimeReal(rutaArchivo);
 }
 
+/**
+ * =========================================================================
+ * Interface Segregation Principle (ISP) - Pedidos
+ * =========================================================================
+ * Segregación entre la operativa de cara al cliente y la administración:
+ * - IClientePedidoService: Operaciones públicas de compras y comprobantes
+ * - IAdminPedidoService: Operaciones de backoffice (aprobación, rechazo, entrega)
+ */
+export interface IClientePedidoService {
+  obtenerSucursalDisponibleCliente(): Promise<number>;
+  obtenerConfiguracionTransferencia(idSuc: number, exigirActiva?: boolean): Promise<any>;
+  listarPedidosCliente(idCliente: number): Promise<any>;
+  obtenerPedidoSeguro(idPedido: number, idCliente: number, tx?: DbClient): Promise<any>;
+  presignComprobante(
+    idPedido: number,
+    idCliente: number,
+    mimeType: string,
+    extensionOriginal?: string,
+    nombreOriginal?: string,
+  ): Promise<any>;
+  confirmarComprobante(
+    idPedido: number,
+    idCliente: number,
+    keyOUrl: string,
+    nombreOriginal?: string,
+    mimeType?: string,
+  ): Promise<any>;
+}
 
-export class PedidosService {
+export interface IAdminPedidoService {
+  listarPedidosAdmin(idSuc: number): Promise<any>;
+  obtenerPedidoAdmin(idPedido: number, idSuc: number, tx?: DbClient): Promise<any>;
+  rechazarPedidoAdmin(idPedido: number, idSuc: number, idEmp: number, motivoInput: string): Promise<any>;
+  aprobarPedidoAdmin(idPedido: number, idSuc: number, idEmp: number): Promise<any>;
+  cambiarEstadoOperativo(idPedido: number, idSuc: number, estadoActual: string, estadoNuevo: string): Promise<any>;
+}
+
+export interface IPedidosService extends IClientePedidoService, IAdminPedidoService {}
+
+export class PedidosService implements IPedidosService {
   constructor(private stateMachine: OrderStateMachine = defaultOrderStateMachine) {}
 
   async obtenerSucursalDisponibleCliente() {

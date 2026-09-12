@@ -48,7 +48,38 @@ export function eliminarUploadControlado(
   void storageService.eliminarArchivo(rutaPublica, directorio, prefijo);
 }
 
-export class ProductosService {
+/**
+ * =========================================================================
+ * Interface Segregation Principle (ISP) - Catálogo de Productos
+ * =========================================================================
+ * - IProductoPublicService: Operaciones públicas para tienda/ecommerce
+ * - IProductoAdminService: Operaciones de administración y gestión de inventario
+ * - IProductoPosService: Operaciones de búsqueda por código y caja
+ */
+export interface IProductoPublicService {
+  listarPublico(): Promise<any>;
+  consultarExterno(codigo: string): Promise<any>;
+}
+
+export interface IProductoAdminService {
+  listarAdmin(): Promise<any>;
+  crear(body: any): Promise<any>;
+  actualizar(idPro: number, body: any): Promise<any>;
+  eliminar(idPro: number): Promise<any>;
+}
+
+export interface IProductoPosService {
+  listarPos(): Promise<any>;
+  buscarPorQR(codigoQR: string): Promise<any>;
+  obtenerProducto(idPro: number, client?: DbClient): Promise<any>;
+}
+
+export interface IProductosService
+  extends IProductoPublicService,
+    IProductoAdminService,
+    IProductoPosService {}
+
+export class ProductosService implements IProductosService {
   constructor(private lookupProvider: CompositeProductLookupProvider = defaultProductLookupProvider) {}
 
   async obtenerProducto(idPro: number, client: DbClient = prisma) {

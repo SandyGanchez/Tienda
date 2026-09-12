@@ -28,10 +28,31 @@ export interface ProductoEntity {
 }
 
 /**
- * ProductoRepository: Repositorio para la gestión de productos en DynamoDB Single-Table.
- * Hereda de BaseDynamoRepository cumpliendo el Principio de Sustitución de Liskov (LSP).
+ * =========================================================================
+ * Interface Segregation Principle (ISP) - Repositorio de Productos
+ * =========================================================================
+ * - IProductoCatalogReader: Clientes que solo necesitan consultar el catálogo
+ * - IProductoCatalogWriter: Módulos administrativos encargados de mutaciones
  */
-export class ProductoRepository extends BaseDynamoRepository<ProductoEntity> {
+export interface IProductoCatalogReader {
+  listProductos(idSuc?: number, options?: { idCat?: number; soloActivos?: boolean }): Promise<ProductoEntity[]>;
+  getProductoById(idPro: number, idSuc?: number): Promise<ProductoEntity | null>;
+  findByCodigoQR(codigoQR: string): Promise<ProductoEntity | null>;
+}
+
+export interface IProductoCatalogWriter {
+  createProducto(data: Omit<ProductoEntity, 'idPro'>): Promise<ProductoEntity>;
+  updateProducto(idPro: number, data: Partial<ProductoEntity>, idSuc?: number): Promise<ProductoEntity | null>;
+  deleteProducto(idPro: number, idSuc?: number): Promise<boolean>;
+}
+
+export interface IProductoRepository extends IProductoCatalogReader, IProductoCatalogWriter {}
+
+/**
+ * ProductoRepository: Repositorio para la gestión de productos en DynamoDB Single-Table.
+ * Hereda de BaseDynamoRepository e implementa IProductoRepository cumpliendo LSP e ISP.
+ */
+export class ProductoRepository extends BaseDynamoRepository<ProductoEntity> implements IProductoRepository {
   async listProductos(idSuc = 1, options?: { idCat?: number; soloActivos?: boolean }): Promise<ProductoEntity[]> {
     let items: ProductoEntity[] = [];
 

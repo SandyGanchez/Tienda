@@ -17,10 +17,34 @@ export interface SesionCajaEntity {
 }
 
 /**
- * CajaRepository: Repositorio para sesiones de caja en DynamoDB Single-Table.
- * Hereda de BaseDynamoRepository cumpliendo el Principio de Sustitución de Liskov (LSP).
+ * =========================================================================
+ * Interface Segregation Principle (ISP) - Repositorio de Caja
+ * =========================================================================
+ * - ICajaReader: Clientes que solo consultan sesiones de caja o estado de arqueo
+ * - ICajaOperator: Operaciones transaccionales de apertura y cierre de caja
  */
-export class CajaRepository extends BaseDynamoRepository<SesionCajaEntity> {
+export interface ICajaReader {
+  getSesionAbierta(idSuc?: number, idEmp?: number): Promise<SesionCajaEntity | null>;
+  getSesionById(idSesionCaja: number, idSuc?: number): Promise<SesionCajaEntity | null>;
+  listSesiones(idSuc?: number): Promise<SesionCajaEntity[]>;
+}
+
+export interface ICajaOperator {
+  abrirSesion(data: { idSuc: number; idEmp: number; fondoInicial: number; empleadoNombre?: string }): Promise<SesionCajaEntity>;
+  cerrarSesion(
+    idSesionCaja: number,
+    data: { montoReal: number; diferencia: number; observaciones?: string },
+    idSuc?: number,
+  ): Promise<SesionCajaEntity | null>;
+}
+
+export interface ICajaRepository extends ICajaReader, ICajaOperator {}
+
+/**
+ * CajaRepository: Repositorio para sesiones de caja en DynamoDB Single-Table.
+ * Hereda de BaseDynamoRepository e implementa ICajaRepository cumpliendo LSP e ISP.
+ */
+export class CajaRepository extends BaseDynamoRepository<SesionCajaEntity> implements ICajaRepository {
   async getSesionAbierta(idSuc = 1, idEmp?: number): Promise<SesionCajaEntity | null> {
     if (idEmp) {
       const activaRes = await this.getByKey({
